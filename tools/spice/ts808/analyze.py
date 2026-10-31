@@ -10,7 +10,7 @@ Prints:
      (also the 51 pF low-pass corner and the plateau gain, same treatment);
   2. drive stage, each transient: THD and harmonics 2..5 relative to the
      fundamental, plus the input/output peaks and the monotonicity check
-     the brief asks for (THD must rise with drive at a fixed input level);
+     the design notes ask for (THD must rise with drive at a fixed input level);
   3. tone stage: gain in dB at 100 Hz, 1 kHz, 5 kHz at tone 0 / 0.5 / 1,
      beside an independent analytic solve of the same network with an
      ideal op-amp.

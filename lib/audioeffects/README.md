@@ -34,7 +34,7 @@ Nearly everything here needs the audiodsp tier of nodes
 `audiomath`, `audioshaper`, `audioladder` and friends), which a stock
 CircuitPython board does not have.
 
-For a complete program to start from, see [audioeffects_simpletest.py](https://github.com/PyDevices/audiocomponents/blob/main/examples/audioeffects_simpletest.py).
+For a complete program to start from, see [audioeffects_simpletest.py](https://github.com/PyDevices/audioeffects/blob/main/examples/audioeffects_simpletest.py).
 
 ## What is in it
 

@@ -17,7 +17,6 @@ get-started/first-program
 
 guides/chain-effects
 guides/keep-an-output-wire
-guides/sequence-a-part
 ```
 
 ```{toctree}
@@ -27,7 +26,6 @@ guides/sequence-a-part
 reference/index
 reference/component-api
 reference/metadata
-reference/instruments
 reference/effects
 reference/effect-controls
 ```

@@ -10,7 +10,7 @@ MicroPython, CPython and the patched CircuitPython build, and on a stock
 board imports cleanly and raises a clear `ImportError` at construction while
 the other classes in its module stay importable.
 
-**No stock CircuitPython interpreter exists in this workspace** --
+**No stock CircuitPython interpreter is built for these tests** --
 `bin/circuitpython` (the locally built one) is the patched oracle and
 `bin/circuitpython-effects` is the patched effects build -- so the
 roadmap names this substitute: a CPython test that blocks the audiodsp-own

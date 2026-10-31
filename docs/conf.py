@@ -1,4 +1,4 @@
-"""Sphinx configuration for the audiocomponents documentation.
+"""Sphinx configuration for the audioeffects documentation.
 
 Everything shared by the PyDevices documentation projects (theme, top bar,
 Markdown and docstring setup, the reference map) comes from pydevices-docs.
@@ -7,10 +7,10 @@ Markdown and docstring setup, the reference map) comes from pydevices-docs.
 from pydevices_docs import configure
 
 settings = configure(
-    "audiocomponents", __file__,
-    repo="PyDevices/audiocomponents", edit_path="docs",
+    "audioeffects", __file__,
+    repo="PyDevices/audioeffects", edit_path="docs",
     source_dirs=["../lib"],
-    api_packages=["audioinstruments", "audioeffects"],
+    api_packages=["audioeffects"],
     # audiodsp's native modules are not installable on Read the Docs.
     mock_imports=[
         "audiobiquad", "audiocore", "audioconvolve", "audiodelays",

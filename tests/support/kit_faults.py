@@ -405,7 +405,7 @@ def corrupt_one_block(pcm, block_frames=256, channels=2):
 # Eleven of Phase 2's forty-five broken clauses read green on a build that
 # did nothing, and three "planted faults" were positions of the class's own surface. Both
 # are kit functions here rather than habits, for the reason the revision
-# gives: every one of the eleven was written by a session that believed it
+# gives: every one of the eleven was written by someone who believed it
 # had already applied the rule.
 # --------------------------------------------------------------------------
 

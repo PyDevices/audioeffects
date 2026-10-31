@@ -1,9 +1,10 @@
-# audiocomponents
+# audioeffects
 
-audiocomponents is the part of OmniPython that makes sound: 55 instruments
-(synthesizers, electromechanical keyboards and drum machines) and 45 effects,
-pure Python, built on audiodsp's audio nodes, and the same on
-MicroPython-compatible boards, CircuitPython-compatible boards and a desktop.
+audioeffects is the part of OmniPython that shapes sound: 45 effects (compressors
+and EQs, reverbs and delays, modulation, drive and amp simulation, pitch
+shifters and ready-made racks), pure Python, built on audiodsp's audio nodes,
+and the same on MicroPython-compatible boards, CircuitPython-compatible boards
+and a desktop.
 
 ## Get started
 
@@ -14,15 +15,13 @@ MicroPython-compatible boards, CircuitPython-compatible boards and a desktop.
 
 - [Chain effects](guides/chain-effects.md)
 - [Keep an effect's output wire](guides/keep-an-output-wire.md)
-- [Sequence a part on the audio's clock](guides/sequence-a-part.md)
 
 ## Reference
 
 - [Audio component runtime API](reference/component-api.md)
 - [Audio component metadata manifest](reference/metadata.md)
 - [Effect controls](reference/effect-controls.md): every knob's span and every patch
-- [Instruments](https://github.com/PyDevices/audiocomponents/blob/main/lib/audioinstruments/README.md)
-- [Effects](https://github.com/PyDevices/audiocomponents/blob/main/lib/audioeffects/README.md)
+- [Effects](reference/effects.md): the class list, with a short account of each
 
 ## How it works
 

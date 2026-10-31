@@ -8,7 +8,7 @@
 * ---------------------------------------------------------------------------
 * (a) 1N4148 -- silicon switching diode; the TS808's clipping pair.
 *     ElectroSmash's drawing marks them MA150 and its text lists
-*     "MA150/1N4148/1N914" as the parts fitted.  We use 1N4148 per the brief.
+*     "MA150/1N4148/1N914" as the parts fitted.  We use 1N4148 per the design notes.
 *
 *     The ten parameter values below are transcribed from Nexperia's
 *     published SPICE model for the 1N4148,

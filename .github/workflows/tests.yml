@@ -1,14 +1,13 @@
-# The structural contract: everything that can run without a workspace.
+# The structural contract: everything that can run on a hosted runner.
 #
-# The instrument parity gate is deliberately absent. It needs built
-# MicroPython/CircuitPython interpreters and a micropython-vst3 checkout as
-# workspace siblings, so an external runner cannot execute it and pretending
-# otherwise would turn a real gate into a skipped one. See AGENTS.md.
+# The tests that run a built MicroPython or CircuitPython interpreter skip
+# here, because a hosted runner has none; pretending otherwise would turn a
+# real gate into a skipped one. CONTRIBUTING.md says how to run them.
 name: Tests
 
 # Once per change: pushes to main and pull requests. Documentation-only changes
-# skip it; the two package READMEs under lib/ are not skipped, because tests
-# read them and the wheels carry them. So does a release pull request, which
+# skip it; the package README under lib/ is not skipped, because tests
+# read it and the wheel carries it. So does a release pull request, which
 # changes only VERSION and CHANGELOG.md, and its merge: the code it releases
 # already passed here, and publish-release-packages.yml runs the suite again
 # at the release tag before anything is published.
@@ -121,12 +120,9 @@ jobs:
         shell: bash
         run: python -m pip install .audiodsp-wheel/*audiodsp-*.whl
 
-      # Editable, so the tests exercise lib/ directly rather than a copy, and
-      # so each package's own pyproject.toml is exercised too.
-      # numpy: two tests need it (test_cpython_asym_table through the ulab
-      # bridge, test_rig_comparator directly); the packages themselves do not.
-      # pytest and pytest-xdist run the suite below; the tests are plain
-      # unittest and need neither.
+      # numpy: the measurement kit reads spectra with it; the package itself
+      # does not need it. pytest and pytest-xdist run the suite below; the
+      # tests are plain unittest and need neither.
       - run: python -m pip install numpy pytest pytest-xdist
 
       # --no-deps is load-bearing: without it a floor raised above the pinned
@@ -134,7 +130,9 @@ jobs:
       # measurement is taken against a core AUDIODSP_PIN does not name -- the
       # failure the pin exists to prevent, arriving through packaging. Do not
       # drop the flag.
-      - run: python -m pip install --no-deps -e lib/audioinstruments -e lib/audioeffects
+      # Editable, so the tests exercise lib/ directly rather than a copy, and
+      # so the package's own pyproject.toml is exercised too.
+      - run: python -m pip install --no-deps -e lib/audioeffects
 
       # The probe WAVs are not in git. Generate them here, so a probe that no
       # longer matches probes.json fails this step by name instead of inside
@@ -195,7 +193,7 @@ jobs:
   # The job above installs lib/ editable, which serves every file on disk and
   # so cannot see a subpackage pyproject.toml leaves out -- v0.3.0 shipped an
   # audioeffects wheel without audioeffects.rebuilt and it failed on import.
-  # This builds both wheels as a release does, checks every source module is
+  # This builds the wheel as a release does, checks every source module is
   # in them, and imports and renders from a clean venv at the audiodsp pin.
   wheel:
     runs-on: ubuntu-latest

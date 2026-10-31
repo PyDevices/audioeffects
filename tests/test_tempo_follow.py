@@ -301,13 +301,6 @@ class EveryOtherComponent(unittest.TestCase):
         self.assertNotEqual(child.get_macro(0), before)
         rack.deinit()
 
-    def test_an_instrument_takes_the_call(self):
-        import audioinstruments
-        name = audioinstruments.ALL[0]
-        instrument = audioinstruments.create(name, RATE)
-        instrument.transport_changed()
-        instrument.deinit()
-
 
 if __name__ == "__main__":
     unittest.main()

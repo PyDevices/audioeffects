@@ -1236,7 +1236,7 @@ def t5_patch(cls):
 
 def _native_binaries():
     """{family: path or None}: LIFECYCLE_MICROPYTHON /
-    LIFECYCLE_CIRCUITPYTHON, or the workspace's `bin/`."""
+    LIFECYCLE_CIRCUITPYTHON, or a `bin/` of built interpreters above this checkout."""
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     bindir = None
     here = root

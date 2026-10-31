@@ -1,9 +1,8 @@
-"""Freeze audioeffects and audioinstruments into a MicroPython firmware.
+"""Freeze audioeffects into a MicroPython firmware.
 
-A firmware build takes this file when it names audiocomponents: with
-micropython-pydevices, ``build_mp.py --modules audiocomponents`` (or ``all``).
+A firmware build that names audioeffects takes this file.
 
-Only the packages' own sources are frozen. A setuptools ``build/`` or
+Only the package's own sources are frozen. A setuptools ``build/`` or
 ``*.egg-info`` left in a checkout holds a second copy of every module, and a
 recursive ``package()`` would freeze that too.
 """
@@ -28,5 +27,4 @@ def _sources(name):
     return found
 
 
-for _name in ("audioeffects", "audioinstruments"):
-    package(_name, files=_sources(_name), base_path="lib", opt=3)  # type: ignore[name-defined]  # noqa: PGH003
+package("audioeffects", files=_sources("audioeffects"), base_path="lib", opt=3)  # type: ignore[name-defined]  # noqa: PGH003

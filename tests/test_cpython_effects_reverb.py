@@ -36,7 +36,7 @@ VENDOR = "PyDevices"
 Reverb = rv.Reverb
 RATE = 48000
 SEEDS = tuple(range(7, 15))
-#: The eight seed sets every claim on noise is held to (the trial brief:
+#: The eight seed sets every claim on noise is held to (the trial rule:
 #: eight sets, a margin larger than the spread between them).
 SEED_SETS = tuple(tuple(range(7 + 8 * k, 15 + 8 * k)) for k in range(8))
 BURST_S = 2.0
@@ -109,7 +109,7 @@ _MEMO = {}
 
 
 def holds(values, low=None, high=None):
-    """The trial brief's rule for a number read on eight seed sets: every
+    """The trial's rule for a number read on eight seed sets: every
     value inside [low, high], and its distance to the nearer bar larger
     than the spread between the sets."""
     if values is None or None in values or len(values) < len(SEED_SETS):
@@ -1843,7 +1843,7 @@ class TheInputCeiling(unittest.TestCase):
 # -- the claims ---------------------------------------------------------------
 
 #: Every sentence of the docstrings that makes a claim, word for word, and
-#: the tests that assert it (the trial brief). A sentence that is not here
+#: the tests that assert it (the trial rule). A sentence that is not here
 #: may hold no number.
 CLAIMS = (
     ("Keep the input under -12 dBFS and the defaults and patches stay "

@@ -14,7 +14,7 @@ because "the material cannot reach the mechanism" is the failure this kit
 was refuted against.
 
 Two of the ten are the first ten's, and are here because this part of the
-brief names them again: CLICK's latency read at both rates, and DIGEST's
+specification names them again: CLICK's latency read at both rates, and DIGEST's
 byte comparison. Their implementations are part B's `click()` and
 `digest()`; what is added here is the planted-fault run for each -
 including a real cross-interpreter comparison, CPython against desktop

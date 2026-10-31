@@ -26,7 +26,7 @@ Re-audit fix round 1 (2026-09-28) moved the class to audiodsp v0.6.3rc1,
 whose lap node lands a stalled loop low-pass (audiodsp#157): the Feedback is
 handed as set, and `ReauditRoundOne` holds that beside the retired stepping.
 Its route tests run one numpy-free script (`ROUTES_MODULE`) under CPython
-and under the workspace's desktop MicroPython and CircuitPython where they
+and under the desktop MicroPython and CircuitPython where they
 are present and current for `AUDIODSP_PIN`: a mono dry block lost after a
 reset shows only on a native interpreter, whose mixer voice points into the
 tap's own buffer where the CPython shim copies.
@@ -2561,10 +2561,10 @@ def red_cells(results, part, plant):
 
 
 def current_native_interpreters():
-    """{"micropython": path, "circuitpython": path} from the workspace's
-    `bin/`, each the first whose provenance stamp contains `AUDIODSP_PIN`'s
-    commit (None where no binary does), or None where there is no
-    workspace `bin/` with its provenance tool above this checkout.
+    """{"micropython": path, "circuitpython": path} from a `bin/` of built
+    interpreters above this checkout, each the first whose provenance stamp
+    contains `AUDIODSP_PIN`'s commit (None where no binary does), or None where there is no
+    `bin/` with its provenance tool above this checkout.
     LIFECYCLE_MICROPYTHON and LIFECYCLE_CIRCUITPYTHON name the two
     binaries instead, as the lifecycle tests take them, for a build that
     lives outside `bin/`."""
@@ -2575,17 +2575,17 @@ def current_native_interpreters():
                 for family, path in named.items()}
     from tools import provenance_gate
     here = ROOT
-    workspace = None
+    tree = None
     for _up in range(5):
         here = os.path.dirname(here)
         if os.path.isdir(os.path.join(here, "bin")) and os.path.isfile(
                 os.path.join(here, "tools", "provenance.py")):
-            workspace = here
+            tree = here
             break
-    if workspace is None:
+    if tree is None:
         return None
-    bindir = os.path.join(workspace, "bin")
-    tool = os.path.join(workspace, "tools", "provenance.py")
+    bindir = os.path.join(tree, "bin")
+    tool = os.path.join(tree, "tools", "provenance.py")
     pin = provenance_gate.audiodsp_pin()
     found = {}
     for family in ("micropython", "circuitpython"):
@@ -2605,13 +2605,13 @@ def current_native_interpreters():
 
 def natives_at_the_pin(case):
     """The native interpreters at AUDIODSP_PIN, as {family: path}, and the
-    families with none, sorted. Skips the test when there is no workspace
+    families with none, sorted. Skips the test when there is no
     bin/ above this checkout. A family with no binary at the pin is not
     run: a binary built before the pin renders a node the pin does not name,
     so what it renders proves nothing either way (audiocomponents#144)."""
     found = current_native_interpreters()
     if found is None:
-        case.skipTest("no workspace bin/ above this checkout")
+        case.skipTest("no bin/ above this checkout")
     return ({family: path for family, path in found.items() if path},
             sorted(family for family, path in found.items() if not path))
 

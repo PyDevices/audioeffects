@@ -32,7 +32,7 @@ test file ties its claim sentences to tests.
 # 0.345 / 0.455 ms → P4 ≤ 7 %, S3 ≤ 9 %. The old 3 % / 5 % bar
 # used a 256-frame RawSample stand-in: the palette could not price a
 # `synthio` source. The 18 % / 52 % bar counted the 1964-frame pull.
-# This is a cheaper implementation of the same effect (brief shape b1),
+# This is a cheaper implementation of the same effect (design shape b1),
 # not a §7.2 redefinition. No `" - lean"` patch.
 #
 # What the default surrenders: Default is the multiplier at Frequency

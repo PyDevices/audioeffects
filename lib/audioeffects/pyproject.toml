@@ -3,31 +3,32 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pydevices-audioeffects"
+name = "omnipython-audioeffects"
 dynamic = ["version"]
-description = "Audio effects built on audiodsp's audio nodes for PyDevices"
+description = "Studio and guitar-pedal effects on audiodsp's audio nodes, for CPython and MicroPython"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [{name = "PyDevices contributors"}]
 classifiers = [
+  "Intended Audience :: Developers",
+  "Topic :: Multimedia :: Sound/Audio",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: MicroPython",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
 ]
-# The audiodsp floor is the newest audiodsp RELEASE. It is not the pin:
-# AUDIODSP_PIN (repo root) names the exact commit the gates run against,
-# and may sit ahead of any release.
-# 0.5.1 is the first release the core PUBLISHED under this name: it was renamed
-# on 2026-09-21, and v0.5.0 was tagged that day and published nothing. So there
-# is no older pydevices-audiodsp to be compatible with.
-dependencies = ["pydevices-audiodsp>=0.6.9"]
+# The audiodsp floor is the newest audiodsp RELEASE that carries the commit
+# AUDIODSP_PIN (repo root) names. It is not the pin: the pin is the exact
+# commit the gates run against, and may sit ahead of any release.
+dependencies = ["omnipython-audiodsp>=0.6.11"]
 
 [project.urls]
-Repository = "https://github.com/PyDevices/audiocomponents"
-Issues = "https://github.com/PyDevices/audiocomponents/issues"
+Repository = "https://github.com/PyDevices/audioeffects"
+Issues = "https://github.com/PyDevices/audioeffects/issues"
 
 [tool.setuptools]
 # Every package directory under lib/audioeffects, listed by hand: the

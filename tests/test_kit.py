@@ -896,7 +896,7 @@ class TestPaperwork(unittest.TestCase):
 def native_binaries():
     """{"micropython": path or None, "circuitpython": path or None}: the
     LIFECYCLE_MICROPYTHON / LIFECYCLE_CIRCUITPYTHON binaries, or the
-    workspace's `bin/`."""
+    a `bin/` of built interpreters above this checkout."""
     found = {}
     here = ROOT
     bindir = None

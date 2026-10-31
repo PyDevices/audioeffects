@@ -68,24 +68,6 @@ make_probes.py --only NAME     regenerate one probe, merging the manifest
 The last two change the reference. Run them when a probe is meant to
 change, and commit the new `probes.json`.
 
-## The instrument probes depend on audiodsp
-
-`chord` and `hit_levels_*` (36 files) are rendered through
-`audioinstruments`, and so through audiodsp's nodes. `probes.json` records
-them as the audiodsp release `AUDIODSP_PIN` names renders them, which is
-the one CI installs. An audiodsp that renders the instruments differently
-fails the check, and the message says so; install audiodsp at the pin:
-
-```
-pip install "git+https://github.com/PyDevices/audiodsp@<pin>"
-```
-
-That failure is the point of the check: it is how a change in the way
-audiodsp renders an instrument shows up. When the pin moves and the
-instruments render differently on purpose, regenerate them with `--only`
-and commit `probes.json` with the pin. Every other probe is plain
-arithmetic in this directory and reproduces anywhere.
-
 ## Choices a reader should not have to infer
 
 - **`ramp_fs` is a repeating ramp, period 1024 frames**, not one long
@@ -108,12 +90,13 @@ arithmetic in this directory and reproduces anywhere.
   edit to `CREST_FREQUENCY` and a regeneration, not a flag.
 - **20 kHz does not exist at 22050 Hz.** `sweep_log` and `tones_step` stop
   at 0.45 × rate, and each file records the ceiling it actually reached.
-- **`chord` and `hit_levels_*` are rendered from `audioinstruments`**
-  (`juno106` and `tr808` note 38), not recorded. Section 3 says "one
-  recorded percussive hit"; the recorded captures in `.reference-captures/`
-  are reference material this program analyses and never redistributes, so
-  a probe cut from one could not ship beside the code that reads it. The
-  deviation is in the manifest too, not only here.
+- **`chord` and `hit_levels_*` are generated, not recorded.** The chord is
+  four band-limited sawtooth notes (C3, G3, C4, E4) with a 2 s decay; the
+  hit is a decaying 190 Hz body plus decaying noise from the same
+  xorshift as `noise_det`. Recorded drum hits carry licences of their own,
+  so nothing here is cut from one. Both are plain arithmetic in
+  `make_probes.py`, like every other probe, and the manifest says
+  "generated".
 - **Sines hold a whole number of cycles**, so the fundamental lands on an
   exact FFT bin with no window and the probe can be looped. 1.5 s is 33075
   frames at 22050 Hz, so a 32768-point transform fits at the lowest rate; a

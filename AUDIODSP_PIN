@@ -1,3 +1,7 @@
+# This file's history below was written in PyDevices/audiocomponents, where the
+# pin held both audioeffects and audioinstruments to one audiodsp. Counts of
+# instruments and issue numbers in it refer to that repository.
+#
 # The audiodsp floor. Every gate in this repository runs against this exact
 # audiodsp commit: the components are held to a fixed core the same way
 # audiodsp itself is held to a fixed CircuitPython (its CIRCUITPYTHON_ORACLE).

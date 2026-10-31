@@ -100,7 +100,7 @@ def byte_sum(data):
 
 class SilentRenderError(AssertionError):
     """A measurement was handed a render whose digest is the digest of
-    silence. Absence reading as agreement is this workspace's signature
+    silence. Absence reading as agreement is this project's signature
     failure; every measurement refuses it rather than reporting a number."""
 
 

@@ -1,4 +1,4 @@
-# The audiocomponents docs site as Read the Docs builds it: with
+# The audioeffects docs site as Read the Docs builds it: with
 # docs/requirements.txt, and every warning a failure.
 name: Docs
 

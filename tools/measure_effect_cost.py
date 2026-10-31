@@ -1,14 +1,14 @@
 """What does ONE effect, or ONE audiodsp node, cost this board per block?
 
-    mpftp put -d COM4 tools/measure_effect_cost.py /measure_effect_cost.py
-    mpftp exec -d COM4 'import measure_effect_cost as m; m.main("node:audiofilters.Filter")'
-    mpftp exec -d COM4 'import measure_effect_cost as m; m.main("effect:Compressor")'
-    mpftp exec -d COM4 'import measure_effect_cost as m; m.main()'   # catalogue
+    mpftp put -d <port> tools/measure_effect_cost.py /measure_effect_cost.py
+    mpftp exec -d <port> 'import measure_effect_cost as m; m.main("node:audiofilters.Filter")'
+    mpftp exec -d <port> 'import measure_effect_cost as m; m.main("effect:Compressor")'
+    mpftp exec -d <port> 'import measure_effect_cost as m; m.main()'   # catalogue
 
 `audioeffects` must be importable on the board. If the firmware does not
 freeze it in, put the package on the filesystem first:
 
-    mpftp mkdir -d COM4 /lib
+    mpftp mkdir -d <port> /lib
     mpftp cp lib/audioeffects :/lib/audioeffects --verify
 
 For a target slow enough that the run outlives `exec`'s quiet timeout, use
@@ -1370,7 +1370,7 @@ def identity():
     `os.uname` is not everywhere: the unix MicroPython build does not carry
     it, so the one leg that this file exists to hold a board against used to
     lose the whole run to an `AttributeError` here. Fall back to
-    `sys.implementation`, which every interpreter in this workspace has.
+    `sys.implementation`, which every interpreter here has.
     """
     import os
     import sys

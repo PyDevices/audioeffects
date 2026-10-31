@@ -9,7 +9,7 @@ input, and the program writes the end of the chain to a WAV file you can
 open in any audio player. Change the names to hear any of the forty-five.
 
 Needs: audioeffects and audiodsp. Both are built into the PyDevices
-MicroPython firmware; on CPython, pip install pydevices-audioeffects.
+MicroPython firmware; on CPython, pip install omnipython-audioeffects.
 
 Run it:
     micropython audioeffects_simpletest.py

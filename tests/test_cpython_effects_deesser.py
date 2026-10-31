@@ -615,7 +615,7 @@ class Tier1(unittest.TestCase):
         `nodes` is passed explicitly. `M.enumerate_nodes` reads an effect's
         *public* attributes, and every node this class owns is private, so
         left to itself the deinit leg would hold an empty list and pass
-        vacuously - the shape of failure this workspace calls
+        vacuously - the shape of failure called
         absence-reading-as-agreement. The list handed over is the class's
         own `_nodes`, minus the three `audioroute.Splitter`s, which have no
         `deinit` on any target and so can never be shown deinitialised.

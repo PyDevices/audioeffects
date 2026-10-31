@@ -1,16 +1,16 @@
 # Chain effects
 
 Every effect takes a source and has an `output`, so one effect's `output` is
-the next one's source. This chain compresses an electric piano, puts a tape
+the next one's source. This chain compresses a synthesizer, puts a tape
 delay behind it and a hall reverb behind that:
 
 ```python
 import audioeffects
-import audioinstruments
+import synthio
 
 RATE = 48000
-synth = audioinstruments.create("rhodes", sample_rate=RATE)
-comp = audioeffects.create("Compressor", synth.output, RATE,
+synth = synthio.Synthesizer(sample_rate=RATE)
+comp = audioeffects.create("Compressor", synth, RATE,
                            threshold_db=-20, ratio=3, character="optical")
 tape = audioeffects.create("TapeDelay", comp.output, RATE,
                            time_ms=340, feedback=0.4, mix=0.25)
@@ -34,7 +34,7 @@ effects sit inside it. `Rack` takes a `chain` of effect names, or
 `(name, options)` pairs, in the order the signal passes through them:
 
 ```python
-rack = audioeffects.create("Rack", synth.output, RATE, chain=(
+rack = audioeffects.create("Rack", synth, RATE, chain=(
     ("Compressor", {"threshold_db": -20, "ratio": 3}),
     ("TapeDelay", {"time_ms": 340, "mix": 0.25}),
     ("Reverb", {"character": "hall", "mix": 0.3}),

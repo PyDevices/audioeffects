@@ -4,6 +4,12 @@ This document defines the runtime contract for an **audio component**: an
 instrument, an effect, or an effect rack. The metadata contract is documented
 separately in [the metadata manifest](metadata.md).
 
+audioeffects implements the effect and rack halves of this contract. The
+instrument halves (note handling, the scheduling seam, MIDI dispatch) are
+implemented by [audioinstruments](https://github.com/PyDevices/audioinstruments),
+which follows the same contract so that an effect takes an instrument's
+`output` as its source.
+
 The contract is structural. A provider does not have to inherit from an
 `audiodsp` helper class, but it must expose the required attributes and methods.
 The helper classes in `audioinstruments._support` and `audioeffects._component` are
@@ -232,7 +238,7 @@ note-off, Control Change 120 and 123 call `all_notes_off()`, and every other
 controller reaches `control_change()` as it is. Channel 9 (General MIDI's
 channel 10) goes to a drum kit when you give one. `read_midi_file()` turns
 a Standard MIDI File into timed events for it. The module docstring has
-the routing calls and an example: [midi_dispatch.py](https://github.com/PyDevices/audiocomponents/blob/main/lib/audioinstruments/midi_dispatch.py).
+the routing calls and an example, in [audioinstruments](https://github.com/PyDevices/audioinstruments).
 
 Notes are identified by `(channel, note_id)` when `note_id >= 0`. If no note
 ID is supplied (`note_id == -1`), the identity is `(channel, pitch)`. A note
@@ -279,7 +285,7 @@ instruments still play live. `audioinstruments.sequencer.Sequencer` refuses
 one rather than playing its part early.
 
 Writing a part against this, and the two traps that cost a run: the
-[sequencing guide](../guides/sequence-a-part.md).
+[sequencing guide](https://github.com/PyDevices/audioinstruments).
 
 ## Macro and patch state
 
@@ -400,7 +406,7 @@ control. An effect rack has exactly the effect shape even when its internal
 graph contains serial, parallel, or mixed effects. Racks may contain and be
 used by other racks.
 
-Rack providers ship in [`lib/audioeffects/`](https://github.com/PyDevices/audiocomponents/tree/main/lib/audioeffects)
+Rack providers ship in [`lib/audioeffects/`](https://github.com/PyDevices/audioeffects/tree/main/lib/audioeffects)
 (`rack.py`, `shimmerhall.py`, `airspace.py`).
 `Rack` is the generic mechanism — a serial chain of the package's own
 effects described by portable literals

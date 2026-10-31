@@ -332,7 +332,7 @@ def classes():
 
 def native_binaries():
     """{"micropython": path or None, "circuitpython": path or None}: the
-    workspace's `bin/`, or LIFECYCLE_MICROPYTHON / LIFECYCLE_CIRCUITPYTHON."""
+    a `bin/` of built interpreters above this checkout, or LIFECYCLE_MICROPYTHON / LIFECYCLE_CIRCUITPYTHON."""
     found = {}
     here = ROOT
     bindir = None
@@ -458,8 +458,8 @@ class TestMatrix(unittest.TestCase):
 
     def _p6(self, family):
         if self.natives.get(family) is None:
-            self.skipTest("no %s binary: set LIFECYCLE_%s or build the "
-                          "workspace's bin/%s" % (family, family.upper(),
+            self.skipTest("no %s binary: set LIFECYCLE_%s or build "
+                          "bin/%s" % (family, family.upper(),
                                                   family))
         got = self.native_lines[family]
         if isinstance(got, Exception):

@@ -538,47 +538,53 @@ def build_burst_train(rate):
                     "amplitude": amplitude, "seconds": frames / float(rate)}
 
 
-# --- probes rendered from audioinstruments ---------------------------------
+# --- played material, written out as arithmetic ---------------------------
 
-def _render_instrument(name, rate, notes, seconds):
-    """One instrument, one gesture, mono, as an array('h').
-
-    Rendered at channel_count 1 so the probe is identical in both channels
-    when it is written as stereo - STEREO's clause again. CPython only, and
-    that is fine: the probe set is generated once, here.
-    """
-    import audiocore
-    import audioinstruments
-    instrument = audioinstruments.create(name, sample_rate=rate,
-                                         channel_count=1)
-    for pitch, velocity in notes:
-        instrument.note_on(pitch, velocity)
-    values = array("h")
-    wanted = int(round(seconds * rate))
-    while len(values) < wanted:
-        _result, buffer = audiocore.get_buffer(instrument.output)
-        data = bytes(buffer)
-        if not data:
-            break
-        import struct
-        values.extend(struct.unpack("<%dh" % (len(data) // 2), data))
-    instrument.deinit()
-    return values[:wanted]
+def _xorshift(seed):
+    """The same 32-bit xorshift as `noise_det`, as a generator of -1..1."""
+    state = seed
+    while True:
+        state ^= (state << 13) & 0xffffffff
+        state ^= state >> 17
+        state ^= (state << 5) & 0xffffffff
+        yield (state / 4294967296.0) * 2.0 - 1.0
 
 
 def build_chord(rate):
-    """One held instrument chord - DIGEST's and COST's material.
+    """One held four-note chord with a slow decay - DIGEST's and COST's material.
 
-    A polysynth pad rather than a tone: DIGEST wants material that moves
-    every part of a class, and COST's honest caveat is that a class idling
-    below threshold costs what a wire costs.
+    A pad rather than a tone: DIGEST wants material that moves every part of
+    a class, and COST's honest caveat is that a class idling below threshold
+    costs what a wire costs. Four notes (C3, G3, C4, E4), each a sawtooth
+    built from its first harmonics below the band limit with 1/n amplitudes,
+    a 10 ms attack and a 2 s decay constant, normalised to a -6 dBFS peak.
+    Plain arithmetic, so it reproduces on any machine.
     """
-    values = _render_instrument("juno106", rate,
-                                ((48, 100), (55, 100), (60, 100), (64, 100)),
-                                3.0)
+    notes = (48, 55, 60, 64)
+    frames = int(round(3.0 * rate))
+    limit = max_frequency(rate)
+    mix = [0.0] * frames
+    for note in notes:
+        fundamental = 440.0 * 2.0 ** ((note - 69) / 12.0)
+        harmonic = 1
+        while harmonic * fundamental <= limit:
+            step = 2.0 * math.pi * harmonic * fundamental / rate
+            weight = 1.0 / harmonic
+            for index in range(frames):
+                mix[index] += weight * math.sin(step * index)
+            harmonic += 1
+    attack = int(0.010 * rate)
+    for index in range(frames):
+        gain = math.exp(-index / (2.0 * rate))
+        if index < attack:
+            gain *= index / attack
+        mix[index] *= gain
+    top = max(abs(value) for value in mix)
+    target = amplitude_of(-6.0)
+    values = array("h", (int(round(value * target / top)) for value in mix))
     achieved, peak = peak_dbfs(values)
-    return values, {"instrument": "juno106", "notes": [48, 55, 60, 64],
-                    "velocity": 100, "peak_dbfs": achieved,
+    return values, {"notes": list(notes), "waveform": "sawtooth, band-limited",
+                    "decay_seconds": 2.0, "peak_dbfs": achieved,
                     "rms_dbfs": rms_dbfs(values),
                     "seconds": len(values) / float(rate)}
 
@@ -586,29 +592,37 @@ def build_chord(rate):
 def make_hit_level(level):
     """One percussive hit, scaled to a stated peak.
 
-    Section 3 says "one recorded percussive hit". The recorded captures in
-    `.reference-captures/` are reference material this program analyses and
-    never redistributes, so a probe cut from one could not ship beside the
-    code that reads it. This is `audioinstruments`' own tr808
-    snare instead - our material, at the same job - and the deviation is
-    recorded here rather than left for a reader to discover from the bytes.
+    A snare-like strike written out as arithmetic: a 190 Hz body that decays
+    with a 60 ms time constant, plus a burst of the xorshift noise (seed
+    0x2545F491) that decays with a 90 ms one, a 1 ms attack, one second long.
+    Recorded drum hits carry licences of their own, so the hit is generated
+    and the manifest says so.
     """
     def build(rate):
-        values = _render_instrument("tr808", rate, ((38, 127),), 1.0)
-        _achieved, peak = peak_dbfs(values)
-        if not peak:
-            return None, {"omitted": "tr808 note 38 rendered silence"}
+        frames = int(round(1.0 * rate))
+        noise = _xorshift(0x2545F491)
+        body = 2.0 * math.pi * 190.0 / rate
+        attack = max(1, int(0.001 * rate))
+        mix = []
+        for index in range(frames):
+            seconds = index / float(rate)
+            value = (0.6 * math.sin(body * index) * math.exp(-seconds / 0.060)
+                     + 0.8 * next(noise) * math.exp(-seconds / 0.090))
+            if index < attack:
+                value *= index / attack
+            mix.append(value)
+        top = max(abs(value) for value in mix)
         target = amplitude_of(level)
         scaled = array("h")
-        for value in values:
+        for value in mix:
             scaled.append(max(-FULL_SCALE,
                               min(FULL_SCALE,
-                                  int(round(value * target / peak)))))
+                                  int(round(value * target / top)))))
         achieved, _peak = peak_dbfs(scaled)
-        return scaled, {"instrument": "tr808", "note": 38, "velocity": 127,
-                        "level_dbfs": level, "achieved_peak_dbfs": achieved,
-                        "source": "rendered, not recorded - see "
-                                  "make_hit_level's docstring",
+        return scaled, {"level_dbfs": level, "achieved_peak_dbfs": achieved,
+                        "source": "generated: decaying 190 Hz body plus "
+                                  "decaying noise, see make_hit_level's "
+                                  "docstring",
                         "seconds": len(scaled) / float(rate)}
     return build
 
@@ -660,7 +674,7 @@ def catalogue():
          "deterministic PRNG, fixed seed",
          ["RESPONSE", "RESIDUAL", "STEREO", "LEVEL"]),
         ("chord", 3.0, build_chord,
-         "one held instrument chord from audioinstruments",
+         "one held four-note chord with a slow decay",
          ["DIGEST", "COST"]),
     ]
     for level in (-6, -20, -40, -60, -80):
@@ -733,64 +747,12 @@ class ProbeError(Exception):
 _VERIFIED = {}
 
 
-def rendered_by_instruments(name):
-    """True for the probes that render through audioinstruments.
-
-    Those are the only probes whose bytes depend on something outside this
-    file: the instrument and the audiodsp nodes underneath it.
-    """
-    return name == "chord" or name.startswith("hit_levels_")
-
-
-def _audiodsp_pin():
-    path = os.path.join(HERE, "..", "..", "AUDIODSP_PIN")
-    try:
-        with open(path) as handle:
-            for line in handle:
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    return line.split()[0]
-    except OSError:
-        pass
-    return None
-
-
-def _audiodsp_installed():
-    try:
-        from importlib.metadata import PackageNotFoundError, version
-    except ImportError:
-        return "not found"
-    # audiodsp was published as pydevices-audiodsp until it was renamed
-    # omnipython-audiodsp; a pin may name either side of the rename.
-    for dist in ("omnipython-audiodsp", "pydevices-audiodsp"):
-        try:
-            return version(dist)
-        except PackageNotFoundError:
-            pass
-    return "not found"
-
-
-def _instrument_advice(name):
-    pin = _audiodsp_pin() or "the release AUDIODSP_PIN names"
-    return (" These probes render through audiodsp's instruments, and"
-            " probes.json records them at the audiodsp release AUDIODSP_PIN"
-            " names: install audiodsp at %s (this interpreter has %s), for"
-            " example"
-            ' pip install "git+https://github.com/PyDevices/audiodsp@%s".'
-            % (pin, _audiodsp_installed(), pin))
-
-
 def _mismatch(name, rate, channels, found, expected, path=None):
     """The refusal, worded for the two ways a probe can disagree."""
     if path is None:
         message = ("probe %s at %d Hz, %d ch: generated with digest %s, "
                    "probes.json says %s." % (name, rate, channels, found,
                                              expected))
-        if rendered_by_instruments(name):
-            return message + _instrument_advice(name) + (
-                " If an instrument changed on purpose, regenerate the probe"
-                " with make_probes.py --only %s and commit probes.json."
-                % name)
         return message + (" The generator no longer reproduces it. If that"
                           " change is intended, regenerate with"
                           " make_probes.py --only %s and commit probes.json."
@@ -798,9 +760,6 @@ def _mismatch(name, rate, channels, found, expected, path=None):
     message = ("probe %s does not match probes.json (file %s, manifest %s):"
                " it is stale or damaged. Delete it and it is generated again"
                " on next use." % (path, found, expected))
-    pin = (_audiodsp_pin() or "").lstrip("v")
-    if rendered_by_instruments(name) and _audiodsp_installed() != pin:
-        message += _instrument_advice(name)
     return message
 
 

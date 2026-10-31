@@ -160,7 +160,7 @@ hardware with no velocity. Velocity carries that, so the second numbers are
 not answered.
 
 Which kit answers which hit is a table in
-[the instruments reference](instruments.md),
+the [audioinstruments](https://github.com/PyDevices/audioinstruments) documentation,
 rendered from the modules' own `NOTE_MAP`s by the tests.
 
 The presence of a valid `NOTE_MAP` is the sole percussion discriminator;
@@ -237,7 +237,7 @@ the declarations to build a UI, initialize values, or offer program changes;
 the metadata remains mandatory even when that consumer chooses not to use
 those features.
 
-Rack providers ship in [`lib/audioeffects/`](https://github.com/PyDevices/audiocomponents/tree/main/lib/audioeffects)
+Rack providers ship in [`lib/audioeffects/`](https://github.com/PyDevices/audioeffects/tree/main/lib/audioeffects)
 (`rack.py`, `shimmerhall.py`, `airspace.py`):
 `Rack` (the generic serial-chain mechanism, built from a portable `chain`
 literal), `ShimmerHall`, and `AirSpace` (fixed topologies with a macro

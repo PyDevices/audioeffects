@@ -847,8 +847,8 @@ class NullBuildTest(unittest.TestCase):
 
     Pattern revision section 1.2: eleven of Phase 2's forty-five broken
     clauses read green on a build that did nothing, and every one of them
-    was written by a session that believed it had already applied the
-    workspace's "prove a checker can fail" rule. So it is a kit function
+    was written by someone who believed it had already applied the
+    "prove a checker can fail" rule. So it is a kit function
     with a battery, in the shape of every other fault here - the red beside
     a control that must pass, and a demonstration of the check itself going
     off on a deliberately wrong input.

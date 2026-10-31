@@ -1,7 +1,7 @@
 """The contract every class in `audioeffects.ALL` is held to.
 
 Exports and metadata, the factory and the rate it owns, building and
-rendering, chaining into each other and out of an instrument, and the patch
+rendering, chaining into each other and out of a synthesizer, and the patch
 surface - what docs/reference/component-api.md states about the catalogue as a
 whole rather than about any one effect. Nothing here names an effect for its
 character, so a family phase can rebuild its classes from scratch without
@@ -30,7 +30,7 @@ import sys
 import unittest
 
 import audioeffects
-import audioinstruments
+import synthio
 from tools.validate_metadata import validate_effects
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "support"))
@@ -84,11 +84,11 @@ class EffectsLibraryTest(unittest.TestCase):
         verb = audioeffects.Reverb(comp.output)
         self.assertGreater(peak(verb.output, 12), 0.001)
 
-    def test_an_instrument_feeds_an_effect(self):
-        instrument = audioinstruments.create("tr909", SAMPLE_RATE)
-        for note, _ in audioinstruments.load("tr909").NOTE_MAP[:4]:
-            instrument.note_on(note)
-        chain = audioeffects.TapeDelay(instrument.output, time_ms=220.0,
+    def test_a_synthesizer_feeds_an_effect(self):
+        synth = synthio.Synthesizer(sample_rate=SAMPLE_RATE)
+        for note in (48, 55, 60, 64):
+            synth.press(note)
+        chain = audioeffects.TapeDelay(synth, time_ms=220.0,
                                        feedback=0.4, mix=0.4)
         self.assertGreater(peak(chain.output, 12), 0.001)
 

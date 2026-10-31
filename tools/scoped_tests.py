@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """Run the tests that this change can break, and no more.
 
-The full suite renders audio; it passed five minutes during Phase 2 and grows
-with every rebuilt class. Most agents do not need it: a fixer working on one
-effect needs that effect's tests and the contract tests, and nothing else. Only
-an integrator or an auditor needs everything.
+The full suite renders audio and grows with every rebuilt class. Most changes
+do not need it: a fix to one effect needs that effect's tests and the contract
+tests, and nothing else. Only an integrator or an auditor needs everything.
 
     tools/scoped_tests.py                 # decide from what git says changed
     tools/scoped_tests.py --list          # say what it would run, run nothing
     tools/scoped_tests.py class:DeEsser   # one effect, plus the contract
-    tools/scoped_tests.py effects         # every effect, no instruments
+    tools/scoped_tests.py effects         # every effect
     tools/scoped_tests.py contract        # the shared promises only
     tools/scoped_tests.py full            # everything, for a gate
     tools/scoped_tests.py --ci origin/main  # a pull request's tests, for CI
@@ -30,13 +29,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 def _find_root():
     """The checkout whose tests to run: the one the caller is standing in.
 
-    A builder works in its own worktree and calls the main checkout's copy of
-    this script, as the phase briefs tell it to. Resolving the root from this
-    file's location then scanned the main checkout, where the builder's new
-    test file does not exist -- Phase 4's Distortion builder got "no test
-    file found" for a test it had just written, and other builders quoted
-    a green run that never included their class. So the root is the nearest
-    ancestor of the current directory that is an audiocomponents checkout,
+    A contributor working in a git worktree may call the main checkout's copy
+    of this script. Resolving the root from this file's location then scanned
+    the main checkout, where the new test file does not exist: "no test file
+    found" for a test just written, and a green run that never included the
+    class. So the root is the nearest
+    ancestor of the current directory that is an audioeffects checkout,
     and only when there is none the checkout this file lives in.
     """
     here = os.getcwd()
@@ -72,14 +70,10 @@ KIT = tuple(sorted(
     if m.startswith("test_effect_kit") and m.endswith(".py")
 )) if os.path.isdir(TESTS) else ()
 
-INSTRUMENTS = ("test_cpython_instruments", "test_cpython_piano_polyphony")
-
 #: Roster files that name every Phase 2 class. A content search that lands
 #: here has not found that class's own tests.
-_NOT_OWN = set(CONTRACT) | set(KIT) | set(INSTRUMENTS) | {
+_NOT_OWN = set(CONTRACT) | set(KIT) | {
     "test_metadata_contract",
-    "test_shared_circuit_overlap",
-    "test_rig_comparator",
     "test_cpython_effects_library",
 }
 
@@ -170,17 +164,12 @@ def _test_for_effect(stem, modules):
     return []
 
 
-def _effects_only(modules):
-    return [m for m in modules if m not in INSTRUMENTS]
-
-
 def choose(scope, modules):
     """Return (test modules, one line saying why)."""
     if scope == "full":
         return modules, "full suite: a gate, an integration, or a release"
     if scope == "effects":
-        return (_effects_only(modules),
-                "every effect; instruments skipped (audiodsp is pinned)")
+        return list(modules), "every effect"
     if scope == "contract":
         return list(CONTRACT), "the shared promises only"
     if scope.startswith("class:"):
@@ -209,18 +198,17 @@ def choose(scope, modules):
         elif path.startswith("lib/audioeffects/"):
             stem = os.path.basename(path)[:-3].lower()
             if stem in ("__init__", "_component"):
-                picked.update(_effects_only(modules))
+                picked.update(modules)
                 why.append("%s is shared by every effect, so every effect "
-                           "test runs (instruments stay off)"
-                           % os.path.basename(path))
+                           "test runs" % os.path.basename(path))
             else:
                 hits = _test_for_effect(stem, modules)
                 picked.update(hits or [])
                 why.append("%s -> %s" % (stem, ", ".join(hits) or "no test"))
             picked.update(CONTRACT)
-        elif path.startswith("lib/audioinstruments/") or "AUDIODSP_PIN" in path:
-            picked.update(INSTRUMENTS)
-            why.append("instruments, because %s moved" % path)
+        elif "AUDIODSP_PIN" in path:
+            picked.update(CONTRACT)
+            why.append("the audiodsp pin moved: the contract")
         elif path.startswith("tools/effect_measurements") or \
                 path.startswith("tests/support/"):
             picked.update(KIT)
@@ -252,8 +240,7 @@ CI_SHARED = (
 )
 
 #: The roster tests that name every effect class, run when one class moves.
-_ROSTERS = ("test_metadata_contract", "test_shared_circuit_overlap",
-            "test_cpython_effects_library")
+_ROSTERS = ("test_metadata_contract", "test_cpython_effects_library")
 
 #: Paths no test reads, besides the ones the workflow already ignores.
 _CI_SILENT = ("docs/", "LICENSE", "VERSION")

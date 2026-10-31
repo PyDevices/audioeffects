@@ -11,7 +11,7 @@ than one and a half times the steepest step of the tone going through it.
 
 The rest of this page is the policy planned for the effects, so that a jump
 stops clicking by itself. None of it is built. It is also on the
-[roadmap](https://github.com/PyDevices/audiocomponents/blob/main/ROADMAP.md).
+[roadmap](https://github.com/PyDevices/audioeffects/blob/main/ROADMAP.md).
 
 ## Which controls will ramp, and for how long
 
@@ -45,6 +45,6 @@ loudest when it is.
 ## When it is done
 
 The plan is done when the lifecycle matrix's step property (P5 in
-[`tests/support/LIFECYCLE.md`](https://github.com/PyDevices/audiocomponents/blob/main/tests/support/LIFECYCLE.md)) holds for every
+[`tests/support/LIFECYCLE.md`](https://github.com/PyDevices/audioeffects/blob/main/tests/support/LIFECYCLE.md)) holds for every
 class with no exception declared for a control that jumps, and each class's
 docstring drops the sentence that says a jump steps the output.

@@ -15,7 +15,7 @@ python analyze.py                          # any venv with numpy
 
 `run.sh` needs `/usr/bin/ngspice` (override with `NGSPICE=`); `analyze.py`
 needs numpy and nothing else. `analyze.py` exits non-zero if either sanity
-check in the brief fails (corner within a few percent of analytic; THD rising
+check in the design notes fails (corner within a few percent of analytic; THD rising
 monotonically with drive at each input level).
 
 ## Files
@@ -51,7 +51,7 @@ and G-taper respectively, so mid-rotation on the pedal is not `0.5` here.
   exact rather than a simplification.
 - **Supply and bias** are ideal 9 V and 4.5 V sources (the real bias is a
   10K/10K divider with a 47 µF cap — AC ground either way).
-- **Diodes**: 1N4148 per the brief; the drawing says MA150. Both diodes are
+- **Diodes**: 1N4148 per the design notes; the drawing says MA150. Both diodes are
   the same model, so the clipping is exactly symmetric — see trait 2.
 - **Level pot** fixed at maximum; C7/R12/P3 are in the deck and reported as
   a second column, but the tone numbers below are at the op-amp's pin 7.
@@ -222,7 +222,7 @@ Sanity: high-pass corner within a few percent of analytic: OK (0.0 %);  THD mono
   0.7 pF junction capacitances on top of 51 pF (6215 × 51/52.4 = 6049 Hz).
   SPICE and an exact analytic of the same network agree to 0.001 dB at every
   frequency; the differences from ElectroSmash's round numbers are theirs.
-- **THD.** Rises with drive at every input level (the brief's check). At
+- **THD.** Rises with drive at every input level (the design notes' check). At
   drive max it *falls* as the input rises (28.3 → 26.6 → 21.0 %): the
   non-inverting stage passes the input straight through (its "+1") and adds
   the clipped feedback voltage on top, so the output peak is the input peak

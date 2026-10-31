@@ -17,9 +17,8 @@ resolves.
 
 **The surface.** The class's `MACRO_LABELS` and `MACRO_MODES` against the
 surface table of its class card: `<NAME>.md` in the cards directory
-(`KIT_CARDS`, or a `docs/effects-internal/dossiers` directory in a parent
-of this repository), read as text. The table is the first in section 3
-whose header has `#`, `Label` and `Mode` columns; a label is compared
+(the directory `KIT_CARDS` names), read as text. The table is the first in
+section 3 whose header has `#`, `Label` and `Mode` columns; a label is compared
 without its backticks and a mode by its first word (`UNIPOLAR, log` is
 UNIPOLAR; a macro `MACRO_MODES` leaves out is UNIPOLAR). One
 `surface-m<i>` cell per macro either side has; a mismatch names both. With
@@ -188,13 +187,6 @@ def find_cards(root=ROOT):
     env = os.environ.get("KIT_CARDS")
     if env:
         return env if os.path.isdir(env) else None
-    here = root
-    for _up in range(6):
-        here = os.path.dirname(here)
-        candidate = os.path.join(here, "docs", "effects-internal",
-                                 "dossiers")
-        if os.path.isdir(candidate):
-            return candidate
     return None
 
 

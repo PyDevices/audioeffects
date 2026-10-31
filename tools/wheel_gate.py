@@ -1,4 +1,4 @@
-"""Build each package's wheel the way a release does, install it into a clean
+"""Build the package's wheel the way a release does, install it into a clean
 venv, and play it.
 
     python tools/wheel_gate.py [--audiodsp SPEC]
@@ -9,7 +9,7 @@ still importable there. v0.3.0 shipped exactly that -- the audioeffects wheel
 left out `audioeffects.rebuilt`, and the published package failed on import.
 This gate checks the artefact instead of the tree.
 
-For each of lib/audioinstruments and lib/audioeffects it:
+For lib/audioeffects it:
 
 1. copies the package directory aside, writes the repo's VERSION into it (as
    the release reusable does) and runs `python -m build --wheel`;
@@ -17,10 +17,10 @@ For each of lib/audioinstruments and lib/audioeffects it:
    wheel;
 
 then it makes one clean venv, installs audiodsp (default: the AUDIODSP_PIN
-commit from git, as tests.yml does) and both wheels with --no-deps, and --
+commit from git, as tests.yml does) and the wheel with --no-deps, and --
 from outside the repo, with `python -I` so lib/ cannot leak in -- imports
-both packages, renders one instrument and one effect by catalogue name, and
-loads every effect class and the old `audioeffects.rebuilt` import path.
+the package, renders one effect by catalogue name, and loads every effect
+class and the old `audioeffects.rebuilt` import path.
 
 Needs `build` in the interpreter that runs it. Exit status is non-zero on any
 failure, and every failure is printed.
@@ -36,19 +36,17 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PACKAGES = ("audioinstruments", "audioeffects")
+PACKAGES = ("audioeffects",)
 
 SMOKE = r'''
 import sys
 from array import array
 import audiocore
-import audioinstruments
 import audioeffects
 
-for module in (audioinstruments, audioeffects):
-    if "site-packages" not in module.__file__:
-        sys.exit("%s imported from %s, not the installed wheel"
-                 % (module.__name__, module.__file__))
+if "site-packages" not in audioeffects.__file__:
+    sys.exit("audioeffects imported from %s, not the installed wheel"
+             % audioeffects.__file__)
 
 RATE = 48000
 
@@ -62,13 +60,6 @@ def loudest(sample, blocks=8):
             peak = max(peak, abs(value))
     return peak
 
-
-instrument = audioinstruments.create("tr808", RATE)
-instrument.note_on(36)
-peak = loudest(instrument.output)
-print("audioinstruments tr808 peak", peak)
-if not peak:
-    sys.exit("tr808 rendered silence")
 
 values = array("h")
 for frame in range(4096):
@@ -126,7 +117,7 @@ def build_wheel(package, work):
     out = work / "dist"
     run(sys.executable, "-m", "build", "--wheel", "--outdir", out, staged,
         check=True, stdout=subprocess.DEVNULL)
-    wheel = next(out.glob("pydevices_%s-*.whl" % package))
+    wheel = next(out.glob("omnipython_%s-*.whl" % package))
 
     with zipfile.ZipFile(wheel) as archive:
         shipped = set(archive.namelist())

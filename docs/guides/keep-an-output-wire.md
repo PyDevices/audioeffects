@@ -22,8 +22,8 @@ Two things follow from it being a wire and not a node. It is not the last
 node the class built, and at Mix 0 it is a wire onto the source you handed in
 rather than that source itself.
 
-Instruments and racks have no wire: an instrument's `output` is its node, and a
-rack's is its last child's, which is already stable.
+A rack has no wire of its own: its `output` is its last child's, which is
+already stable.
 
 ## Where it does not hold
 

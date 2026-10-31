@@ -303,10 +303,12 @@ def _literal_fields(module, errors):
                            "(a host reads it with ast.literal_eval)")
 
 
-def validate_instruments(package=None):
-    """Validate every instrument module and return percussion module names."""
-    if package is None:
-        import audioinstruments as package
+def validate_instruments(package):
+    """Validate every instrument module of a provider package.
+
+    Pass the package (an `audioinstruments`, or any provider that follows the
+    same metadata contract) and get back the percussion module names.
+    """
     names = set()
     percussion = []
     for name in package.ALL:
@@ -357,8 +359,8 @@ def validate_effects(package=None):
 
 
 def validate_all():
-    """Validate both provider tiers."""
-    return validate_instruments(), validate_effects()
+    """Validate every effect this package ships."""
+    return validate_effects()
 
 
 if __name__ == "__main__":

@@ -11,18 +11,17 @@ on:
         required: true
         type: string
 
-# publishing-v5 needs contents:write (attach release assets) and
-# id-token:write (PyPI Trusted Publishing); a called workflow may not
-# exceed the caller's grant, so the ceiling is set here.
+# The coordinator needs contents:write to attach release assets; a called
+# workflow may not exceed the caller's grant, so the ceiling is set here.
+# id-token:write is granted only to the pypi job below, the one job that
+# uses it.
 permissions:
   contents: write
-  id-token: write
 
 jobs:
   gates:
     # The structural gates tests.yml runs, against the audiodsp pin: a release
-    # must not ship what CI would not pass. The instrument parity gate stays
-    # workspace-local (see AGENTS.md), here as everywhere.
+    # must not ship what CI would not pass.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -47,15 +46,12 @@ jobs:
           echo "audiodsp pinned at $tag"
 
       # No distribution name in the requirement: the pinned commit's own
-      # pyproject.toml names it (pydevices-audiodsp before the rename,
-      # omnipython-audiodsp after), as in tests.yml.
+      # pyproject.toml names it, as in tests.yml.
       - name: Install audiodsp at the pin
         run: >-
           python -m pip install
           "git+https://github.com/PyDevices/audiodsp@${{ steps.pin.outputs.tag }}"
 
-      # numpy: two tests need it (test_cpython_asym_table through the ulab
-      # bridge, test_rig_comparator directly); the packages themselves do not.
       # pytest and pytest-xdist run the suite in parallel, as tests.yml does.
       - run: python -m pip install numpy pytest pytest-xdist
 
@@ -64,7 +60,7 @@ jobs:
       # measurement is taken against a core AUDIODSP_PIN does not name -- the
       # failure the pin exists to prevent, arriving through packaging. Do not
       # drop the flag.
-      - run: python -m pip install --no-deps -e lib/audioinstruments -e lib/audioeffects
+      - run: python -m pip install --no-deps -e lib/audioeffects
 
       # The probe WAVs are not in git. Generate them here, so a probe that no
       # longer matches probes.json fails this step by name instead of inside
@@ -86,40 +82,68 @@ jobs:
           TESTPYPI_API_TOKEN: ${{ secrets.TESTPYPI_API_TOKEN }}
         run: |
           if [[ -z "$TESTPYPI_API_TOKEN" ]]; then
-            echo "TESTPYPI_API_TOKEN is unavailable; ensure the organization secret is visible to PyDevices/audiocomponents." >&2
+            echo "TESTPYPI_API_TOKEN is unavailable; ensure the organization secret is visible to PyDevices/audioeffects." >&2
             exit 1
           fi
 
-  publish-audioinstruments:
+  publish:
     needs:
       - gates
       - credentials
+    # publishing-v15 is the publishing tag this repository's chain has used
+    # since it was audiocomponents; it carries the caller-side PyPI outputs
+    # (pypi-gate, pypi-publish, dist-artifact, version) the pypi job reads.
     uses: PyDevices/.github/.github/workflows/reusable-publish-release-packages.yml@publishing-v15
     with:
       build-kind: pure-python
-      distribution-name: pydevices-audioinstruments
-      import-name: audioinstruments
-      install-dependencies: true
-      working-directory: lib/audioinstruments
-      # Both MIP index entries ride on this one call, as they rode on
-      # audiodsp's core job before publishing moved here: the request reusable
-      # sends one dispatch per comma-separated profile and mip serializes them
-      # in its publication queue. MIP publishes lib/<package> from the tag,
-      # not the wheel, so neither entry waits on a TestPyPI upload.
-      mip-profile: audioinstruments,audioeffects
-      release-ref: ${{ inputs.release-ref }}
-    secrets: inherit
-
-  publish-audioeffects:
-    needs:
-      - gates
-      - credentials
-    uses: PyDevices/.github/.github/workflows/reusable-publish-release-packages.yml@publishing-v15
-    with:
-      build-kind: pure-python
-      distribution-name: pydevices-audioeffects
+      distribution-name: omnipython-audioeffects
       import-name: audioeffects
       install-dependencies: true
       working-directory: lib/audioeffects
+      # MIP publishes lib/audioeffects from the tag, not the wheel, so the
+      # index entry does not wait on a TestPyPI upload.
+      mip-profile: audioeffects
+      # Production PyPI too, for final releases. The coordinator only
+      # decides; the upload is the pypi job below.
+      pypi-publish: true
       release-ref: ${{ inputs.release-ref }}
+    secrets: inherit
+
+  pypi:
+    # The upload has to run here, in this file. PyPI matches the Trusted
+    # Publisher against the workflow that runs the upload job, and when that
+    # job lives in the reusable coordinator, the workflow is
+    # PyDevices/.github's, not this one. The pypi environment is where the
+    # maintainer's approval is required.
+    needs: publish
+    if: >-
+      !cancelled() && needs.publish.outputs.pypi-publish == 'true'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - name: Download the validated distributions
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.publish.outputs.dist-artifact }}
+          path: dist
+      - name: Publish to PyPI via Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+
+  report-pypi:
+    # The coordinator's Release Health report went out before this upload,
+    # with pypi "pending"; this fills in the outcome on the same row.
+    needs:
+      - publish
+      - pypi
+    if: >-
+      !cancelled() && needs.publish.outputs.pypi-publish == 'true'
+    uses: PyDevices/.github/.github/workflows/reusable-report-pypi-result.yml@publishing-v15
+    with:
+      distribution-name: omnipython-audioeffects
+      version: ${{ needs.publish.outputs.version }}
+      pypi-result: ${{ needs.pypi.result }}
     secrets: inherit

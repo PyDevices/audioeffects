@@ -1,4 +1,4 @@
-"""Refuse a workspace `bin/` interpreter that does not contain the audiodsp this
+"""Refuse a `bin/` interpreter that does not contain the audiodsp this
 repository's gates are read at.
 
 [cmods#27](https://github.com/PyDevices/cmods/issues/27). A binary in
@@ -33,14 +33,14 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-WORKSPACE = ROOT.parent
-PROVENANCE = WORKSPACE / "tools" / "provenance.py"
+TREE = ROOT.parent
+PROVENANCE = TREE / "tools" / "provenance.py"
 PIN_FILE = ROOT / "AUDIODSP_PIN"
 
 #: Set to 1 to skip the check. There is no in-band way to do this on purpose,
 #: and that is deliberate: it exists for a checkout with no cmods beside it,
 #: not for a run that would rather not know.
-SKIP = os.environ.get("AUDIOCOMPONENTS_SKIP_PROVENANCE") == "1"
+SKIP = os.environ.get("AUDIOEFFECTS_SKIP_PROVENANCE") == "1"
 
 
 def audiodsp_pin() -> str | None:

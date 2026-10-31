@@ -5,7 +5,6 @@ import unittest
 
 import audiocore
 import audioeffects
-import audioinstruments
 from audioeffects import _component
 
 
@@ -13,8 +12,6 @@ from audioeffects import _component
 VENDOR = "PyDevices"
 
 COMMON = ("set_macro", "program_change", "get_macro", "reset", "deinit")
-INSTRUMENT = ("note_on", "note_off", "all_notes_off", "pitch_bend",
-              "control_change", "channel_pressure", "poly_pressure")
 EFFECT = ("pitch_bend", "control_change", "channel_pressure",
           "poly_pressure")
 
@@ -40,34 +37,9 @@ class AudioComponentApiTests(unittest.TestCase):
                          (2 * channels), 0)
 
     def test_discovery_lists_are_stable(self):
-        self.assertEqual(audioinstruments.ALL,
-                         tuple(dict.fromkeys(audioinstruments.ALL)))
         self.assertEqual(audioeffects.ALL,
                          tuple(sorted(audioeffects.ALL)))
-        self.assertEqual(len(audioinstruments.ALL), 55)
         self.assertEqual(len(audioeffects.ALL), 45)
-
-    def test_all_instruments_implement_live_surface(self):
-        for name in audioinstruments.ALL:
-            with self.subTest(name=name):
-                component = audioinstruments.create(name, 48000)
-                try:
-                    self.check_common(component, INSTRUMENT)
-                    if component.macro_labels:
-                        component.set_macro(0, 64)
-                        self.assertIsNone(component.patch_index)
-                        component.program_change(0)
-                        self.assertEqual(component.patch_index, 0)
-                    component.note_on(60, 100, note_id=22,
-                                     sample_position=3)
-                    component.note_off(60, note_id=22, sample_position=7)
-                    component.all_notes_off()
-                    component.reset()
-                finally:
-                    component.deinit()
-                    component.deinit()
-                with self.assertRaises(RuntimeError):
-                    _ = component.output
 
     def test_all_effects_preserve_mono_and_implement_live_surface(self):
         for name in audioeffects.ALL:
@@ -96,15 +68,13 @@ class AudioComponentApiTests(unittest.TestCase):
 
     def test_invalid_construction_and_control_values_are_explicit(self):
         with self.assertRaises(ValueError):
-            audioinstruments.create("minimoog", 48000, channel_count=3)
+            audioeffects.create("LowPass", source(3), 48000)
         with self.assertRaises(ValueError):
             audioeffects.create("LowPass", source(1), 44100)
-        component = audioinstruments.create("minimoog", 48000)
+        component = audioeffects.create("LowPass", source(), 48000)
         try:
             with self.assertRaises(IndexError):
                 component.set_macro(99, 0)
-            with self.assertRaises(ValueError):
-                component.note_on(128)
             with self.assertRaises(ValueError):
                 component.pitch_bend(16384)
             # MIDI scalar controls clamp instead of rejecting host automation
@@ -113,23 +83,6 @@ class AudioComponentApiTests(unittest.TestCase):
             component.set_macro(0, 1000)
             self.assertEqual(component.get_macro(0), 127.0)
             component.program_change(999)
-        finally:
-            component.deinit()
-
-    def test_note_identity_and_zero_velocity_follow_midi_rules(self):
-        component = audioinstruments.create("minimoog", 48000)
-        try:
-            component.note_on(60, 100, note_id=10)
-            component.note_on(60, 100, note_id=11)
-            self.assertEqual(len(component._active), 2)
-            component.note_off(60, note_id=10)
-            self.assertEqual(len(component._active), 1)
-            # A note-off for an unrelated identity must not release note 11.
-            component.note_off(61, note_id=99)
-            self.assertEqual(len(component._active), 1)
-            # MIDI's zero-velocity note-on is the other spelling of note-off.
-            component.note_on(60, 0, note_id=11)
-            self.assertEqual(len(component._active), 0)
         finally:
             component.deinit()
 

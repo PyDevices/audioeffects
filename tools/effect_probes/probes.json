@@ -401,7 +401,7 @@
    }
   },
   "chord": {
-   "description": "one held instrument chord from audioinstruments",
+   "description": "one held four-note chord with a slow decay",
    "feeds": [
     "DIGEST",
     "COST"
@@ -409,9 +409,9 @@
    "files": {
     "22050/1": {
      "bytes": 132344,
-     "fnv1a": "ba230450",
+     "decay_seconds": 2.0,
+     "fnv1a": "cb962a20",
      "frames": 66150,
-     "instrument": "juno106",
      "notes": [
       48,
       55,
@@ -419,17 +419,17 @@
       64
      ],
      "path": "22050/1ch/chord.wav",
-     "peak_dbfs": -2.671,
-     "peak_lsb": 24093,
-     "rms_dbfs": -18.864,
+     "peak_dbfs": -6.0,
+     "peak_lsb": 16423,
+     "rms_dbfs": -20.728,
      "seconds": 3.0,
-     "velocity": 100
+     "waveform": "sawtooth, band-limited"
     },
     "22050/2": {
      "bytes": 264644,
-     "fnv1a": "7273c31d",
+     "decay_seconds": 2.0,
+     "fnv1a": "7bcf6ae9",
      "frames": 66150,
-     "instrument": "juno106",
      "notes": [
       48,
       55,
@@ -437,17 +437,17 @@
       64
      ],
      "path": "22050/2ch/chord.wav",
-     "peak_dbfs": -2.671,
-     "peak_lsb": 24093,
-     "rms_dbfs": -18.864,
+     "peak_dbfs": -6.0,
+     "peak_lsb": 16423,
+     "rms_dbfs": -20.728,
      "seconds": 3.0,
-     "velocity": 100
+     "waveform": "sawtooth, band-limited"
     },
     "44100/1": {
      "bytes": 264644,
-     "fnv1a": "24a27777",
+     "decay_seconds": 2.0,
+     "fnv1a": "e259da15",
      "frames": 132300,
-     "instrument": "juno106",
      "notes": [
       48,
       55,
@@ -455,17 +455,17 @@
       64
      ],
      "path": "44100/1ch/chord.wav",
-     "peak_dbfs": -1.441,
-     "peak_lsb": 27760,
-     "rms_dbfs": -18.81,
+     "peak_dbfs": -6.0,
+     "peak_lsb": 16423,
+     "rms_dbfs": -20.782,
      "seconds": 3.0,
-     "velocity": 100
+     "waveform": "sawtooth, band-limited"
     },
     "44100/2": {
      "bytes": 529244,
-     "fnv1a": "aca588a1",
+     "decay_seconds": 2.0,
+     "fnv1a": "ad692949",
      "frames": 132300,
-     "instrument": "juno106",
      "notes": [
       48,
       55,
@@ -473,17 +473,17 @@
       64
      ],
      "path": "44100/2ch/chord.wav",
-     "peak_dbfs": -1.441,
-     "peak_lsb": 27760,
-     "rms_dbfs": -18.81,
+     "peak_dbfs": -6.0,
+     "peak_lsb": 16423,
+     "rms_dbfs": -20.782,
      "seconds": 3.0,
-     "velocity": 100
+     "waveform": "sawtooth, band-limited"
     },
     "48000/1": {
      "bytes": 288044,
-     "fnv1a": "fbe39210",
+     "decay_seconds": 2.0,
+     "fnv1a": "52bf6fa5",
      "frames": 144000,
-     "instrument": "juno106",
      "notes": [
       48,
       55,
@@ -491,17 +491,17 @@
       64
      ],
      "path": "48000/1ch/chord.wav",
-     "peak_dbfs": -1.752,
-     "peak_lsb": 26781,
-     "rms_dbfs": -18.83,
+     "peak_dbfs": -6.0,
+     "peak_lsb": 16423,
+     "rms_dbfs": -20.639,
      "seconds": 3.0,
-     "velocity": 100
+     "waveform": "sawtooth, band-limited"
     },
     "48000/2": {
      "bytes": 576044,
-     "fnv1a": "6ed2fa8d",
+     "decay_seconds": 2.0,
+     "fnv1a": "aabca129",
      "frames": 144000,
-     "instrument": "juno106",
      "notes": [
       48,
       55,
@@ -509,11 +509,11 @@
       64
      ],
      "path": "48000/2ch/chord.wav",
-     "peak_dbfs": -1.752,
-     "peak_lsb": 26781,
-     "rms_dbfs": -18.83,
+     "peak_dbfs": -6.0,
+     "peak_lsb": 16423,
+     "rms_dbfs": -20.639,
      "seconds": 3.0,
-     "velocity": 100
+     "waveform": "sawtooth, band-limited"
     }
    }
   },
@@ -955,98 +955,80 @@
     "22050/1": {
      "achieved_peak_dbfs": -19.999,
      "bytes": 44144,
-     "fnv1a": "5126fc09",
+     "fnv1a": "7062cb2f",
      "frames": 22050,
-     "instrument": "tr808",
      "level_dbfs": -20,
-     "note": 38,
      "path": "22050/1ch/hit_levels_-20.wav",
      "peak_dbfs": -19.999,
      "peak_lsb": 3277,
-     "rms_dbfs": -39.234,
+     "rms_dbfs": -40.216,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "22050/2": {
      "achieved_peak_dbfs": -19.999,
      "bytes": 88244,
-     "fnv1a": "ca3000cd",
+     "fnv1a": "04429201",
      "frames": 22050,
-     "instrument": "tr808",
      "level_dbfs": -20,
-     "note": 38,
      "path": "22050/2ch/hit_levels_-20.wav",
      "peak_dbfs": -19.999,
      "peak_lsb": 3277,
-     "rms_dbfs": -39.234,
+     "rms_dbfs": -40.216,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "44100/1": {
      "achieved_peak_dbfs": -19.999,
      "bytes": 88244,
-     "fnv1a": "5d1c84a5",
+     "fnv1a": "2afa29e2",
      "frames": 44100,
-     "instrument": "tr808",
      "level_dbfs": -20,
-     "note": 38,
      "path": "44100/1ch/hit_levels_-20.wav",
      "peak_dbfs": -19.999,
      "peak_lsb": 3277,
-     "rms_dbfs": -38.91,
+     "rms_dbfs": -40.746,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "44100/2": {
      "achieved_peak_dbfs": -19.999,
      "bytes": 176444,
-     "fnv1a": "003d5cf5",
+     "fnv1a": "feba5f6d",
      "frames": 44100,
-     "instrument": "tr808",
      "level_dbfs": -20,
-     "note": 38,
      "path": "44100/2ch/hit_levels_-20.wav",
      "peak_dbfs": -19.999,
      "peak_lsb": 3277,
-     "rms_dbfs": -38.91,
+     "rms_dbfs": -40.746,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "48000/1": {
      "achieved_peak_dbfs": -19.999,
      "bytes": 96044,
-     "fnv1a": "11110ba5",
+     "fnv1a": "e297951c",
      "frames": 48000,
-     "instrument": "tr808",
      "level_dbfs": -20,
-     "note": 38,
      "path": "48000/1ch/hit_levels_-20.wav",
      "peak_dbfs": -19.999,
      "peak_lsb": 3277,
-     "rms_dbfs": -39.19,
+     "rms_dbfs": -40.684,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "48000/2": {
      "achieved_peak_dbfs": -19.999,
      "bytes": 192044,
-     "fnv1a": "37885519",
+     "fnv1a": "38bc57fd",
      "frames": 48000,
-     "instrument": "tr808",
      "level_dbfs": -20,
-     "note": 38,
      "path": "48000/2ch/hit_levels_-20.wav",
      "peak_dbfs": -19.999,
      "peak_lsb": 3277,
-     "rms_dbfs": -39.19,
+     "rms_dbfs": -40.684,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     }
    }
   },
@@ -1060,98 +1042,80 @@
     "22050/1": {
      "achieved_peak_dbfs": -39.992,
      "bytes": 44144,
-     "fnv1a": "ddf8d7e5",
+     "fnv1a": "b1dad4e0",
      "frames": 22050,
-     "instrument": "tr808",
      "level_dbfs": -40,
-     "note": 38,
      "path": "22050/1ch/hit_levels_-40.wav",
      "peak_dbfs": -39.992,
      "peak_lsb": 328,
-     "rms_dbfs": -59.227,
+     "rms_dbfs": -60.208,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "22050/2": {
      "achieved_peak_dbfs": -39.992,
      "bytes": 88244,
-     "fnv1a": "140d5fcd",
+     "fnv1a": "0cc96895",
      "frames": 22050,
-     "instrument": "tr808",
      "level_dbfs": -40,
-     "note": 38,
      "path": "22050/2ch/hit_levels_-40.wav",
      "peak_dbfs": -39.992,
      "peak_lsb": 328,
-     "rms_dbfs": -59.227,
+     "rms_dbfs": -60.208,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "44100/1": {
      "achieved_peak_dbfs": -39.992,
      "bytes": 88244,
-     "fnv1a": "d77c6264",
+     "fnv1a": "c8827f8a",
      "frames": 44100,
-     "instrument": "tr808",
      "level_dbfs": -40,
-     "note": 38,
      "path": "44100/1ch/hit_levels_-40.wav",
      "peak_dbfs": -39.992,
      "peak_lsb": 328,
-     "rms_dbfs": -58.901,
+     "rms_dbfs": -60.738,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "44100/2": {
      "achieved_peak_dbfs": -39.992,
      "bytes": 176444,
-     "fnv1a": "5a8c89c9",
+     "fnv1a": "662a853d",
      "frames": 44100,
-     "instrument": "tr808",
      "level_dbfs": -40,
-     "note": 38,
      "path": "44100/2ch/hit_levels_-40.wav",
      "peak_dbfs": -39.992,
      "peak_lsb": 328,
-     "rms_dbfs": -58.901,
+     "rms_dbfs": -60.738,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "48000/1": {
      "achieved_peak_dbfs": -39.992,
      "bytes": 96044,
-     "fnv1a": "75ebe131",
+     "fnv1a": "23ad6cac",
      "frames": 48000,
-     "instrument": "tr808",
      "level_dbfs": -40,
-     "note": 38,
      "path": "48000/1ch/hit_levels_-40.wav",
      "peak_dbfs": -39.992,
      "peak_lsb": 328,
-     "rms_dbfs": -59.182,
+     "rms_dbfs": -60.676,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "48000/2": {
      "achieved_peak_dbfs": -39.992,
      "bytes": 192044,
-     "fnv1a": "14f0d1f1",
+     "fnv1a": "51370ddd",
      "frames": 48000,
-     "instrument": "tr808",
      "level_dbfs": -40,
-     "note": 38,
      "path": "48000/2ch/hit_levels_-40.wav",
      "peak_dbfs": -39.992,
      "peak_lsb": 328,
-     "rms_dbfs": -59.182,
+     "rms_dbfs": -60.676,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     }
    }
   },
@@ -1165,98 +1129,80 @@
     "22050/1": {
      "achieved_peak_dbfs": -6.0,
      "bytes": 44144,
-     "fnv1a": "df87d36b",
+     "fnv1a": "c7c2b6b1",
      "frames": 22050,
-     "instrument": "tr808",
      "level_dbfs": -6,
-     "note": 38,
      "path": "22050/1ch/hit_levels_-6.wav",
      "peak_dbfs": -6.0,
      "peak_lsb": 16423,
-     "rms_dbfs": -25.235,
+     "rms_dbfs": -26.216,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "22050/2": {
      "achieved_peak_dbfs": -6.0,
      "bytes": 88244,
-     "fnv1a": "0eb207bd",
+     "fnv1a": "b4dc5501",
      "frames": 22050,
-     "instrument": "tr808",
      "level_dbfs": -6,
-     "note": 38,
      "path": "22050/2ch/hit_levels_-6.wav",
      "peak_dbfs": -6.0,
      "peak_lsb": 16423,
-     "rms_dbfs": -25.235,
+     "rms_dbfs": -26.216,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "44100/1": {
      "achieved_peak_dbfs": -6.0,
      "bytes": 88244,
-     "fnv1a": "f6ee586e",
+     "fnv1a": "65dbe142",
      "frames": 44100,
-     "instrument": "tr808",
      "level_dbfs": -6,
-     "note": 38,
      "path": "44100/1ch/hit_levels_-6.wav",
      "peak_dbfs": -6.0,
      "peak_lsb": 16423,
-     "rms_dbfs": -24.91,
+     "rms_dbfs": -26.747,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "44100/2": {
      "achieved_peak_dbfs": -6.0,
      "bytes": 176444,
-     "fnv1a": "2ec35f65",
+     "fnv1a": "914e8cf1",
      "frames": 44100,
-     "instrument": "tr808",
      "level_dbfs": -6,
-     "note": 38,
      "path": "44100/2ch/hit_levels_-6.wav",
      "peak_dbfs": -6.0,
      "peak_lsb": 16423,
-     "rms_dbfs": -24.91,
+     "rms_dbfs": -26.747,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "48000/1": {
      "achieved_peak_dbfs": -6.0,
      "bytes": 96044,
-     "fnv1a": "a59c8137",
+     "fnv1a": "eda8ab8f",
      "frames": 48000,
-     "instrument": "tr808",
      "level_dbfs": -6,
-     "note": 38,
      "path": "48000/1ch/hit_levels_-6.wav",
      "peak_dbfs": -6.0,
      "peak_lsb": 16423,
-     "rms_dbfs": -25.191,
+     "rms_dbfs": -26.684,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "48000/2": {
      "achieved_peak_dbfs": -6.0,
      "bytes": 192044,
-     "fnv1a": "01a08ba9",
+     "fnv1a": "4e7dc95d",
      "frames": 48000,
-     "instrument": "tr808",
      "level_dbfs": -6,
-     "note": 38,
      "path": "48000/2ch/hit_levels_-6.wav",
      "peak_dbfs": -6.0,
      "peak_lsb": 16423,
-     "rms_dbfs": -25.191,
+     "rms_dbfs": -26.684,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     }
    }
   },
@@ -1270,98 +1216,80 @@
     "22050/1": {
      "achieved_peak_dbfs": -59.939,
      "bytes": 44144,
-     "fnv1a": "5d0600f6",
+     "fnv1a": "a430880f",
      "frames": 22050,
-     "instrument": "tr808",
      "level_dbfs": -60,
-     "note": 38,
      "path": "22050/1ch/hit_levels_-60.wav",
      "peak_dbfs": -59.939,
      "peak_lsb": 33,
-     "rms_dbfs": -79.165,
+     "rms_dbfs": -80.145,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "22050/2": {
      "achieved_peak_dbfs": -59.939,
      "bytes": 88244,
-     "fnv1a": "1d29ebd1",
+     "fnv1a": "646228a9",
      "frames": 22050,
-     "instrument": "tr808",
      "level_dbfs": -60,
-     "note": 38,
      "path": "22050/2ch/hit_levels_-60.wav",
      "peak_dbfs": -59.939,
      "peak_lsb": 33,
-     "rms_dbfs": -79.165,
+     "rms_dbfs": -80.145,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "44100/1": {
      "achieved_peak_dbfs": -59.939,
      "bytes": 88244,
-     "fnv1a": "ab932555",
+     "fnv1a": "414e852b",
      "frames": 44100,
-     "instrument": "tr808",
      "level_dbfs": -60,
-     "note": 38,
      "path": "44100/1ch/hit_levels_-60.wav",
      "peak_dbfs": -59.939,
      "peak_lsb": 33,
-     "rms_dbfs": -78.847,
+     "rms_dbfs": -80.673,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "44100/2": {
      "achieved_peak_dbfs": -59.939,
      "bytes": 176444,
-     "fnv1a": "cf806115",
+     "fnv1a": "3d48c1bd",
      "frames": 44100,
-     "instrument": "tr808",
      "level_dbfs": -60,
-     "note": 38,
      "path": "44100/2ch/hit_levels_-60.wav",
      "peak_dbfs": -59.939,
      "peak_lsb": 33,
-     "rms_dbfs": -78.847,
+     "rms_dbfs": -80.673,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "48000/1": {
      "achieved_peak_dbfs": -59.939,
      "bytes": 96044,
-     "fnv1a": "5ebb0f5f",
+     "fnv1a": "4ac14327",
      "frames": 48000,
-     "instrument": "tr808",
      "level_dbfs": -60,
-     "note": 38,
      "path": "48000/1ch/hit_levels_-60.wav",
      "peak_dbfs": -59.939,
      "peak_lsb": 33,
-     "rms_dbfs": -79.121,
+     "rms_dbfs": -80.612,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "48000/2": {
      "achieved_peak_dbfs": -59.939,
      "bytes": 192044,
-     "fnv1a": "3c9c195d",
+     "fnv1a": "3b602e5d",
      "frames": 48000,
-     "instrument": "tr808",
      "level_dbfs": -60,
-     "note": 38,
      "path": "48000/2ch/hit_levels_-60.wav",
      "peak_dbfs": -59.939,
      "peak_lsb": 33,
-     "rms_dbfs": -79.121,
+     "rms_dbfs": -80.612,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     }
    }
   },
@@ -1375,98 +1303,80 @@
     "22050/1": {
      "achieved_peak_dbfs": -80.767,
      "bytes": 44144,
-     "fnv1a": "72c34d18",
+     "fnv1a": "0382c6d5",
      "frames": 22050,
-     "instrument": "tr808",
      "level_dbfs": -80,
-     "note": 38,
      "path": "22050/1ch/hit_levels_-80.wav",
      "peak_dbfs": -80.767,
      "peak_lsb": 3,
-     "rms_dbfs": -99.8,
+     "rms_dbfs": -100.726,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "22050/2": {
      "achieved_peak_dbfs": -80.767,
      "bytes": 88244,
-     "fnv1a": "86537ab5",
+     "fnv1a": "722e4e61",
      "frames": 22050,
-     "instrument": "tr808",
      "level_dbfs": -80,
-     "note": 38,
      "path": "22050/2ch/hit_levels_-80.wav",
      "peak_dbfs": -80.767,
      "peak_lsb": 3,
-     "rms_dbfs": -99.8,
+     "rms_dbfs": -100.726,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "44100/1": {
      "achieved_peak_dbfs": -80.767,
      "bytes": 88244,
-     "fnv1a": "e1c48dc2",
+     "fnv1a": "388a3ee5",
      "frames": 44100,
-     "instrument": "tr808",
      "level_dbfs": -80,
-     "note": 38,
      "path": "44100/1ch/hit_levels_-80.wav",
      "peak_dbfs": -80.767,
      "peak_lsb": 3,
-     "rms_dbfs": -99.413,
+     "rms_dbfs": -101.163,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "44100/2": {
      "achieved_peak_dbfs": -80.767,
      "bytes": 176444,
-     "fnv1a": "cfa5fb29",
+     "fnv1a": "636375f5",
      "frames": 44100,
-     "instrument": "tr808",
      "level_dbfs": -80,
-     "note": 38,
      "path": "44100/2ch/hit_levels_-80.wav",
      "peak_dbfs": -80.767,
      "peak_lsb": 3,
-     "rms_dbfs": -99.413,
+     "rms_dbfs": -101.163,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "48000/1": {
      "achieved_peak_dbfs": -80.767,
      "bytes": 96044,
-     "fnv1a": "2eba730f",
+     "fnv1a": "7e960bab",
      "frames": 48000,
-     "instrument": "tr808",
      "level_dbfs": -80,
-     "note": 38,
      "path": "48000/1ch/hit_levels_-80.wav",
      "peak_dbfs": -80.767,
      "peak_lsb": 3,
-     "rms_dbfs": -99.686,
+     "rms_dbfs": -101.126,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     },
     "48000/2": {
      "achieved_peak_dbfs": -80.767,
      "bytes": 192044,
-     "fnv1a": "bdd5f691",
+     "fnv1a": "351092d1",
      "frames": 48000,
-     "instrument": "tr808",
      "level_dbfs": -80,
-     "note": 38,
      "path": "48000/2ch/hit_levels_-80.wav",
      "peak_dbfs": -80.767,
      "peak_lsb": 3,
-     "rms_dbfs": -99.686,
+     "rms_dbfs": -101.126,
      "seconds": 1.0,
-     "source": "rendered, not recorded - see make_hit_level's docstring",
-     "velocity": 127
+     "source": "generated: decaying 190 Hz body plus decaying noise, see make_hit_level's docstring"
     }
    }
   },
