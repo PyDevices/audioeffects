@@ -1,0 +1,3451 @@
+"""The measurement kit's first ten measurements, over rendered audio.
+
+The kit specifies twenty measurements. This module implements the first ten -
+the six Tier 1 invariants and the first four Tier 2 circuit traits:
+
+    WIRE  TAIL  LEVEL  CLICK  STATE  DIGEST
+    RESPONSE  SPECTRUM  CURVE  GAINTRACE
+
+Each is one function of the same name. Every one of them takes renders and
+returns a dict carrying the numbers with their units, the four axes of
+section 1 (rate, channel count, interpreter, source block size), the criteria
+it was judged against, and `passed` - so a class gate can cite the number and
+not only the verdict.
+
+**The render is dual-runtime; the analysis is not** (spec section 1). Nothing
+here runs on a board: it is CPython with numpy, reading WAVs written by the
+renderer. Two of the ten - STATE, and GAINTRACE's level search - drive the
+class itself rather than reading a finished render, because their subject is
+the class's behaviour between renders; they take the effect and a render
+callable respectively.
+
+**Written against an interface, not against the renderer.**
+`tools/render_effect.py` (spec section 4) did not exist when this file was
+written. The contract assumed here is exactly what section 4 states:
+
+    render_effect.py <Class> <probe> <outdir> [--rate 48000] [--channels 2]
+                     [--block 256] [--macro n=v ...] [--patch n]
+                     [--events events.json] [--transport tempo.json]
+
+    - built through `create(source, sample_rate, **options)`
+    - PCM streamed to a WAV, header excluded from the digest
+    - FNV-1a over the PCM bytes returned, and the axes recorded beside it
+
+so a render reaches a measurement here as `Render.from_wav(path, rate=...,
+channels=..., block=..., interpreter=...)`, or as `Render.from_pcm(...)` for
+an in-process render. When the renderer lands, it should hand back a `Render`
+(or the metadata `Render.from_wav` wants); no measurement below needs
+changing for that.
+
+**No measurement reads a silent render** (spec section 1). `require_signal()`
+is called by every one of the ten. The two whose subject is an absence carry
+their own floor instead: TAIL requires signal in the burst and measures the
+silence after it, and DIGEST's `distinct` mode requires each side to be
+non-silent before it will call two renders different.
+
+**What is not implemented here, so nothing cites it by mistake.**
+RESPONSE carries the *stepped-tone* excitation only: the swept excitation and
+the STFT-per-frame excitation that fourteen Tier 2 cells name (`Phaser` P1,
+`Flanger` F2, `AirSpace` AS7 and the rest) are not built, and neither is the
+ratio mode that divides one render by another of the same class. CLICK reads
+one render at a time - the re-run with each latency-adding option turned on
+alone is the driver's loop, not this function's. STATE reports `tempo_sync`
+as unmeasured unless it is handed the two transport digests, because the
+renderer's `--transport` is section 4's. SPECTRUM's alias readout and CURVE's
+fitted law are here; their *second* planted faults (the oversampler turned
+off, the clamped drive control) are not in the battery. Measurements 11-20 -
+ENVELOPE, IFREQ, TAPS, DECAY, STEREO, RESIDUAL, TRUEPEAK, NULL, COST,
+ROUNDTRIP - are not in this file at all.
+
+Reused rather than rebuilt (spec section 2):
+`fnv1a` is `audiodsp/tests/parity/effects_component_probe.py:15` unchanged;
+the tau -> T60 least-squares log-envelope fit and the WAV loader are
+`tools/measure_hits.py`'s; the analysis primitives are the ones
+`tests/test_cpython_effects_library.py` already had, rate-parameterised here
+because that file's `spectrum()` hardcodes its bin width.
+"""
+
+import fractions
+import gc
+import math
+import wave
+
+import numpy as np
+
+
+# --------------------------------------------------------------------------
+# The digest, and the silence rule
+# --------------------------------------------------------------------------
+
+def fnv1a(data):
+    """FNV-1a over the bytes.
+
+    `audiodsp/tests/parity/effects_component_probe.py:15`, unchanged and for
+    the reason stated there: `sum(data)` is a sum over UNSIGNED BYTES, so it
+    is invariant under any set of byte deltas that cancel - a +256 LSB error
+    paid for by a single -1 LSB error moves it by exactly zero. DIGEST's
+    planted fault is that exact pair.
+    """
+    value = 2166136261
+    for byte in data:
+        value = ((value ^ byte) * 16777619) & 0xffffffff
+    return value
+
+
+def byte_sum(data):
+    """The blind statistic, printed alongside so older per-architecture
+    records stay comparable. Never the comparison."""
+    return int(sum(data))
+
+
+class SilentRenderError(AssertionError):
+    """A measurement was handed a render whose digest is the digest of
+    silence. Absence reading as agreement is this workspace's signature
+    failure; every measurement refuses it rather than reporting a number."""
+
+
+def silence_digest(byte_length):
+    return fnv1a(b"\x00" * byte_length)
+
+
+def require_signal(render, what="render"):
+    """Spec section 1's rule, enforced. Raises rather than returning a
+    verdict: a silent render is not a red measurement, it is a measurement
+    that did not happen."""
+    if render.is_silent:
+        raise SilentRenderError(
+            "%s %s is silence (%d frames, FNV %08x) - the measurement was "
+            "not taken" % (what, render.label or "", render.frames,
+                           render.digest))
+    return render
+
+
+# --------------------------------------------------------------------------
+# What a render is
+# --------------------------------------------------------------------------
+
+class Render:
+    """One rendered WAV plus the axes it was rendered on.
+
+    `data` is (frames, channels) int16 - the PCM as written, not a float
+    convenience copy, because WIRE and DIGEST are byte comparisons and a
+    float round trip is exactly the kind of near-enough that hides an LSB.
+    `.float` is derived when a measurement wants it.
+    """
+
+    def __init__(self, pcm, rate, channels, *, block=None, interpreter=None,
+                 label=None, probe=None, class_name=None,
+                 class_version=None, latency_samples=None, path=None):
+        self.pcm = bytes(pcm)
+        self.rate = int(rate)
+        self.channels = int(channels)
+        self.block = block
+        self.interpreter = interpreter
+        self.label = label
+        self.probe = probe
+        self.class_name = class_name
+        self.class_version = class_version
+        self.latency_samples = latency_samples
+        self.path = path
+        width = 2 * self.channels
+        usable = len(self.pcm) - len(self.pcm) % width
+        self.data = np.frombuffer(self.pcm[:usable],
+                                  dtype="<i2").reshape(-1, self.channels)
+        self.frames = self.data.shape[0]
+        self.digest = fnv1a(self.pcm)
+        self.byte_sum = byte_sum(self.pcm)
+
+    @classmethod
+    def from_wav(cls, path, **axes):
+        """Load a WAV the renderer wrote. Rate and channel count come from
+        the file; the other axes are the caller's to state, because a file
+        cannot report the source block size it was pulled at."""
+        with wave.open(str(path), "rb") as handle:
+            if handle.getsampwidth() != 2:
+                raise ValueError("the kit's renders are 16-bit PCM; %s is "
+                                 "%d-bit" % (path, handle.getsampwidth() * 8))
+            rate = handle.getframerate()
+            channels = handle.getnchannels()
+            pcm = handle.readframes(handle.getnframes())
+        axes.setdefault("rate", rate)
+        axes.setdefault("channels", channels)
+        axes["path"] = str(path)
+        return cls(pcm, axes.pop("rate"), axes.pop("channels"), **axes)
+
+    @classmethod
+    def from_pcm(cls, pcm, rate, channels, **axes):
+        return cls(pcm, rate, channels, **axes)
+
+    @property
+    def is_silent(self):
+        return not self.pcm or not self.data.any()
+
+    @property
+    def float(self):
+        return self.data.astype(np.float64) / 32768.0
+
+    def seconds(self):
+        return self.frames / float(self.rate)
+
+    def axes(self):
+        return {"rate_hz": self.rate, "channel_count": self.channels,
+                "block_frames": self.block, "interpreter": self.interpreter,
+                "probe": self.probe, "class": self.class_name,
+                "class_version": self.class_version,
+                "render_fnv1a": "%08x" % self.digest}
+
+    def __repr__(self):
+        return ("Render(%s, %d frames, %d Hz, %d ch, block=%s, fnv=%08x)"
+                % (self.label or self.probe or "-", self.frames, self.rate,
+                   self.channels, self.block, self.digest))
+
+
+def _result(name, unit, values, axes, criteria, red):
+    return {"measurement": name, "unit": unit, "values": values,
+            "axes": axes, "criteria": criteria, "red": list(red),
+            "passed": not red}
+
+
+# --------------------------------------------------------------------------
+# Primitives (the ones test_cpython_effects_library.py already had,
+# rate-parameterised, plus measure_hits.py's envelope and tau fit)
+# --------------------------------------------------------------------------
+
+def rms(x):
+    x = np.asarray(x, dtype=np.float64)
+    return float(np.sqrt((x * x).mean())) if x.size else 0.0
+
+
+def db(value, floor=1e-12):
+    return 20.0 * math.log10(max(float(value), floor))
+
+
+def rms_db(x):
+    return db(rms(x))
+
+
+def peak_db(x):
+    x = np.asarray(x, dtype=np.float64)
+    return db(float(np.abs(x).max())) if x.size else -240.0
+
+
+def envelope(x, rate, hop_ms=1.0):
+    """RMS envelope at a stated hop. `tools/measure_hits.py:envelope`'s
+    method, with the window stated in ms so it is comparable across rates."""
+    x = np.asarray(x, dtype=np.float64)
+    win = max(1, int(round(rate * hop_ms / 1000.0)))
+    pad = (-len(x)) % win
+    if pad:
+        x = np.concatenate([x, np.zeros(pad)])
+    seg = x.reshape(-1, win)
+    return np.sqrt((seg ** 2).mean(axis=1)), win
+
+
+def tau_t60(env, rate, win, start=0, floor_db=-50.0):
+    """Least-squares fit of the log envelope -> tau (seconds to 1/e) and the
+    extrapolated T60. `tools/measure_hits.py:measure`'s estimator."""
+    tail = np.asarray(env[start:], dtype=np.float64)
+    if tail.size < 3 or tail[0] <= 0:
+        return None, None
+    below = np.nonzero(tail <= tail[0] * 10 ** (floor_db / 20.0))[0]
+    stop = int(below[0]) if below.size else len(tail)
+    seg = tail[:max(stop, 3)]
+    t = np.arange(len(seg)) * win / float(rate)
+    slope = np.polyfit(t, np.log(np.maximum(seg, 1e-12)), 1)[0]
+    if slope >= 0:
+        return None, None
+    tau = float(-1.0 / slope)
+    return tau, float(tau * math.log(1000.0))
+
+
+def tone_bin(x, rate, hz):
+    """Complex amplitude of `hz` in `x` by a single-bin DFT over a whole
+    number of periods - no window, no leakage, and no dependence on the FFT
+    length landing the tone on a bin."""
+    x = np.asarray(x, dtype=np.float64)
+    period = rate / float(hz)
+    periods = int(len(x) / period)
+    if periods < 1:
+        return 0.0 + 0.0j
+    n = int(round(periods * period))
+    n = min(n, len(x))
+    seg = x[:n]
+    k = np.arange(n)
+    twiddle = np.exp(-2j * math.pi * hz * k / rate)
+    return complex(2.0 * np.dot(seg, twiddle) / n)
+
+
+def magnitude_spectrum(x, rate, size=None, window=None):
+    """Magnitude spectrum and bin width, with the transform length and the
+    window as stated parameters. The bin width is derived from the rate that
+    is passed in - `test_cpython_effects_library.spectrum` hardcoded
+    SAMPLE_RATE / size, which is wrong the moment a measurement takes its
+    rate as an argument."""
+    x = np.asarray(x, dtype=np.float64)
+    if size is None:
+        size = 1
+        while size * 2 <= len(x):
+            size *= 2
+    seg = np.zeros(size)
+    take = min(size, len(x))
+    seg[:take] = x[:take]
+    name = "rectangular"
+    if window == "hann":
+        seg = seg * np.hanning(size)
+        name = "hann"
+    elif window == "blackmanharris":
+        k = np.arange(size)
+        seg = seg * (0.35875 - 0.48829 * np.cos(2 * math.pi * k / size)
+                     + 0.14128 * np.cos(4 * math.pi * k / size)
+                     - 0.01168 * np.cos(6 * math.pi * k / size))
+        name = "blackman-harris"
+    spec = np.abs(np.fft.rfft(seg))
+    return spec, rate / float(size), name, size
+
+
+
+def _rational(value):
+    """`value` as an exact Fraction when it is one a caller could mean, else
+    None. An integer is itself; a float is accepted only if a denominator of
+    at most 1000 reproduces it to 1e-9 relative, so 1010, 3700.0 and 1000.5
+    come back exact and 1000 * sqrt(2) does not."""
+    try:
+        exact = fractions.Fraction(value)
+    except (TypeError, ValueError, OverflowError):
+        return None                                 # nan, inf, a string
+    if exact <= 0:
+        return None
+    near = exact.limit_denominator(1000)
+    if abs(float(near) - float(exact)) > 1e-9 * abs(float(exact)):
+        return None
+    return near
+
+
+def exact_bin_size(frames, rate, hz):
+    """Transform length that puts `hz` on an exact bin, so no window is
+    needed - and, when arithmetic cannot, the length that misses by least.
+
+    When `rate` and `hz` are commensurable (both rationals a caller could
+    mean), a length is exactly periodic if and only if it is a multiple of
+    `L = denominator(hz / rate)` samples - `rate / gcd(rate, hz)` for whole
+    numbers, with a fractional `hz`'s denominator folded in. 1010 Hz needs
+    4800 samples at 48 kHz (101 periods), 4410 at 44.1 k and 2205 at
+    22.05 k; 3700 Hz needs 480 at 48 kHz and 441 at both 44.1 k and 22.05 k.
+    This returns the largest multiple of `L` that fits in `frames`, floored
+    at 64 samples - so it uses all the render it can, exactly.
+
+    Only when no multiple of `L` fits, or the ratio is not commensurable,
+    does it fall back to rounding a whole number of periods to an integer
+    length - and then it returns the period count whose fractional-period
+    error is smallest, not simply the largest count that fits. The caller
+    gets a length that is off by a fraction of a sample, and a rectangular
+    transform's leakage skirt with it; a window is the right instrument
+    there.
+
+    `None` when less than one period fits in `frames`.
+
+    Two lengths this must not be. A power-of-two length is the wrong default
+    and was the first thing this measurement got wrong in testing: at 48 kHz
+    a 16384-point rectangular transform puts a 1 kHz tone at bin 341.33, and
+    the leakage skirt of that third of a bin reads -55 dB at the second
+    harmonic - a wire's THD reported as a class's. Choosing a whole number of
+    periods instead drops the same reading below -90 dB. Rounding that whole
+    number of periods to an integer length is the same mistake one order
+    smaller, and was this function's own: at 1010 Hz / 48 kHz over 12000
+    frames it returned 11976, a quarter of a sample short of whole, which
+    reads the alias floor about 48 dB high - a pessimistic floor that fails a
+    working class or buys oversampling nobody needed. Which committed numbers
+    that reached, and which it did not, is `docs/dev/exact-bin-size.md`.
+    """
+    frames = int(frames)
+    period = rate / float(hz)
+    max_periods = int(frames / period)
+    if max_periods < 1:
+        return None
+
+    hz_ratio, rate_ratio = _rational(hz), _rational(rate)
+    if hz_ratio is not None and rate_ratio is not None:
+        step = (hz_ratio / rate_ratio).denominator
+        if step <= frames:
+            return max(64, (frames // step) * step)
+
+    # No exact length fits. Pick the period count that misses by least,
+    # preferring the longest of equal-error counts for the bin width.
+    counts = np.arange(1, max_periods + 1)
+    lengths = counts * period
+    error = np.abs(lengths - np.round(lengths))
+    best = error <= error.min() + 1e-12
+    periods = int(counts[best][-1])
+    return max(64, min(int(round(periods * period)), frames))
+
+
+def onset(x, *, threshold_ratio=1e-3, floor_lsb=2.0):
+    """First sample of arrival, and a sub-sample refinement of it.
+
+    The integer read is the first sample above a floor stated two ways -
+    a fraction of this render's own peak, and an absolute LSB floor so a
+    render whose peak is one LSB does not report an onset in its dither.
+    The refinement is a parabola through the energy envelope either side of
+    the first local energy maximum after that sample, which is what a
+    fractional delay needs and an integer delay leaves untouched.
+    """
+    x = np.asarray(x, dtype=np.float64)
+    if not x.size:
+        return None, None
+    peak = float(np.abs(x).max())
+    if peak <= 0:
+        return None, None
+    level = max(peak * threshold_ratio, floor_lsb / 32768.0)
+    above = np.nonzero(np.abs(x) >= level)[0]
+    if not above.size:
+        return None, None
+    first = int(above[0])
+    energy = x * x
+    k = first
+    while k + 1 < len(energy) and energy[k + 1] > energy[k]:
+        k += 1
+    if 0 < k < len(energy) - 1:
+        a, b, c = energy[k - 1], energy[k], energy[k + 1]
+        denominator = a - 2.0 * b + c
+        delta = 0.5 * (a - c) / denominator if denominator else 0.0
+    else:
+        delta = 0.0
+    return first, float(k + delta)
+
+
+#: The register's own bookkeeping, which holds no nodes to be named after.
+_REGISTER_ATTRIBUTES = ("_nodes", "_resets", "_deinits")
+
+#: What a component's output is a wire ONTO. Imported rather than
+#: duck-typed, because `_component` is the one place that decides what a
+#: port is and a second opinion here would drift. `port_target` is re-exported
+#: on purpose: a test that means "the node the class is playing" says
+#: `kit.port_target(effect.output)`.
+try:
+    from audioeffects._component import PORT as _PORT, port_target
+except Exception:                       # pragma: no cover - kit used bare
+    _PORT = None
+
+    def port_target(output):
+        return output
+
+
+def _wire_of(effect):
+    """The `audioroute.Port` a component ends in, or `None`.
+
+    `None` on an interpreter without `audioroute` as well, where `_port`
+    holds the tail node itself and there is no wire to see through - the
+    walks below then behave exactly as they did before the port existed,
+    which is the point.
+    """
+    if _PORT is None:
+        return None
+    port = getattr(effect, "_port", None)
+    return port if isinstance(port, _PORT) else None
+
+
+def _scan_for_nodes(effect, include_private=False):
+    """Nodes reachable through the instance's attributes, by attribute name.
+
+    A node is an attribute implementing the audiocore sample protocol - the
+    same duck type `audiocore.get_buffer` accepts - reached directly or
+    through a list or tuple attribute. The class's source is excluded: it is
+    the caller's node, not the class's, and deinitialising it is not this
+    class's job.
+
+    **The component's port is excluded for the same reason, from the other
+    end.** It is a wire, not a node the class built: it is not in the
+    register, `reset()` forwards through it and `deinit()` releases it
+    first, and a walk that counted it reported every Component as holding
+    one node it never registered - four nodes where the class built three.
+    `_output` is read through `port_target`, so the tail the walk names is
+    the node the class assigned, exactly as before the port.
+    """
+    found = []
+    source = getattr(effect, "_source", None)
+    # Through the wire, not at it. `_output` is the port; the node the class
+    # built and registered is what the port is playing, and that is what
+    # every caller of this walk is asking after.
+    port = _wire_of(effect)
+    output = port_target(getattr(effect, "_output", None))
+
+    def looks_like_a_node(value):
+        return (hasattr(value, "_get_buffer") and value is not source
+                and value is not port)
+
+    for name, value in vars(effect).items():
+        if name.startswith("_"):
+            if not include_private or name in _REGISTER_ATTRIBUTES:
+                continue
+        if looks_like_a_node(value):
+            found.append((name, value))
+        elif isinstance(value, (list, tuple)):
+            for index, item in enumerate(value):
+                if looks_like_a_node(item):
+                    found.append(("%s[%d]" % (name, index), item))
+                inner = getattr(item, "_output", None)
+                if inner is not None and looks_like_a_node(inner):
+                    found.append(("%s[%d]._output" % (name, index), inner))
+    if output is not None and looks_like_a_node(output):
+        if not any(node is output for _, node in found):
+            found.append(("_output", output))
+    return found
+
+
+def enumerate_nodes(effect):
+    """Every audio node the class built, by name.
+
+    A `_component.Component` keeps its **own** register - `self._nodes`,
+    filled by every `self._own()` call - and that register, not an attribute
+    scan, is what `reset()` and `deinit()` walk. So the register is the
+    authority here. An attribute scan is not: it can only see public
+    attributes, and a Component hangs every node it builds off a private one
+    (`self._pole_one`, `self._bands[...]`), so scanning found the output node
+    and nothing else - one node of three on `LowPass`, one of eight on
+    `ParametricEQ`, one of twelve on `GraphicEQ` and on `DeEsser`. A STATE
+    fault planted in any other node read green (audiocomponents#53).
+
+    A node the class built and never registered escapes `reset()` and
+    `deinit()` both, so the private attributes are scanned as well and
+    anything found outside the register is returned too, named
+    `... (unregistered)`. That is a fault, not a naming quirk: the class
+    holds a node neither of its own walks will reach.
+
+    Classes that are not Components (a third-party provider) keep no
+    register and hold their nodes publicly, and take the scan unchanged.
+    """
+    register = getattr(effect, "_nodes", None)
+    if register is None:
+        return _scan_for_nodes(effect)
+
+    reachable = _scan_for_nodes(effect, include_private=True)
+    names = {}
+    for name, node in reachable:
+        names.setdefault(id(node), name)
+
+    found = [(names.get(id(node), "_nodes[%d]" % position), node)
+             for position, node in enumerate(register)]
+
+    registered = set(id(node) for node in register)
+    for name, node in reachable:
+        if id(node) not in registered:
+            found.append(("%s (unregistered)" % name, node))
+    return found
+
+
+def _reads_channel_count(node):
+    """Whether the node answers `channel_count` at all, right now.
+
+    This is the liveness tell that works on all three interpreters. The
+    CPython shim marks a released node with `_deinited`; the native builds
+    keep no such attribute and instead put `audiosample_check_for_deinit()`
+    on every guarded getter, so a released node is one whose `channel_count`
+    raises. Asked before and after `deinit()`, the pair separates "released"
+    from "never had that property" - `audioroute.Splitter` has no
+    `channel_count` while perfectly alive.
+    """
+    try:
+        node.channel_count
+    except Exception:
+        return False
+    return True
+
+
+def _is_deinited(node, was_guarded=False):
+    if getattr(node, "_deinited", False):
+        return True
+    try:
+        namespace = object.__getattribute__(node, "__dict__")
+    except AttributeError:
+        namespace = None
+    if namespace is not None and namespace.get("_deinited", False):
+        return True
+    return bool(was_guarded) and not _reads_channel_count(node)
+
+
+# --------------------------------------------------------------------------
+# Tier 1 - the invariants
+# --------------------------------------------------------------------------
+
+def wire(render, source, *, latency_samples=0, tolerance_samples=0):
+    """WIRE - the bypass invariant (spec section 5).
+
+    Byte compare of the render against the source, both channels, with the
+    source delayed by the class's reported `latency_samples`: a class
+    carrying a convolver partition or a lookahead is not a wire at sample
+    zero, and a wrong report is CLICK's to catch, not WIRE's to absorb.
+
+    Exports the differing sample count and the first differing offset. It is
+    a byte compare and not an RMS or a dB check on purpose - the planted
+    fault is one LSB on the dry path, which no summarising statistic sees.
+    """
+    require_signal(render, "wire render")
+    require_signal(source, "wire source")
+    if render.channels != source.channels:
+        raise ValueError("WIRE compares like with like: %d channels against "
+                         "%d" % (render.channels, source.channels))
+    delay = int(latency_samples)
+    count = min(render.frames - delay, source.frames)
+    if count <= 0:
+        raise ValueError("WIRE has nothing to compare: %d render frames, "
+                         "%d source frames, %d samples of reported latency"
+                         % (render.frames, source.frames, delay))
+    left = render.data[delay:delay + count].astype(np.int32)
+    right = source.data[:count].astype(np.int32)
+    difference = left - right
+    differing = int(np.count_nonzero(difference))
+    where = np.nonzero(difference)
+    first_frame = int(where[0][0]) if differing else None
+    first_channel = int(where[1][0]) if differing else None
+    values = {
+        "compared_samples": int(count * render.channels),
+        "compared_frames": int(count),
+        "differing_samples": differing,
+        "first_difference_frame": first_frame,
+        "first_difference_channel": first_channel,
+        "max_abs_difference_lsb": int(np.abs(difference).max()),
+        "reported_latency_samples": delay,
+        "render_fnv1a": "%08x" % render.digest,
+        "source_fnv1a": "%08x" % source.digest,
+    }
+    criteria = {"differing_samples_max": int(tolerance_samples)}
+    red = []
+    if differing > tolerance_samples:
+        red.append("%d of %d samples differ, first at frame %d channel %d "
+                   "(max %d LSB)" % (differing, values["compared_samples"],
+                                     first_frame, first_channel,
+                                     values["max_abs_difference_lsb"]))
+    return _result("WIRE", "samples", values, render.axes(), criteria, red)
+
+
+def tail(burst_render, *, burst_end_frame, declared_tail_samples=None,
+         residual_tolerance_lsb=0, settle_frames=None, dc_render=None,
+         dc_removed_frame=None, dc_settle_frames=None):
+    """TAIL - silence in, silence out; decay to *exact* zero; the held-DC
+    class of defect (audiodsp#23).
+
+    This is one of the two measurements whose subject is an absence, so it
+    does not call `require_signal` on the whole render: it requires signal
+    in the burst and measures the silence after it. A render that is silent
+    from the first sample has no tail to measure and is refused.
+
+    Exports the tail length in samples and the residual in LSB. A state that
+    never returns to zero has no last non-zero sample, so both readouts go
+    red together on the planted fault - which is why the control is a
+    separate unfaulted run and never a second readout of this one.
+    """
+    end = int(burst_end_frame)
+    burst = burst_render.data[:end]
+    if not burst.any():
+        raise SilentRenderError(
+            "TAIL's burst region (0..%d) is silent - there is no tail to "
+            "measure" % end)
+    after = burst_render.data[end:]
+    non_zero = np.nonzero(after.any(axis=1))[0]
+    last = int(non_zero[-1]) if non_zero.size else None
+    tail_samples = None if last is None else last + 1
+    window = int(settle_frames or max(1, after.shape[0] // 10))
+    settle = after[-window:] if after.shape[0] else after
+    residual_lsb = int(np.abs(settle).max()) if settle.size else 0
+    returns_to_zero = residual_lsb == 0
+    values = {
+        "tail_samples": tail_samples,
+        "tail_ms": (None if tail_samples is None
+                    else 1000.0 * tail_samples / burst_render.rate),
+        "residual_lsb": residual_lsb,
+        "settle_window_frames": window,
+        "returns_to_zero": returns_to_zero,
+        "declared_tail_samples": declared_tail_samples,
+    }
+    criteria = {"residual_lsb_max": int(residual_tolerance_lsb),
+                "declared_tail_samples": declared_tail_samples}
+    red = []
+    if residual_lsb > residual_tolerance_lsb:
+        red.append("residual %d LSB in the last %d frames (bar %d LSB)"
+                   % (residual_lsb, window, residual_tolerance_lsb))
+    if not returns_to_zero:
+        red.append("the state never returns to zero: no last non-zero "
+                   "sample, so there is no tail length to report")
+    elif (declared_tail_samples is not None
+            and tail_samples is not None
+            and tail_samples > declared_tail_samples):
+        red.append("tail %d samples exceeds the declared %d"
+                   % (tail_samples, declared_tail_samples))
+
+    if dc_render is not None:
+        if dc_removed_frame is None:
+            raise ValueError("the dc_step leg needs dc_removed_frame")
+        removed = int(dc_removed_frame)
+        span = int(dc_settle_frames or max(1, removed // 10))
+        supplied = dc_render.data[max(0, removed - span):removed]
+        settled = dc_render.data[-span:]
+        while_supplied = float(supplied.mean()) if supplied.size else 0.0
+        after_removed = float(settled.mean()) if settled.size else 0.0
+        values["dc_while_supplied_lsb"] = while_supplied
+        values["dc_after_removed_lsb"] = after_removed
+        values["dc_residual_lsb"] = int(np.abs(settled).max()) \
+            if settled.size else 0
+        if values["dc_residual_lsb"] > residual_tolerance_lsb:
+            red.append("dc_step leaves %d LSB after the offset is removed "
+                       "(bar %d LSB)" % (values["dc_residual_lsb"],
+                                         residual_tolerance_lsb))
+    return _result("TAIL", "samples, LSB", values, burst_render.axes(),
+                   criteria, red)
+
+
+def level(wet_render, dry_render, *, tolerance_db=0.05, skip_frames=0):
+    """LEVEL - level honesty: unity through the path, no hidden gain.
+
+    Wet:dry RMS and peak ratio per channel. At mix 0 this is strictly weaker
+    than WIRE, which catches a one-LSB change where this bar is 0.05 dB; the
+    mix-0 leg is kept as the readable number beside WIRE's offset, and the
+    measurement's subject is the wet path at the class's unity setting.
+    """
+    require_signal(wet_render, "level wet render")
+    require_signal(dry_render, "level dry render")
+    count = min(wet_render.frames, dry_render.frames) - int(skip_frames)
+    if count <= 0:
+        raise ValueError("LEVEL has nothing to compare after %d skipped "
+                         "frames" % skip_frames)
+    wet = wet_render.float[skip_frames:skip_frames + count]
+    dry = dry_render.float[skip_frames:skip_frames + count]
+    rms_ratio, peak_ratio = [], []
+    for channel in range(wet_render.channels):
+        rms_ratio.append(rms_db(wet[:, channel]) - rms_db(dry[:, channel]))
+        peak_ratio.append(peak_db(wet[:, channel]) - peak_db(dry[:, channel]))
+    values = {"rms_db": [round(v, 4) for v in rms_ratio],
+              "peak_db": [round(v, 4) for v in peak_ratio],
+              "compared_frames": int(count)}
+    criteria = {"abs_rms_db_max": float(tolerance_db)}
+    red = []
+    for channel, value in enumerate(rms_ratio):
+        if abs(value) > tolerance_db:
+            red.append("channel %d wet:dry RMS %+.3f dB (bar %.3f dB)"
+                       % (channel, value, tolerance_db))
+    return _result("LEVEL", "dB", values, wet_render.axes(), criteria, red)
+
+
+def click(render, dry_render, reported_latency_samples, *,
+          tolerance_samples=1.0, threshold_ratio=1e-3, subsample=True):
+    """CLICK - reported `latency_samples` against measured (vision section
+    9a), per channel, at whatever rate the render was taken at.
+
+    Onset of the class's output against the onset of its dry path, to the
+    sample, sub-sampled by parabolic interpolation on the energy envelope
+    where a fractional delay exists. The audio digest is exported beside the
+    number, because the planted fault leaves the DSP alone: a latency check
+    that only fires when the sound also changes is not a latency check.
+
+    **`subsample=False` reads the integer onset only, and the difference
+    between the two readings is not cosmetic.** Measured here rather than
+    assumed: the committed `click_stereo` probe through `LowPass` at 8 kHz
+    reads 0 samples integer and +1.333 samples sub-sample, because a
+    minimum-phase filter has group delay - which is a real property of the
+    class and *not* the processing latency `latency_samples` declares. A
+    class whose latency is a pure delay (a lookahead, a convolver partition)
+    reads the same both ways. Say which reading a row wants; the default is
+    the sub-sample one because a fractional delay is invisible without it.
+    """
+    require_signal(render, "click render")
+    require_signal(dry_render, "click dry render")
+    measured, per_channel = [], []
+    for channel in range(render.channels):
+        wet_first, wet_fine = onset(render.float[:, channel],
+                                    threshold_ratio=threshold_ratio)
+        dry_first, dry_fine = onset(dry_render.float[:, channel],
+                                    threshold_ratio=threshold_ratio)
+        if wet_fine is None or dry_fine is None:
+            raise SilentRenderError("CLICK found no onset in channel %d"
+                                    % channel)
+        value = ((wet_fine - dry_fine) if subsample
+                 else float(wet_first - dry_first))
+        measured.append(value)
+        per_channel.append({
+            "channel": channel,
+            "wet_onset_sample": wet_first,
+            "dry_onset_sample": dry_first,
+            "latency_samples": round(value, 3),
+            "latency_ms": round(1000.0 * value / render.rate, 4),
+        })
+    worst = max(abs(v - reported_latency_samples) for v in measured)
+    values = {
+        "per_channel": per_channel,
+        "subsample": bool(subsample),
+        "measured_latency_samples": [round(v, 3) for v in measured],
+        "measured_latency_ms": [round(1000.0 * v / render.rate, 4)
+                                for v in measured],
+        "reported_latency_samples": int(reported_latency_samples),
+        "error_samples": round(worst, 3),
+        "render_fnv1a": "%08x" % render.digest,
+    }
+    criteria = {"abs_error_samples_max": float(tolerance_samples)}
+    red = []
+    if worst > tolerance_samples:
+        red.append("measured %s samples against a reported %d (%.1f samples "
+                   "out, bar %.1f) at %d Hz"
+                   % (values["measured_latency_samples"],
+                      reported_latency_samples, worst, tolerance_samples,
+                      render.rate))
+    return _result("CLICK", "samples", values, render.axes(), criteria, red)
+
+
+def state(effect, *, pull, swap, probe_source, silent_source, blocks=64,
+          alloc_pulls=200, alloc_tolerance_bytes=8192,
+          reset_tolerance_lsb=0, transport_digests=None, nodes=None):
+    """STATE - `reset()`, `deinit()`, `capabilities`, and the no-allocation
+    rule.
+
+    This one drives the class rather than reading a finished render, and it
+    reads in the order the spec's refutation pass settled:
+
+      1. render the probe (and refuse a silent one);
+      2. `reset()`;
+      3. swap the borrowed source for a silent one and pull - the output
+         must be exactly zero. (Asking for both at once - reset and a source
+         that still has audio in it - is red on a correct build, and gets
+         loosened by the first person to run it.)
+      4. hand the original source back: it must render again;
+      5. allocation flat across `alloc_pulls` pulls, on a render whose
+         digest is not the digest of silence - a class that allocates
+         nothing because nothing was pulled is flat too;
+      6. `capabilities` declares "tempo_sync" iff a transport read changes
+         the render (pass the two digests, or it is reported unmeasured);
+      7. `deinit()`, then every node the class enumerated is deinitialised.
+
+    `pull(blocks)` renders that many blocks and returns a Render;
+    `swap(source)` puts a different source under the class.
+    """
+    values = {}
+    red = []
+
+    first = pull(blocks)
+    require_signal(first, "state probe render")
+    values["probe_fnv1a"] = "%08x" % first.digest
+
+    effect.reset()
+    swap(silent_source)
+    after_reset = pull(blocks)
+    residual = int(np.abs(after_reset.data).max()) if after_reset.frames else 0
+    values["reset_residual_lsb"] = residual
+    values["reset_residual_fnv1a"] = "%08x" % after_reset.digest
+    if residual > reset_tolerance_lsb:
+        red.append("after reset() and a silent source the output still "
+                   "reaches %d LSB (bar %d)" % (residual,
+                                                reset_tolerance_lsb))
+
+    swap(probe_source)
+    resumed = pull(blocks)
+    values["resumed"] = not resumed.is_silent
+    values["resumed_fnv1a"] = "%08x" % resumed.digest
+    if resumed.is_silent:
+        red.append("the class does not render again once the original "
+                   "source is handed back")
+
+    # The probe is handed back a second time so the allocation leg runs on
+    # audio and not on the far end of a probe the reads above consumed: a
+    # class that allocates nothing because nothing was pulled is flat too.
+    swap(probe_source)
+    gc.collect()
+    import tracemalloc
+    tracing = tracemalloc.is_tracing()
+    if not tracing:
+        tracemalloc.start()
+    warm = pull(2)
+    del warm
+    gc.collect()
+    before = tracemalloc.get_traced_memory()[0]
+    heard = False
+    last_digest = None
+    for _ in range(int(alloc_pulls)):
+        # One block at a time, and dropped: holding every render would
+        # measure this loop's own buffers rather than the class's state.
+        chunk = pull(1)
+        heard = heard or not chunk.is_silent
+        last_digest = chunk.digest
+        del chunk
+    gc.collect()
+    after = tracemalloc.get_traced_memory()[0]
+    if not tracing:
+        tracemalloc.stop()
+    growth = int(after - before)
+    values["alloc_growth_bytes"] = growth
+    values["alloc_pulls"] = int(alloc_pulls)
+    values["alloc_last_fnv1a"] = None if last_digest is None \
+        else "%08x" % last_digest
+    if not heard:
+        red.append("the allocation reading was taken on silence, which is "
+                   "flat because nothing was pulled")
+    elif growth > alloc_tolerance_bytes:
+        red.append("%d bytes retained across %d single-block pulls (bar %d)"
+                   % (growth, alloc_pulls, alloc_tolerance_bytes))
+
+    declared = tuple(effect.capabilities)
+    values["capabilities"] = list(declared)
+    if transport_digests is None:
+        values["tempo_sync_observed"] = None
+    else:
+        with_transport, without_transport = transport_digests
+        observed = with_transport != without_transport
+        values["tempo_sync_observed"] = observed
+        if observed != ("tempo_sync" in declared):
+            red.append("capabilities %s against a transport read that %s "
+                       "the render" % (list(declared),
+                                       "changes" if observed
+                                       else "does not change"))
+
+    found = enumerate_nodes(effect) if nodes is None else list(nodes)
+    values["nodes"] = [name for name, _ in found]
+    # How each node answers while it is alive, so that the same question
+    # after deinit() separates "released" from "never had that property".
+    guarded = dict((id(node), _reads_channel_count(node))
+                   for _, node in found)
+    effect.deinit()
+    live = [(name, node) for name, node in found
+            if not _is_deinited(node, guarded.get(id(node), False))]
+    # A node still live after deinit() splits by cause, and only one of the
+    # two causes is the class's. A node whose type HAS a deinit() on this
+    # interpreter and was not released is a leak the class could have
+    # prevented - that is red. A node whose type has none cannot be released
+    # by anybody here: it is audiodsp's palette gap (audiodsp#58, #60, #63),
+    # which the class carries rather than causes. Reporting them as one
+    # number made every audiodsp-tier class read the same as a real leak, and
+    # ruling the whole row `partial` hid genuine leaks behind the gap.
+    leaked = [name for name, node in live
+              if getattr(node, "deinit", None) is not None]
+    gaps = ["%s [%s]" % (name, type(node).__name__) for name, node in live
+            if getattr(node, "deinit", None) is None]
+    values["live_nodes_after_deinit"] = [name for name, _ in live]
+    values["leaked_nodes_after_deinit"] = leaked
+    values["nodes_without_deinit"] = gaps
+    if leaked:
+        red.append("deinit() left %s live, and every one of them has a "
+                   "deinit() this interpreter could have called" % (leaked,))
+
+    criteria = {"reset_residual_lsb_max": int(reset_tolerance_lsb),
+                "alloc_growth_bytes_max": int(alloc_tolerance_bytes),
+                "leaked_nodes_after_deinit_max": 0}
+    return _result("STATE", "LSB, bytes, nodes", values, first.axes(),
+                   criteria, red)
+
+
+def digest(renders, *, mode="identical", ordering=None):
+    """DIGEST - FNV-1a over the PCM bytes, in the spec's three comparison
+    modes.
+
+      "identical" - cross-interpreter, cross-board, and the source
+                    block-size ladder: every render must be byte-identical.
+      "distinct"  - the paired build, where two renders must differ, and
+                    where the comparison fails on an ordering rather than a
+                    magnitude: pass `ordering` as [(label, value), ...] that
+                    must be strictly increasing, and it is exported.
+
+    `sum(data)` is printed alongside so older per-architecture records stay
+    comparable. It is never the comparison: the planted fault moves it by
+    exactly zero.
+    """
+    if len(renders) < 2:
+        raise ValueError("DIGEST compares renders; %d given" % len(renders))
+    values = {"renders": {}}
+    for label, render in renders.items():
+        require_signal(render, "digest render %s" % label)
+        values["renders"][label] = {
+            "fnv1a": "%08x" % render.digest,
+            "byte_sum": render.byte_sum,
+            "frames": render.frames,
+            "rate_hz": render.rate,
+            "channel_count": render.channels,
+            "block_frames": render.block,
+            "interpreter": render.interpreter,
+        }
+    labels = list(renders)
+    red = []
+    if mode == "identical":
+        reference = renders[labels[0]]
+        for label in labels[1:]:
+            other = renders[label]
+            if other.digest != reference.digest:
+                offset = _first_difference(reference, other)
+                red.append("%s and %s differ (FNV %08x against %08x), first "
+                           "at PCM byte %s" % (labels[0], label,
+                                               reference.digest,
+                                               other.digest, offset))
+    elif mode == "distinct":
+        seen = {}
+        for label in labels:
+            key = renders[label].digest
+            if key in seen:
+                red.append("%s and %s are byte-identical (FNV %08x) where "
+                           "the pair must differ" % (seen[key], label, key))
+            seen[key] = label
+    else:
+        raise ValueError("DIGEST mode is 'identical' or 'distinct', not %r"
+                         % (mode,))
+    if ordering is not None:
+        values["ordering"] = [list(pair) for pair in ordering]
+        for (a_label, a), (b_label, b) in zip(ordering, ordering[1:]):
+            if not a < b:
+                red.append("the ordering the row names is broken: %s %s is "
+                           "not below %s %s" % (a_label, a, b_label, b))
+    criteria = {"mode": mode, "ordering_required": ordering is not None}
+    axes = renders[labels[0]].axes()
+    return _result("DIGEST", "FNV-1a", values, axes, criteria, red)
+
+
+def _first_difference(one, other):
+    limit = min(len(one.pcm), len(other.pcm))
+    a = np.frombuffer(one.pcm[:limit], dtype=np.uint8)
+    b = np.frombuffer(other.pcm[:limit], dtype=np.uint8)
+    where = np.nonzero(a != b)[0]
+    if where.size:
+        return int(where[0])
+    return "%d (length: %d against %d bytes)" % (limit, len(one.pcm),
+                                                 len(other.pcm))
+
+
+# --------------------------------------------------------------------------
+# Tier 2 - the circuit traits
+# --------------------------------------------------------------------------
+
+def response(wet_by_hz, dry_by_hz, *, excitation="tones_step",
+             reference_hz=None, corner_db=-3.0, settled_ratio=0.5,
+             slope_octave=None, expected=None):
+    """RESPONSE - magnitude, phase and group delay against frequency.
+
+    `wet_by_hz` and `dry_by_hz` are {frequency: Render}: one steady tone at a
+    time, which is the excitation the spec's selection rule names wherever
+    the class holds a detector or a rotating source that a sweep would move
+    while it measures. The magnitude at each point is read from a single-bin
+    DFT over a whole number of periods of the settled portion, so a class's
+    own harmonics do not land in its passband reading.
+
+    Extractors on top of the curve: the interpolated `corner_db` crossing,
+    the passband gain, a least-squares skirt slope over a named octave pair,
+    and the local extrema.
+
+    `excitation` is recorded, not chosen: this function reads a set of steady
+    tones. The swept and STFT excitations the spec also names are not
+    implemented, so a cell that needs one is not served by this function yet.
+     `expected` is {"corner_hz": (value, tol_pct),
+    "passband_db": (value, tol_db), "slope_db_per_octave": (value, tol)}.
+    """
+    frequencies = sorted(set(wet_by_hz) & set(dry_by_hz))
+    if len(frequencies) < 3:
+        raise ValueError("RESPONSE needs at least three tones; %d given"
+                         % len(frequencies))
+    points = []
+    for hz in frequencies:
+        wet, dry = wet_by_hz[hz], dry_by_hz[hz]
+        require_signal(wet, "response wet render at %g Hz" % hz)
+        require_signal(dry, "response dry render at %g Hz" % hz)
+        start = int(wet.frames * settled_ratio)
+        w = tone_bin(wet.float[start:, 0], wet.rate, hz)
+        d = tone_bin(dry.float[start:, 0], dry.rate, hz)
+        if abs(d) <= 0.0:
+            raise SilentRenderError("RESPONSE's dry render at %g Hz has no "
+                                    "tone in it" % hz)
+        transfer = w / d
+        points.append((float(hz), db(abs(transfer)),
+                       math.degrees(math.atan2(transfer.imag,
+                                               transfer.real))))
+    grid_hz = [p[0] for p in points]
+    grid_db = [p[1] for p in points]
+    phases = np.unwrap(np.radians([p[2] for p in points]))
+    group_delay_ms = []
+    for index in range(len(points) - 1):
+        d_omega = 2 * math.pi * (grid_hz[index + 1] - grid_hz[index])
+        d_phase = phases[index + 1] - phases[index]
+        group_delay_ms.append(round(-1000.0 * d_phase / d_omega, 4))
+
+    if reference_hz is None:
+        reference_hz = grid_hz[0]
+    passband_db = _interpolate_log(grid_hz, grid_db, reference_hz)
+    corner_hz = _crossing(grid_hz, grid_db, passband_db + corner_db)
+    slope = None
+    if slope_octave:
+        low, high = slope_octave
+        selected = [(math.log2(f), g) for f, g in zip(grid_hz, grid_db)
+                    if low <= f <= high]
+        if len(selected) >= 2:
+            xs = np.array([s[0] for s in selected])
+            ys = np.array([s[1] for s in selected])
+            slope = float(np.polyfit(xs, ys, 1)[0])
+
+    values = {
+        "excitation": excitation,
+        "grid": [{"hz": round(f, 4), "magnitude_db": round(g, 4),
+                  "phase_deg": round(p, 3)} for f, g, p in points],
+        "group_delay_ms": group_delay_ms,
+        "passband_db": round(passband_db, 4),
+        "reference_hz": reference_hz,
+        "corner_hz": None if corner_hz is None else round(corner_hz, 3),
+        "corner_db": corner_db,
+        "slope_db_per_octave": None if slope is None else round(slope, 3),
+        "extrema": _extrema(grid_hz, grid_db),
+    }
+    criteria = dict(expected or {})
+    red = []
+    if expected:
+        if "corner_hz" in expected:
+            want, tol_pct = expected["corner_hz"]
+            if corner_hz is None:
+                red.append("no %.1f dB crossing on the measured grid"
+                           % corner_db)
+            elif abs(corner_hz - want) / want * 100.0 > tol_pct:
+                red.append("corner %.1f Hz against an expected %.1f Hz "
+                           "(%.1f %% out, bar %.1f %%)"
+                           % (corner_hz, want,
+                              abs(corner_hz - want) / want * 100.0, tol_pct))
+        if "passband_db" in expected:
+            want, tol = expected["passband_db"]
+            if abs(passband_db - want) > tol:
+                red.append("passband %.3f dB at %g Hz against an expected "
+                           "%.3f dB (bar %.3f dB)"
+                           % (passband_db, reference_hz, want, tol))
+        if "slope_db_per_octave" in expected and slope is not None:
+            want, tol = expected["slope_db_per_octave"]
+            if abs(slope - want) > tol:
+                red.append("skirt %.2f dB/octave against an expected %.2f "
+                           "(bar %.2f)" % (slope, want, tol))
+    axes = wet_by_hz[frequencies[0]].axes()
+    return _result("RESPONSE", "dB, degrees, Hz", values, axes, criteria, red)
+
+
+def _interpolate_log(xs, ys, x):
+    if x <= xs[0]:
+        return ys[0]
+    if x >= xs[-1]:
+        return ys[-1]
+    for index in range(len(xs) - 1):
+        if xs[index] <= x <= xs[index + 1]:
+            span = math.log(xs[index + 1] / xs[index])
+            weight = math.log(x / xs[index]) / span if span else 0.0
+            return ys[index] + weight * (ys[index + 1] - ys[index])
+    return ys[-1]
+
+
+def _crossing(xs, ys, target):
+    """Lowest frequency where the curve crosses `target`, interpolated on a
+    log frequency axis."""
+    for index in range(len(xs) - 1):
+        a, b = ys[index], ys[index + 1]
+        if (a - target) * (b - target) <= 0 and a != b:
+            weight = (target - a) / (b - a)
+            return math.exp(math.log(xs[index])
+                            + weight * math.log(xs[index + 1] / xs[index]))
+    return None
+
+
+def _extrema(xs, ys):
+    out = []
+    for index in range(1, len(xs) - 1):
+        if ys[index] > ys[index - 1] and ys[index] > ys[index + 1]:
+            out.append({"hz": xs[index], "db": round(ys[index], 3),
+                        "kind": "maximum"})
+        if ys[index] < ys[index - 1] and ys[index] < ys[index + 1]:
+            out.append({"hz": xs[index], "db": round(ys[index], 3),
+                        "kind": "minimum"})
+    return out
+
+
+def spectrum(render, fundamental_hz, *, harmonics=10, window=None,
+             size=None, settled_ratio=0.5, modulator_hz=None,
+             block_frames=None, bars=None, channel=0):
+    """SPECTRUM - one FFT, four readouts.
+
+      harmonic    h2..hN re fundamental, and THD over the same N;
+      inharmonic  the alias floor: every bin more than two bins from a
+                  harmonic and from DC, summed against the fundamental;
+      sideband    ring modulation and FM lines, when `modulator_hz` is given;
+      block-rate  lines at multiples of the source block rate, which is
+                  section 1's fourth axis showing up in the audio - pass
+                  `block_frames` to read them.
+
+    The window, the transform length and the harmonic count N are exported
+    with the numbers: a THD figure without its N is not comparable to the
+    source it is checked against.
+    """
+    require_signal(render, "spectrum render")
+    start = int(render.frames * settled_ratio)
+    x = render.float[start:, channel]
+    if size is None and window is None:
+        size = exact_bin_size(len(x), render.rate, fundamental_hz)
+    magnitudes, bin_hz, window_name, length = magnitude_spectrum(
+        x, render.rate, size=size, window=window)
+    nyquist = render.rate / 2.0
+
+    def peak_near(hz, span_bins=2):
+        centre = int(round(hz / bin_hz))
+        low = max(0, centre - span_bins)
+        high = min(len(magnitudes), centre + span_bins + 1)
+        return float(magnitudes[low:high].max()) if high > low else 0.0
+
+    base = peak_near(fundamental_hz)
+    if base <= 0:
+        raise SilentRenderError("SPECTRUM found no fundamental at %g Hz"
+                                % fundamental_hz)
+    orders = list(range(2, int(harmonics) + 1))
+    harmonic_db = {}
+    power = 0.0
+    for order in orders:
+        hz = fundamental_hz * order
+        if hz >= nyquist:
+            harmonic_db["h%d" % order] = None
+            continue
+        value = peak_near(hz)
+        harmonic_db["h%d" % order] = round(db(value / base), 3)
+        power += value ** 2
+    thd_db = round(db(math.sqrt(power) / base), 3)
+
+    mask = np.ones(len(magnitudes), dtype=bool)
+    mask[:3] = False
+    order = 1
+    while fundamental_hz * order < nyquist:
+        centre = int(round(fundamental_hz * order / bin_hz))
+        mask[max(0, centre - 2):centre + 3] = False
+        order += 1
+    alias_power = float((magnitudes[mask] ** 2).sum())
+    alias_db = round(db(math.sqrt(alias_power) / base), 3)
+
+    sidebands = None
+    if modulator_hz:
+        sidebands = {}
+        for index in (1, 2, 3):
+            for sign, name in ((1, "upper"), (-1, "lower")):
+                hz = fundamental_hz + sign * index * modulator_hz
+                if 0 < hz < nyquist:
+                    sidebands["%s%d" % (name, index)] = round(
+                        db(peak_near(hz) / base), 3)
+
+    block_lines = None
+    if block_frames:
+        block_rate = render.rate / float(block_frames)
+        block_lines = {}
+        for index in (1, 2, 3):
+            for sign, name in ((1, "upper"), (-1, "lower")):
+                hz = fundamental_hz + sign * index * block_rate
+                if 0 < hz < nyquist:
+                    block_lines["%s%d" % (name, index)] = round(
+                        db(peak_near(hz) / base), 3)
+        block_lines["block_rate_hz"] = round(block_rate, 4)
+
+    values = {
+        "fundamental_hz": fundamental_hz,
+        "fundamental_dbfs": round(db(base), 3),
+        "harmonic_db": harmonic_db,
+        "thd_db": thd_db,
+        "harmonic_count": int(harmonics),
+        "alias_floor_db": alias_db,
+        "sideband_db": sidebands,
+        "block_rate_db": block_lines,
+        "window": window_name,
+        "transform_length": length,
+        "bin_hz": round(bin_hz, 4),
+    }
+    criteria = dict(bars or {})
+    red = []
+    for name, bar in (bars or {}).items():
+        if name.startswith("h") and name[1:].isdigit():
+            measured = harmonic_db.get(name)
+            if measured is not None and measured > bar:
+                red.append("%s at %.1f dB re fundamental, above its %.1f dB "
+                           "bar" % (name, measured, bar))
+        elif name == "thd_db" and thd_db > bar:
+            red.append("THD (h2..h%d) at %.1f dB, above its %.1f dB bar"
+                       % (harmonics, thd_db, bar))
+        elif name == "alias_floor_db" and alias_db > bar:
+            red.append("alias floor at %.1f dB, above its %.1f dB bar"
+                       % (alias_db, bar))
+    return _result("SPECTRUM", "dB re fundamental", values, render.axes(),
+                   criteria, red)
+
+
+def curve(wet_by_level_db, dry_by_level_db=None, *, detector="rms",
+          settled_ratio=0.5, channel=0, knee_grid=None, expected=None):
+    """CURVE - the static level-in/level-out law.
+
+    `wet_by_level_db` is {input level dBFS: Render}. The reading per step is
+    taken over the settled portion, and the curve is fitted to the standard
+    soft-knee law
+
+        out = in + makeup - (1 - 1/ratio) * f(in; threshold, knee)
+
+    where f is zero below the knee, quadratic through it and linear above.
+    For a fixed (threshold, knee) that is linear in (makeup, 1 - 1/ratio), so
+    the fit is a grid over the two shape parameters with a least-squares
+    solve inside it, and the residual is exported beside every fitted number:
+    a knee point that moves by less than its own residual is not a finding.
+    """
+    levels = sorted(wet_by_level_db)
+    if len(levels) < 4:
+        raise ValueError("CURVE needs at least four steps; %d given"
+                         % len(levels))
+    points = []
+    for level_db in levels:
+        render = wet_by_level_db[level_db]
+        require_signal(render, "curve render at %g dBFS" % level_db)
+        start = int(render.frames * settled_ratio)
+        x = render.float[start:, channel]
+        out_db = peak_db(x) if detector == "peak" else rms_db(x)
+        if dry_by_level_db is not None:
+            dry = dry_by_level_db[level_db]
+            dry_x = dry.float[int(dry.frames * settled_ratio):, channel]
+            in_db = peak_db(dry_x) if detector == "peak" else rms_db(dry_x)
+        else:
+            in_db = float(level_db)
+        points.append((in_db, out_db))
+    xs = np.array([p[0] for p in points])
+    ys = np.array([p[1] for p in points])
+
+    best = None
+    thresholds = np.arange(xs.min(), xs.max() + 0.25, 0.25)
+    knees = np.arange(0.0, 30.5, 0.5) if knee_grid is None \
+        else np.asarray(knee_grid, dtype=np.float64)
+    for threshold in thresholds:
+        for knee in knees:
+            f = _knee_shape(xs, threshold, knee)
+            design = np.stack([np.ones_like(xs), -f], axis=1)
+            solution, *_ = np.linalg.lstsq(design, ys - xs, rcond=None)
+            makeup, c = float(solution[0]), float(solution[1])
+            residual = float(np.sqrt(((design @ solution) - (ys - xs)) ** 2
+                                     ).mean())
+            if best is None or residual < best[0]:
+                best = (residual, threshold, knee, makeup, c)
+    residual, threshold, knee, makeup, c = best
+    ratio = float("inf") if c >= 1.0 else 1.0 / (1.0 - c)
+
+    slopes = []
+    for index in range(len(xs) - 1):
+        rise = ys[index + 1] - ys[index]
+        run = xs[index + 1] - xs[index]
+        slopes.append({"in_db": round(float(xs[index]), 3),
+                       "slope": round(float(rise / run), 4) if run else None})
+    values = {
+        "points": [{"in_db": round(float(a), 3), "out_db": round(float(b), 3),
+                    "gain_db": round(float(b - a), 3)} for a, b in points],
+        "local_slope": slopes,
+        "threshold_db": round(float(threshold), 3),
+        "knee_db": round(float(knee), 3),
+        "ratio": round(ratio, 4) if math.isfinite(ratio) else None,
+        "makeup_db": round(makeup, 3),
+        "fit_residual_db": round(residual, 4),
+        "detector": detector,
+    }
+    criteria = dict(expected or {})
+    red = []
+    for name, key in (("threshold_db", "threshold_db"),
+                      ("knee_db", "knee_db"), ("ratio", "ratio"),
+                      ("makeup_db", "makeup_db")):
+        if expected and name in expected:
+            want, tol = expected[name]
+            got = values[key]
+            if got is None or abs(got - want) > tol:
+                red.append("%s fitted %s against an expected %s (bar %s, fit "
+                           "residual %.3f dB)"
+                           % (name, got, want, tol, residual))
+    return _result("CURVE", "dB", values,
+                   wet_by_level_db[levels[0]].axes(), criteria, red)
+
+
+def _knee_shape(x, threshold, knee):
+    """f(x) in the soft-knee law: 0 below the knee, quadratic through it,
+    (x - threshold) above."""
+    x = np.asarray(x, dtype=np.float64)
+    if knee <= 0:
+        return np.maximum(x - threshold, 0.0)
+    low = threshold - knee / 2.0
+    high = threshold + knee / 2.0
+    out = np.zeros_like(x)
+    inside = (x > low) & (x <= high)
+    out[inside] = (x[inside] - low) ** 2 / (2.0 * knee)
+    out[x > high] = x[x > high] - threshold
+    return out
+
+
+def gaintrace(wet_render, dry_render, *, hop_ms=1.0, channel=0,
+              release_from_ms=None, attack_from_ms=None, floor_db=-90.0,
+              expected=None):
+    """GAINTRACE - gain reduction against time.
+
+    Per-hop ratio of the output envelope to the input envelope, in dB. The
+    named times are exported as t50, t63 *and* t95, because the rows this
+    serves are not all stated in the same one - and because a fault that
+    collapses a two-stage release to its fast stage moves t95 while leaving
+    t63 where it was, which is a fault that fires on part of the readout and
+    not all of it.
+
+    `release_from_ms` is when the input steps down and `attack_from_ms` when
+    it steps up; the probe knows both, so they are stated rather than
+    guessed from the trace.
+    """
+    require_signal(wet_render, "gaintrace wet render")
+    require_signal(dry_render, "gaintrace dry render")
+    wet_env, win = envelope(wet_render.float[:, channel], wet_render.rate,
+                            hop_ms)
+    dry_env, _ = envelope(dry_render.float[:, channel], dry_render.rate,
+                          hop_ms)
+    count = min(len(wet_env), len(dry_env))
+    wet_env, dry_env = wet_env[:count], dry_env[:count]
+    floor = 10 ** (floor_db / 20.0)
+    live = dry_env > floor
+    trace = np.full(count, np.nan)
+    trace[live] = 20.0 * np.log10(np.maximum(wet_env[live], 1e-12)
+                                  / dry_env[live])
+    times_ms = np.arange(count) * (win * 1000.0 / wet_render.rate)
+
+    values = {
+        "hop_ms": hop_ms,
+        "hop_frames": int(win),
+        "trace_ms": [round(float(t), 3) for t in times_ms],
+        "trace_gr_db": [None if math.isnan(v) else round(float(v), 3)
+                        for v in trace],
+    }
+
+    def window_after(start_ms):
+        index = int(np.searchsorted(times_ms, start_ms))
+        return index
+
+    if attack_from_ms is not None:
+        start = window_after(attack_from_ms)
+        segment = trace[start:]
+        segment = segment[~np.isnan(segment)]
+        if segment.size:
+            depth = float(np.nanmin(segment))
+            values["attack_gr_depth_db"] = round(depth, 3)
+            values["attack_t10_90_ms"] = _transition_ms(
+                segment, times_ms[start:start + segment.size],
+                segment[0], depth, (0.1, 0.9))
+    if release_from_ms is not None:
+        start = window_after(release_from_ms)
+        segment = trace[start:]
+        segment = segment[~np.isnan(segment)]
+        if segment.size:
+            begin = float(segment[0])
+            end = float(segment[-1])
+            times = times_ms[start:start + segment.size]
+            values["release_from_gr_db"] = round(begin, 3)
+            values["release_to_gr_db"] = round(end, 3)
+            for fraction, name in ((0.5, "t50_ms"), (0.63, "t63_ms"),
+                                   (0.95, "t95_ms")):
+                values["release_" + name] = _fraction_ms(
+                    segment, times, begin, end, fraction)
+    steady = trace[~np.isnan(trace)]
+    values["settled_gr_db"] = round(float(steady[-1]), 3) if steady.size \
+        else None
+
+    criteria = dict(expected or {})
+    red = []
+    for name, (want, tol) in (expected or {}).items():
+        got = values.get(name)
+        if got is None:
+            red.append("%s was not measurable on this trace" % name)
+        elif abs(got - want) > tol:
+            red.append("%s measured %.2f against an expected %.2f (bar %.2f)"
+                       % (name, got, want, tol))
+    return _result("GAINTRACE", "dB, ms", values, wet_render.axes(),
+                   criteria, red)
+
+
+def _fraction_ms(segment, times, begin, end, fraction):
+    """Time from the start of `segment` at which it has covered `fraction`
+    of the way from `begin` to `end`, linearly interpolated between hops."""
+    span = end - begin
+    if span == 0:
+        return None
+    target = begin + fraction * span
+    for index in range(1, len(segment)):
+        a, b = segment[index - 1], segment[index]
+        if (a - target) * (b - target) <= 0 and a != b:
+            weight = (target - a) / (b - a)
+            return round(float(times[index - 1] - times[0]
+                               + weight * (times[index] - times[index - 1])),
+                         3)
+    return None
+
+
+def _transition_ms(segment, times, begin, end, fractions):
+    low = _fraction_ms(segment, times, begin, end, fractions[0])
+    high = _fraction_ms(segment, times, begin, end, fractions[1])
+    if low is None or high is None:
+        return None
+    return round(high - low, 3)
+
+
+def gaintrace_level_search(render_pair, target_gr_db, *, low_db=-60.0,
+                           high_db=0.0, tolerance_db=0.1, iterations=24,
+                           **trace_options):
+    """The level search GAINTRACE needs because many rows are stated at a
+    gain-reduction depth rather than at an input level - "after a 10 s tone
+    holding 10 dB of GR stops", "at 3, 10 and 20 dB of GR".
+
+    `render_pair(level_db)` returns (wet, dry) renders at that input level.
+    Bisects until the settled GR is within `tolerance_db` of the target and
+    exports the level it found beside the trace. Without it those rows are
+    not measurable at all.
+    """
+    found = None
+    for _ in range(iterations):
+        middle = 0.5 * (low_db + high_db)
+        wet, dry = render_pair(middle)
+        result = gaintrace(wet, dry, **trace_options)
+        settled = result["values"]["settled_gr_db"]
+        found = (middle, settled, result)
+        if settled is None:
+            break
+        if abs(abs(settled) - target_gr_db) <= tolerance_db:
+            break
+        if abs(settled) < target_gr_db:
+            low_db = middle
+        else:
+            high_db = middle
+    level_db, settled, result = found
+    result["values"]["level_search"] = {
+        "target_gr_db": target_gr_db,
+        "found_input_db": round(level_db, 4),
+        "settled_gr_db": settled,
+        "tolerance_db": tolerance_db,
+    }
+    return result
+
+
+# --------------------------------------------------------------------------
+# Measurements 11-20, appended to the ten above. Same contract: a `Render`
+# (or two) in, a `_result` out, `red` naming the readout that fired.
+#
+# Two refusals live here that the first ten did not need. `require_signal`
+# above covers the silence rule; the ones below are the same *shape* of bug
+# arriving by a different door - a null with nothing to defeat, a cost figure
+# for a class that idled, a round trip with no wire in the loop. Each returns
+# a number that reads as an excellent result, which is why each raises
+# instead.
+# --------------------------------------------------------------------------
+
+class MeasurementRefused(AssertionError):
+    """A measurement declined to return a number at all.
+
+    Distinct from `SilentRenderError`, which is the silence rule. This is
+    every other way a measurement can be handed material it cannot measure
+    but *could* put a plausible number on: two silences to null against, a
+    muted or idling subject to time, a capture with nothing of the emitted
+    signal in it. A refusal is loud; a plausible number is not.
+    """
+
+
+def arrivals(x, rate, *, threshold_db=-40.0, min_gap_ms=1.0, window=8):
+    """Every arrival in a render, each with a sub-sample position.
+
+    `onset()` above finds the first one, which is what WIRE and CLICK need.
+    TAPS, DECAY and STEREO need all of them and need them ordered, so this
+    walks the short-window energy envelope for local maxima above a floor
+    stated re the render's own peak, separated by at least `min_gap_ms`, and
+    refines each by the same parabola `onset()` uses.
+
+    The smoothing window's own group delay, `(window - 1) / 2` samples, is
+    taken back off every position. It has to be: CLICK reads a *difference*
+    of two onsets and a constant bias cancels there, but TAPS reads an
+    absolute delay time against the value a knob was set to, and at 48 kHz
+    an uncompensated 8-sample window puts every arrival 0.073 ms late -
+    which is a seventh of the tolerance a delay-time row is judged at.
+    """
+    x = np.asarray(x, dtype=np.float64)
+    if x.size == 0:
+        return []
+    kernel = np.ones(max(1, window)) / max(1, window)
+    energy = np.sqrt(np.convolve(x * x, kernel, mode="same"))
+    if energy.max() <= 0.0:
+        return []
+    floor = energy.max() * 10.0 ** (threshold_db / 20.0)
+    gap = max(1, int(round(rate * min_gap_ms / 1000.0)))
+    found, i = [], 1
+    while i < len(energy) - 1:
+        if (energy[i] >= floor and energy[i] >= energy[i - 1]
+                and energy[i] > energy[i + 1]):
+            fine = _parabola(energy, i) - 0.5 * (max(1, window) - 1)
+            found.append({"sample": int(i), "fine_sample": fine,
+                          "ms": 1000.0 * fine / rate,
+                          "level_db": db(energy[i])})
+            i += gap
+        else:
+            i += 1
+    return found
+
+
+def _parabola(values, index):
+    """Sub-sample peak by a parabola through three points."""
+    if index <= 0 or index >= len(values) - 1:
+        return float(index)
+    a, b, c = float(values[index - 1]), float(values[index]), \
+        float(values[index + 1])
+    denominator = a - 2.0 * b + c
+    if denominator == 0.0:
+        return float(index)
+    return float(index) + 0.5 * (a - c) / denominator
+
+
+def _lstsq(design, target):
+    coefficients, *_ = np.linalg.lstsq(design, target, rcond=None)
+    return coefficients
+
+
+# --------------------------------------------------------------------------
+# 11 ENVELOPE
+# --------------------------------------------------------------------------
+
+def envelope_record_seconds(rate_hz, tolerance_fraction):
+    """How long a record ENVELOPE needs to resolve `rate_hz` to
+    +/- `tolerance_fraction`, and the reason the rule exists.
+
+    A fit over T seconds separates components about 1/T apart, so asking for
+    half the tolerance gives T = 2 / (rate * tolerance). That reproduces the
+    spec's worked figure - 2 / (0.667 * 0.025) = 120 s to hold 0.667 Hz to
+    +/- 2.5 %. A 20 s record at that rate resolves 0.05 Hz, which is 7.5 % of
+    the rate: it passes anything, which is why the record length is part of
+    the measurement and not a convenience of the caller's.
+    """
+    if rate_hz <= 0 or tolerance_fraction <= 0:
+        raise ValueError("rate and tolerance must be positive")
+    return 2.0 / (float(rate_hz) * float(tolerance_fraction))
+
+
+def _track(x, rate, hop_ms, how):
+    """The envelope ENVELOPE reads. `peak` is the spec's word; `rms` is
+    part B's `envelope()` primitive, which differs only by a constant for a
+    carrier of at least one cycle per hop and so leaves every ratio here
+    unchanged."""
+    if how == "rms":
+        env, win = envelope(x, rate, hop_ms)
+        return env, rate / float(win)
+    x = np.asarray(x, dtype=np.float64)
+    hop = max(1, int(round(rate * hop_ms / 1000.0)))
+    usable = len(x) - len(x) % hop
+    return np.abs(x[:usable]).reshape(-1, hop).max(axis=1), rate / float(hop)
+
+
+def _modulation_rate(env, env_rate, minimum_hz=0.05):
+    signal = env - env.mean()
+    spec = np.abs(np.fft.rfft(signal * np.hanning(len(signal))))
+    freqs = np.fft.rfftfreq(len(signal), 1.0 / env_rate)
+    low = int(np.searchsorted(freqs, minimum_hz))
+    if low >= len(spec) - 1:
+        raise MeasurementRefused(
+            "ENVELOPE: %.3f s of envelope cannot carry a modulation rate"
+            % (len(env) / env_rate))
+    peak = low + int(np.argmax(spec[low:]))
+    return _parabola(spec, peak) * env_rate / len(signal)
+
+
+def envelope_shape(render, *, rate_hint=None, harmonics=8, hop_ms=1.0,
+                   track="peak", channel=0, rate_tolerance=None,
+                   expected=None, tolerances=None, max_harmonic_db=None):
+    """ENVELOPE - the amplitude envelope of a carrier tone, and everything
+    read off it: depth, duty, steepest slopes, harmonics of the modulation
+    rate, the extracted rate itself, and inter-channel phase with its sign.
+
+    Named `envelope_shape` because `envelope()` above is the per-hop RMS
+    primitive this calls; the measurement is ENVELOPE.
+
+    **Depth is the fitted fundamental, never max-minus-min**, which reads the
+    noise floor. Duty and the slope ratio are read off the full
+    reconstruction - fundamental plus `harmonics` - because that is where a
+    shaped LFO differs from a sine at the same rate and depth, and that
+    difference is this measurement's planted fault: replace the shaped LFO
+    with a pure sine at the same rate and depth, and rate and depth stay
+    green while duty, slope ratio and the rate harmonics all go red. The
+    control and the fault come out of one run.
+
+    `expected` is compared **two-sided**, the rate harmonics included: a
+    trait that names a shaped LFO is missed as badly by an LFO with no
+    harmonics as by one with too many, and a one-sided "harmonics below X"
+    check is exactly what a pure sine walks through. `max_harmonic_db` is
+    the one-sided form, for a trait that only asks for a clean modulator.
+
+    `rate_tolerance` turns the record-length rule into a reported fact rather
+    than a convention: a record too short to resolve the rate to that
+    tolerance is red on `record_seconds`, whatever the rate readout says.
+    """
+    require_signal(render, "envelope render")
+    signal = render.float
+    per_channel = []
+    for index in range(render.channels):
+        env, env_rate = _track(signal[:, index], render.rate, hop_ms, track)
+        rate_hz = (float(rate_hint) if rate_hint
+                   else _modulation_rate(env, env_rate))
+        times = np.arange(len(env)) / env_rate
+        columns = [np.ones(len(env))]
+        for order in range(1, harmonics + 1):
+            angle = 2.0 * math.pi * rate_hz * order * times
+            columns.append(np.cos(angle))
+            columns.append(np.sin(angle))
+        design = np.vstack(columns).T
+        coefficients = _lstsq(design, env)
+        shape = design @ coefficients
+        offset = float(coefficients[0])
+        amplitude, phase = [], []
+        for order in range(1, harmonics + 1):
+            cosine = float(coefficients[2 * order - 1])
+            sine = float(coefficients[2 * order])
+            amplitude.append(math.hypot(cosine, sine))
+            phase.append(math.degrees(math.atan2(-sine, cosine)))
+        fundamental = amplitude[0]
+        depth_db = (db(offset + fundamental) - db(offset - fundamental)
+                    if offset > fundamental else float("inf"))
+        period = max(2, int(round(env_rate / rate_hz)))
+        cycle = shape[:period]
+        middle = 0.5 * (float(cycle.max()) + float(cycle.min()))
+        slope = np.diff(cycle)
+        rising = float(slope.max()) if slope.size else 0.0
+        falling = float(-slope.min()) if slope.size else 0.0
+        per_channel.append({
+            "channel": index,
+            "rate_hz": round(rate_hz, 6),
+            "depth_db": round(depth_db, 4),
+            "duty_pct": round(100.0 * float(np.mean(cycle > middle)), 3),
+            "slope_ratio": (round(rising / falling, 4) if falling > 0
+                            else float("inf")),
+            "harmonic_db": [round(db(value) - db(fundamental), 3)
+                            for value in amplitude[1:]],
+            "phase_deg": round(phase[0], 3),
+            "fit_residual": round(float(np.sqrt(
+                np.mean((env - shape) ** 2))), 6),
+            "envelope_rate_hz": env_rate,
+        })
+
+    read = per_channel[channel]
+    seconds = render.seconds()
+    required = (envelope_record_seconds(read["rate_hz"], rate_tolerance)
+                if rate_tolerance else None)
+    values = {
+        "per_channel": per_channel,
+        "track": track,
+        "hop_ms": hop_ms,
+        "harmonics_fitted": harmonics,
+        "record_seconds": round(seconds, 4),
+        "rate_resolution_hz": round(1.0 / seconds, 6) if seconds else None,
+        "required_seconds": (round(required, 3) if required else None),
+    }
+    for key in ("rate_hz", "depth_db", "duty_pct", "slope_ratio",
+                "harmonic_db", "phase_deg", "fit_residual"):
+        values[key] = read[key]
+    if render.channels == 2:
+        difference = (per_channel[0]["phase_deg"]
+                      - per_channel[1]["phase_deg"])
+        values["phase_l_minus_r_deg"] = round(
+            (difference + 180.0) % 360.0 - 180.0, 3)
+
+    bars = {"rate_hz": 0.05, "depth_db": 0.5, "duty_pct": 3.0,
+            "slope_ratio": 0.25, "harmonic_db": 3.0}
+    bars.update(tolerances or {})
+    criteria = {"tolerances": bars, "rate_tolerance": rate_tolerance,
+                "record_rule": "T >= 2 / (rate * tolerance)"}
+    red, failed = [], []
+    if required is not None and seconds < required:
+        failed.append("record_seconds")
+        red.append("record_seconds: %.1f s of record cannot hold %.4f Hz to "
+                   "+/-%.1f %%; the rule asks for %.1f s"
+                   % (seconds, read["rate_hz"], 100.0 * rate_tolerance,
+                      required))
+    strongest = (max(values["harmonic_db"][:2]) if values["harmonic_db"]
+                 else float("-inf"))
+    values["strongest_rate_harmonic_db"] = strongest
+    for key, want in (expected or {}).items():
+        got = strongest if key == "harmonic_db" else values[key]
+        if abs(float(got) - float(want)) > bars.get(key, 0.0):
+            failed.append(key)
+            red.append("%s: %s against an expected %s (bar %s)"
+                       % (key, got, want, bars.get(key)))
+    if max_harmonic_db is not None and strongest > float(max_harmonic_db):
+        failed.append("harmonic_db")
+        red.append("harmonic_db: strongest rate harmonic %.2f dB re the "
+                   "fundamental, above the %.2f dB the trait names"
+                   % (strongest, float(max_harmonic_db)))
+    values["failed_readouts"] = failed
+    return _result("ENVELOPE", "mixed", values, render.axes(), criteria, red)
+
+
+# --------------------------------------------------------------------------
+# 12 IFREQ
+# --------------------------------------------------------------------------
+
+def analytic(x):
+    """The analytic signal, by FFT. No scipy: the analysis is offline."""
+    x = np.asarray(x, dtype=np.float64)
+    count = len(x)
+    weights = np.zeros(count)
+    if count % 2 == 0:
+        weights[0] = weights[count // 2] = 1.0
+        weights[1:count // 2] = 2.0
+    else:
+        weights[0] = 1.0
+        weights[1:(count + 1) // 2] = 2.0
+    return np.fft.ifft(np.fft.fft(x) * weights)
+
+
+def instantaneous_hz(x, rate):
+    """Unwrapped phase derivative of the analytic signal, in Hz."""
+    return np.gradient(np.unwrap(np.angle(analytic(x)))) * rate \
+        / (2.0 * math.pi)
+
+
+def ifreq(render, rate_hz, *, carrier_hz=None, channel=0,
+          splice_period_samples=None, guard_fraction=0.25,
+          edge_fraction=0.05, expected_cents=None, tolerance_cents=5.0,
+          residual_bar_cents=25.0):
+    """IFREQ - instantaneous frequency from the analytic signal: doppler,
+    wow and flutter, vibrato, pitch-shift ratio, per-repeat pitch.
+
+    `splice_period_samples` applies the **splice-period correction**, and it
+    is not optional where a granular shifter is in the path: the kernel's
+    periodic splice leaves a phase discontinuity that is not a pitch
+    deviation, and uncorrected it lands in the residual. That is this
+    measurement's planted fault, and it is the unusual kind - omit the
+    correction and a **correct** build reads red. The control that must pass
+    beside it is the same uncorrected reading on a path with no shifter in
+    it, which stays green. (The obvious fault - hold the modulation depth at
+    zero while the class still reports it - is an inert modulator: it
+    flattens every readout at once and proves only that the measurement
+    notices nothing happening.)
+    """
+    require_signal(render, "ifreq render")
+    signal = render.float[:, channel]
+    frequency = instantaneous_hz(signal, render.rate)
+
+    edge = int(len(frequency) * edge_fraction)
+    mask = np.zeros(len(frequency), dtype=bool)
+    mask[edge:len(frequency) - edge] = True
+    corrected = splice_period_samples is not None
+    if corrected:
+        period = int(round(splice_period_samples))
+        guard = max(1, int(round(period * guard_fraction)))
+        for boundary in range(0, len(frequency), period):
+            mask[max(0, boundary - guard):boundary + guard + 1] = False
+    if int(mask.sum()) < 16:
+        raise MeasurementRefused(
+            "IFREQ: the splice correction left %d samples to fit"
+            % int(mask.sum()))
+
+    times = np.arange(len(frequency)) / render.rate
+    angle = 2.0 * math.pi * rate_hz * times[mask]
+    design = np.vstack([np.ones(int(mask.sum())), np.cos(angle),
+                        np.sin(angle)]).T
+    coefficients = _lstsq(design, frequency[mask])
+    centre = float(coefficients[0])
+    deviation_hz = math.hypot(float(coefficients[1]), float(coefficients[2]))
+    leftover = frequency[mask] - design @ coefficients
+    residual_hz = float(np.sqrt(np.mean(leftover ** 2)))
+
+    reference = float(carrier_hz) if carrier_hz else centre
+    to_cents = (lambda hz: 1200.0 * math.log2((reference + hz) / reference)
+                if reference > 0 else 0.0)
+    second = 2.0 * math.pi * 2.0 * rate_hz * times[mask]
+    second_fit = _lstsq(np.vstack([np.cos(second), np.sin(second)]).T,
+                        leftover)
+    second_hz = math.hypot(float(second_fit[0]), float(second_fit[1]))
+
+    values = {
+        "centre_hz": round(centre, 4),
+        "deviation_hz": round(deviation_hz, 5),
+        "deviation_cents": round(to_cents(deviation_hz), 4),
+        "residual_rms_hz": round(residual_hz, 5),
+        "residual_rms_cents": round(to_cents(residual_hz), 4),
+        "second_harmonic_db": round(db(second_hz) - db(deviation_hz), 2)
+        if deviation_hz > 0 else float("inf"),
+        "splice_corrected": corrected,
+        "splice_period_samples": splice_period_samples,
+        "fitted_samples": int(mask.sum()),
+        "modulation_rate_hz": rate_hz,
+    }
+    criteria = {"tolerance_cents": tolerance_cents,
+                "residual_bar_cents": residual_bar_cents,
+                "expected_cents": expected_cents}
+    red, failed = [], []
+    if values["residual_rms_cents"] > residual_bar_cents:
+        failed.append("residual_rms_cents")
+        red.append("residual_rms_cents: %.2f cents left after the fit, above "
+                   "the %.2f cent bar%s"
+                   % (values["residual_rms_cents"], residual_bar_cents,
+                      "" if corrected else
+                      " - is there a granular shifter in this path with no "
+                      "splice-period correction applied?"))
+    if expected_cents is not None:
+        error = abs(values["deviation_cents"] - float(expected_cents))
+        if error > tolerance_cents:
+            failed.append("deviation_cents")
+            red.append("deviation_cents: %.2f against an expected %.2f "
+                       "(%.2f cents out, bar %.2f)"
+                       % (values["deviation_cents"], float(expected_cents),
+                          error, tolerance_cents))
+    values["failed_readouts"] = failed
+    return _result("IFREQ", "cents", values, render.axes(), criteria, red)
+
+
+# --------------------------------------------------------------------------
+# LINE - a partial's level in a narrow band, against the source's
+# --------------------------------------------------------------------------
+
+def _band_power(x, rate, hz, half_width_hz):
+    """Power of `x` in the bins within `half_width_hz` of `hz`, Hann
+    windowed over the whole of it."""
+    x = np.asarray(x, dtype=np.float64)
+    seg = x * np.hanning(len(x))
+    spec = np.abs(np.fft.rfft(seg)) ** 2
+    freqs = np.fft.rfftfreq(len(x), 1.0 / rate)
+    keep = np.abs(freqs - hz) <= half_width_hz
+    if not keep.any():
+        keep[int(np.argmin(np.abs(freqs - hz)))] = True
+    return float(spec[keep].sum())
+
+
+def line_level(render, source_render, *, source_hz, target_hz, band_cents=35.0,
+         channel=0, expected_db=None, tolerance_db=3.0, floor_db=-30.0,
+         share_floor_db=None):
+    """LINE - the level of the target partial against the source's, read in
+    a narrow band around the frequency it is expected at.
+
+    The energy-weighted mean of a pitch trait cannot see a splice that
+    cancels the target line: grains that alternate in sign take the energy
+    off the line and put it on two sidebands, one above it and one below,
+    and their mean is still the target. LINE reads the line itself: the
+    power in `band_cents` either side of `target_hz` (never less than three
+    bins, a Hann window's main lobe) in `render`, over the power in the same
+    width around `source_hz` in `source_render`, in dB. Both renders are the
+    same length and use the same window, so the ratio is the lines' own.
+
+    `expected_db` names the level the line should stand at and
+    `tolerance_db` how far it may be from it; with none the line has to be
+    no more than `-floor_db` dB under the source's, which a cancelled line
+    never is. `share_db` is the line's share of everything within half an
+    octave of the target, in dB (0 for a pure tone, -38 for a cancelled
+    line): it does not depend on how loud the copy is, so a class whose copy
+    level moves with a hall's size can still be held to `share_floor_db`,
+    which red-lines energy that sits beside the line.
+    """
+    require_signal(render, "line render")
+    require_signal(source_render, "line source")
+    a = render.float[:, channel]
+    b = source_render.float[:, channel]
+    count = min(len(a), len(b))
+    a = a[:count]
+    b = b[:count]
+    bin_hz = render.rate / float(count)
+
+    def half(hz):
+        return max(hz * (2.0 ** (band_cents / 1200.0) - 1.0), 3.0 * bin_hz)
+
+    target = _band_power(a, render.rate, target_hz, half(target_hz))
+    source = _band_power(b, render.rate, source_hz, half(source_hz))
+    level = 10.0 * math.log10(max(target, 1e-30) / max(source, 1e-30))
+    # Where the energy went, for a reader of a red: the loudest bin within
+    # half an octave of the target, and its distance from it.
+    spec = np.abs(np.fft.rfft(a * np.hanning(count))) ** 2
+    freqs = np.fft.rfftfreq(count, 1.0 / render.rate)
+    near = np.abs(np.log2(np.maximum(freqs, 1e-9) / target_hz)) <= 0.5
+    peak_hz = float(freqs[near][int(np.argmax(spec[near]))])
+    share = 10.0 * math.log10(max(target, 1e-30)
+                              / max(float(spec[near].sum()), 1e-30))
+    values = {
+        "level_db": round(level, 2),
+        "share_db": round(share, 2),
+        "peak_hz": round(peak_hz, 2),
+        "peak_offset_cents": round(
+            1200.0 * math.log2(peak_hz / target_hz), 1) if peak_hz > 0
+        else None,
+        "band_half_width_hz": round(half(target_hz), 2),
+        "source_hz": source_hz,
+        "target_hz": target_hz,
+    }
+    criteria = {"expected_db": expected_db, "tolerance_db": tolerance_db,
+                "floor_db": floor_db, "band_cents": band_cents,
+                "share_floor_db": share_floor_db}
+    red, failed = [], []
+    if share_floor_db is not None and share < share_floor_db:
+        failed.append("share_db")
+        red.append("share_db: the line at %.1f Hz holds %.2f dB of what is "
+                   "within half an octave of it, under the %.1f dB floor "
+                   "(the loudest bin near it is at %.1f Hz): the energy "
+                   "sits beside the line" % (target_hz, share,
+                                             share_floor_db, peak_hz))
+    if expected_db is not None:
+        if abs(level - expected_db) > tolerance_db:
+            failed.append("level_db")
+            red.append("level_db: the line at %.1f Hz stands %.2f dB against "
+                       "the source's, expected %.2f within %.2f (the loudest "
+                       "bin near it is at %.1f Hz)"
+                       % (target_hz, level, expected_db, tolerance_db,
+                          peak_hz))
+    elif level < floor_db:
+        failed.append("level_db")
+        red.append("level_db: the line at %.1f Hz is %.2f dB against the "
+                   "source's, under the %.1f dB floor (the loudest bin near "
+                   "it is at %.1f Hz): a splice that cancels the line, or "
+                   "a shift that missed it" % (target_hz, level, floor_db,
+                                               peak_hz))
+    values["failed_readouts"] = failed
+    return _result("LINE", "dB", values, render.axes(), criteria, red)
+
+
+# --------------------------------------------------------------------------
+# 13 TAPS
+# --------------------------------------------------------------------------
+
+def comb_spacing_hz(x, rate, *, pad_seconds=2.0, minimum_hz=5.0):
+    """Comb spacing fitted from a zero-padded magnitude spectrum.
+
+    A comb's magnitude spectrum is periodic in frequency and its period is
+    the spacing, so the read is an autocorrelation along the frequency axis.
+    The padding is the resolution and is stated: 20 s gives 0.05 Hz bins,
+    which is the spec's setting; the default here is 2 s because that is what
+    the battery needs to separate the settings it compares.
+    """
+    x = np.asarray(x, dtype=np.float64)
+    size = max(int(pad_seconds * rate), len(x))
+    magnitude = np.abs(np.fft.rfft(x, n=size))
+    magnitude = magnitude - magnitude.mean()
+    correlation = np.correlate(magnitude, magnitude, mode="full")
+    correlation = correlation[len(correlation) // 2:]
+    bin_hz = rate / float(size)
+    low = max(1, int(minimum_hz / bin_hz))
+    if low >= len(correlation) - 1:
+        raise MeasurementRefused("TAPS: not enough spectrum for a spacing")
+    peak = low + int(np.argmax(correlation[low:]))
+    return _parabola(correlation, peak) * bin_hz
+
+
+def taps(render, *, expected_ms=None, tolerance_ms=0.5, threshold_db=-40.0,
+         min_gap_ms=1.0, channel=0, spacing=False, pad_seconds=2.0,
+         expected_spacing_ms=None):
+    """TAPS - arrival structure: delay time against the mapped value,
+    per-repeat arrival and level, inter-channel arrival difference, comb
+    spacing, splice period.
+
+    **The planted fault here is a measured one, not a hypothetical, and it is
+    the model for the whole kit.** Build the line on
+    `audiodelays.Echo(freq_shift=False)` at a 2048-byte buffer:
+    the 1, 5 and 14 ms settings all deliver 21.33 ms and must go red, while
+    30 and 40 ms stay green. The load-bearing detail is the flag - with the
+    node's default `freq_shift=True` there is no floor, every setting lands
+    within 0.02 ms, and a fault planted that way does not fire at all. A
+    checker that cannot fail is not a checker.
+    """
+    require_signal(render, "taps render")
+    per_channel = []
+    for index in range(render.channels):
+        per_channel.append({
+            "channel": index,
+            "taps": arrivals(render.float[:, index], render.rate,
+                             threshold_db=threshold_db,
+                             min_gap_ms=min_gap_ms),
+        })
+    found = per_channel[channel]["taps"]
+    if not found:
+        raise MeasurementRefused(
+            "TAPS: no arrival above %.1f dB re the render's own peak"
+            % threshold_db)
+
+    values = {
+        "first_tap_ms": round(found[0]["ms"], 5),
+        "tap_count": len(found),
+        "tap_ms": [round(tap["ms"], 5) for tap in found],
+        "tap_level_db": [round(tap["level_db"], 3) for tap in found],
+        "expected_ms": expected_ms,
+        "per_channel": [
+            {"channel": entry["channel"],
+             "tap_ms": [round(tap["ms"], 5) for tap in entry["taps"]]}
+            for entry in per_channel],
+    }
+    if len(found) > 1:
+        gaps = np.diff([tap["ms"] for tap in found])
+        values["repeat_spacing_ms"] = round(float(np.mean(gaps)), 5)
+        values["repeat_spacing_spread_ms"] = round(float(np.ptp(gaps)), 5)
+    if render.channels == 2 and per_channel[0]["taps"] \
+            and per_channel[1]["taps"]:
+        values["inter_channel_ms"] = round(
+            per_channel[0]["taps"][0]["ms"] - per_channel[1]["taps"][0]["ms"],
+            5)
+    if spacing:
+        values["comb_spacing_hz"] = round(comb_spacing_hz(
+            render.float[:, channel], render.rate,
+            pad_seconds=pad_seconds), 4)
+
+    criteria = {"tolerance_ms": tolerance_ms, "threshold_db": threshold_db,
+                "expected_ms": expected_ms,
+                "expected_spacing_ms": expected_spacing_ms}
+    red, failed = [], []
+    if expected_ms is not None:
+        error = values["first_tap_ms"] - float(expected_ms)
+        values["error_ms"] = round(error, 5)
+        if abs(error) > tolerance_ms:
+            failed.append("first_tap_ms")
+            red.append("first_tap_ms: %.3f ms against a mapped %.3f ms "
+                       "(%.3f ms out, bar %.3f)"
+                       % (values["first_tap_ms"], float(expected_ms), error,
+                          tolerance_ms))
+    if expected_spacing_ms is not None and "repeat_spacing_ms" in values:
+        error = values["repeat_spacing_ms"] - float(expected_spacing_ms)
+        if abs(error) > tolerance_ms:
+            failed.append("repeat_spacing_ms")
+            red.append("repeat_spacing_ms: %.3f ms against an expected "
+                       "%.3f ms" % (values["repeat_spacing_ms"],
+                                    float(expected_spacing_ms)))
+    values["failed_readouts"] = failed
+    return _result("TAPS", "ms", values, render.axes(), criteria, red)
+
+
+# --------------------------------------------------------------------------
+# 14 DECAY
+# --------------------------------------------------------------------------
+
+def band_limit(x, rate, low_hz, high_hz):
+    """Zero-phase band limit by masking the spectrum. Offline analysis, so
+    zero phase is free and no filter state can leak between bands."""
+    x = np.asarray(x, dtype=np.float64)
+    spectrum = np.fft.rfft(x)
+    freqs = np.fft.rfftfreq(len(x), 1.0 / rate)
+    spectrum[(freqs < low_hz) | (freqs >= high_hz)] = 0.0
+    return np.fft.irfft(spectrum, n=len(x))
+
+
+def schroeder(x):
+    """Backward-integrated energy decay, in dB re the total - the EDR
+    curve."""
+    x = np.asarray(x, dtype=np.float64)
+    energy = np.cumsum((x ** 2)[::-1])[::-1]
+    total = float(energy[0]) if energy.size and energy[0] > 0 else 1.0
+    return 10.0 * np.log10(np.maximum(energy / total, 1e-30))
+
+
+def decay(render, *, bands=((20.0, 300.0), (300.0, 3000.0),
+                            (3000.0, 20000.0)),
+          threshold_db=-40.0, min_gap_ms=5.0, channel=None,
+          darkening_bar_db=None, hop_ms=1.0):
+    """DECAY - how a tail evolves: RT60/EDR, per-pass darkening, echo
+    density, per-repeat band energy.
+
+    The finding is the **progression**, and that is deliberate. The planted
+    fault - apply the darkening once at the input instead of inside the loop
+    - leaves repeat one exactly right and flattens every repeat after it, so
+    `darkening_slope_db_per_repeat` is the readout that fires and a
+    single-repeat check sees a correct build.
+    """
+    require_signal(render, "decay render")
+    signal = (render.float.mean(axis=1) if channel is None
+              else render.float[:, channel])
+
+    limited = [band_limit(signal, render.rate, low, high)
+               for low, high in bands]
+    t60, tau_per_band = [], []
+    for band in limited:
+        env, win = envelope(band, render.rate, hop_ms)
+        peak = int(np.argmax(env))
+        tau, sixty = tau_t60(env, render.rate, win, start=peak)
+        tau_per_band.append(None if tau is None else round(tau, 5))
+        t60.append(None if sixty is None else round(sixty, 5))
+
+    found = arrivals(signal, render.rate, threshold_db=threshold_db,
+                     min_gap_ms=min_gap_ms)
+    repeats = []
+    for index, arrival in enumerate(found):
+        start = arrival["sample"]
+        stop = (found[index + 1]["sample"] if index + 1 < len(found)
+                else len(signal))
+        if stop - start < 16:
+            continue
+        energies = [float(np.sum(band[start:stop] ** 2)) for band in limited]
+        total = sum(energies) or 1e-30
+        repeats.append({
+            "repeat": index,
+            "ms": round(arrival["ms"], 4),
+            "level_db": round(arrival["level_db"], 3),
+            "band_share_db": [round(10.0 * math.log10(max(v, 1e-30) / total),
+                                    3) for v in energies],
+        })
+
+    high_share = [entry["band_share_db"][-1] for entry in repeats]
+    slope = None
+    if len(high_share) >= 2:
+        slope = round(float(np.polyfit(np.arange(len(high_share)),
+                                       high_share, 1)[0]), 4)
+
+    seconds = render.seconds()
+    values = {
+        "bands_hz": [list(band) for band in bands],
+        "t60_per_band_s": t60,
+        "tau_per_band_s": tau_per_band,
+        "repeats": repeats,
+        "repeat_count": len(repeats),
+        "high_band_share_db": high_share,
+        "first_repeat_share_db": high_share[0] if high_share else None,
+        "darkening_slope_db_per_repeat": slope,
+        "echo_density_per_s": round(len(found) / seconds, 3) if seconds else 0,
+        "edr_at_half_db": round(float(schroeder(signal)[len(signal) // 2]), 3),
+    }
+    criteria = {"darkening_bar_db_per_repeat": darkening_bar_db,
+                "threshold_db": threshold_db}
+    red, failed = [], []
+    if darkening_bar_db is not None:
+        if slope is None:
+            failed.append("darkening_slope_db_per_repeat")
+            red.append("darkening_slope_db_per_repeat: fewer than two "
+                       "repeats found; the progression cannot be read")
+        elif slope > darkening_bar_db:
+            failed.append("darkening_slope_db_per_repeat")
+            red.append("darkening_slope_db_per_repeat: %.3f dB per repeat "
+                       "against a bar of %.3f - repeat one is right and the "
+                       "progression is flat, which is what a darkening "
+                       "applied once at the input looks like"
+                       % (slope, darkening_bar_db))
+    values["failed_readouts"] = failed
+    return _result("DECAY", "dB, s", values, render.axes(), criteria, red)
+
+
+# --------------------------------------------------------------------------
+# 15 STEREO
+# --------------------------------------------------------------------------
+
+def require_identical_channels(probe_pcm, channels=2, tolerance_lsb=0):
+    """STEREO's probe must be identical in both channels.
+
+    Otherwise L-R is not silent at width zero and a correct endpoint reads as
+    broken. A refusal rather than a note, because the number it protects -
+    L-R in dBFS - is perfectly plausible either way.
+    """
+    data = np.frombuffer(bytes(probe_pcm), dtype="<i2")
+    data = data[:len(data) - len(data) % channels].reshape(-1, channels)
+    worst = int(np.max(np.abs(data[:, 0].astype(np.int32)
+                              - data[:, 1].astype(np.int32))))
+    if worst > tolerance_lsb:
+        raise MeasurementRefused(
+            "STEREO: the probe's channels differ by %d LSB - L-R cannot be "
+            "read against it, and width zero would read as broken" % worst)
+    return True
+
+
+def stereo(render, *, source=None, threshold_db=-40.0, min_gap_ms=1.0,
+           simultaneity_ms=0.5, require_alternation=False,
+           lr_floor_db=None):
+    """STEREO - the stereo field: L-R RMS, mono sum against the source,
+    correlation, width, per-channel arrival and level.
+
+    And the arrival order **across both channels**, which is the readout the
+    seeds' own planted fault demands. Measure down one channel instead of
+    across both and a ping-pong that is really two independent delays at half
+    rate passes everything: each channel taken alone has the right spacing,
+    the right decay and a plausible correlation. What separates them is the
+    interleaving - a real ping-pong's arrivals alternate L, R, L, R in time,
+    and two independent delays put both channels in the same cluster.
+    `ping_pong_alternates` is that read.
+    """
+    require_signal(render, "stereo render")
+    if render.channels != 2:
+        raise ValueError("STEREO reads a stereo render; %d channels given"
+                         % render.channels)
+    signal = render.float
+    left, right = signal[:, 0], signal[:, 1]
+    difference = left - right
+    mono = 0.5 * (left + right)
+
+    values = {
+        "l_minus_r_dbfs": round(rms_db(difference), 3),
+        "left_rms_dbfs": round(rms_db(left), 3),
+        "right_rms_dbfs": round(rms_db(right), 3),
+        "mono_rms_dbfs": round(rms_db(mono), 3),
+        "correlation": round(float(np.corrcoef(left, right)[0, 1]), 4)
+        if left.std() > 0 and right.std() > 0 else 1.0,
+        "width": round(float(rms(difference) / max(rms(mono), 1e-12)), 4),
+    }
+    if source is not None:
+        source_mono = source.float.mean(axis=1)
+        count = min(len(source_mono), len(mono))
+        values["mono_sum_deviation_db"] = round(
+            rms_db(mono[:count]) - rms_db(source_mono[:count]), 3)
+
+    ordered = []
+    for index, name in ((0, "L"), (1, "R")):
+        for arrival in arrivals(signal[:, index], render.rate,
+                                threshold_db=threshold_db,
+                                min_gap_ms=min_gap_ms):
+            ordered.append((arrival["ms"], name, arrival["level_db"]))
+    ordered.sort()
+
+    clusters = []
+    for when, name, level in ordered:
+        if clusters and when - clusters[-1]["ms"] <= simultaneity_ms:
+            clusters[-1]["channels"].append(name)
+            clusters[-1]["level_db"].append(level)
+        else:
+            clusters.append({"ms": when, "channels": [name],
+                             "level_db": [level]})
+    single = [c for c in clusters if len(c["channels"]) == 1]
+    alternates = len(clusters) >= 2 and len(single) == len(clusters)
+    if alternates:
+        for one, other in zip(clusters, clusters[1:]):
+            if one["channels"][0] == other["channels"][0]:
+                alternates = False
+                break
+
+    values.update({
+        "arrival_clusters": [
+            {"ms": round(c["ms"], 4), "channels": "".join(c["channels"]),
+             "level_db": round(max(c["level_db"]), 3)} for c in clusters],
+        "cluster_count": len(clusters),
+        "simultaneous_clusters": len(clusters) - len(single),
+        "ping_pong_alternates": alternates,
+        "left_arrival_ms": [round(w, 4) for w, n, _ in ordered if n == "L"],
+        "right_arrival_ms": [round(w, 4) for w, n, _ in ordered if n == "R"],
+    })
+
+    criteria = {"require_alternation": require_alternation,
+                "lr_floor_db": lr_floor_db,
+                "simultaneity_ms": simultaneity_ms}
+    red, failed = [], []
+    if require_alternation and not alternates:
+        failed.append("ping_pong_alternates")
+        red.append("ping_pong_alternates: arrivals do not alternate across "
+                   "the channels - %d of %d clusters carry both, which is "
+                   "two independent delays at half rate, not a ping-pong"
+                   % (values["simultaneous_clusters"], len(clusters)))
+    if lr_floor_db is not None and values["l_minus_r_dbfs"] > lr_floor_db:
+        failed.append("l_minus_r_dbfs")
+        red.append("l_minus_r_dbfs: %.2f dBFS against a floor of %.2f"
+                   % (values["l_minus_r_dbfs"], lr_floor_db))
+    values["failed_readouts"] = failed
+    return _result("STEREO", "dB", values, render.axes(), criteria, red)
+
+
+# --------------------------------------------------------------------------
+# 16 RESIDUAL
+# --------------------------------------------------------------------------
+
+def ideal_quantise(x, bits):
+    """Round-to-nearest at `bits` - the reference every residual is taken
+    against."""
+    step = 2.0 ** -(bits - 1)
+    return np.round(np.asarray(x, dtype=np.float64) / step) * step
+
+
+def residual(render, reference_render, bits, *, channel=0,
+             expect="truncation", mean_bar_lsb=0.25, rms_bar_lsb=1.0,
+             require_dc_probe=True):
+    """RESIDUAL - quantisation and decimation error: bit depth, sample-rate
+    reduction, dither.
+
+    The residual is the render minus an **ideally quantised** reference at
+    the same word length, in LSB of that word length.
+
+    The **mean** is the readout that fires, and that is the whole reason it
+    is exported beside the RMS. The planted fault is truncation replaced by
+    rounding at the same word length. Measured against the ideally quantised
+    reference on the DC-offset probe at 8 bits, not recalled: floor
+    truncation leaves a two-valued residual of {0, -1} LSB - **mean
+    -0.4993 LSB, RMS 0.7066** - and round-to-nearest leaves **mean
+    +0.0000 LSB, RMS 0.0365** (the int16 render grid, 256x finer than the
+    word being measured, and nothing else). Both RMS figures sit inside any
+    bar a residual RMS would be given, so the RMS does not fire; the mean
+    goes to zero and does.
+
+    (The textbook pair - uniform on [-1, 0) with RMS 0.577 against uniform
+    on [-0.5, 0.5) with RMS 0.289 - is the error against the *unquantised*
+    signal. This measurement's residual is against the ideally quantised
+    reference, which is a different and larger quantity for truncation and a
+    near-zero one for rounding. The conclusion is the same and the numbers
+    are not, so the numbers here are the ones this code produces.)
+
+    **The probe must carry a DC offset, and that is load-bearing.**
+    Truncation *toward zero* has zero mean on material symmetric about zero,
+    so on a sweep or on noise a rounding build and a truncate-toward-zero
+    build read identically and the fault does not fire at all. On a
+    half-scale-biased ramp every truncation mode leaves a mean and only
+    round-to-nearest does not. `require_dc_probe` refuses the reading rather
+    than taking it on material that cannot separate them.
+    """
+    require_signal(render, "residual render")
+    out = render.float[:, channel]
+    ref = reference_render.float[:, channel]
+    count = min(len(out), len(ref))
+    out, ref = out[:count], ref[:count]
+
+    probe_mean = float(np.mean(ref))
+    if require_dc_probe and abs(probe_mean) < 0.05:
+        raise MeasurementRefused(
+            "RESIDUAL: the probe's mean is %.4f of full scale. Truncation "
+            "toward zero has zero mean on material symmetric about zero, so "
+            "a rounding build and a truncating one read identically here - "
+            "this measurement needs the DC-offset probe" % probe_mean)
+
+    step = 2.0 ** -(bits - 1)
+    error = (out - ideal_quantise(ref, bits)) / step
+
+    held, runs = 1, []
+    changes = np.nonzero(np.diff(out))[0]
+    previous = -1
+    for index in changes:
+        runs.append(int(index) - previous)
+        previous = int(index)
+    runs.append(count - 1 - previous)
+    held = max(runs) if runs else count
+
+    spectrum = np.abs(np.fft.rfft(error * np.hanning(count)))[1:]
+    median = float(np.median(spectrum)) or 1e-30
+
+    values = {
+        "bits": bits,
+        "mean_lsb": round(float(np.mean(error)), 5),
+        "rms_lsb": round(float(np.sqrt(np.mean(error ** 2))), 5),
+        "peak_lsb": round(float(np.max(np.abs(error))), 5),
+        "max_run_length": int(held),
+        "mean_run_length": round(float(np.mean(runs)), 4) if runs else None,
+        "probe_mean_fs": round(probe_mean, 5),
+        "probe_has_dc": bool(abs(probe_mean) >= 0.05),
+        "residual_peak_to_median_db": round(
+            20.0 * math.log10(float(np.max(spectrum)) / median), 3),
+        "expect": expect,
+    }
+    criteria = {"expect": expect, "mean_bar_lsb": mean_bar_lsb,
+                "rms_bar_lsb": rms_bar_lsb}
+    red, failed = [], []
+    if expect == "truncation" and abs(values["mean_lsb"]) < mean_bar_lsb:
+        failed.append("mean_lsb")
+        red.append("mean_lsb: %.4f LSB. The trait says truncation, which "
+                   "leaves a mean of about -0.5 LSB here; a mean at zero is "
+                   "round-to-nearest wearing a truncating class's name. "
+                   "(RMS %.3f LSB, inside its %.2f bar either way, so the "
+                   "RMS does not fire.)"
+                   % (values["mean_lsb"], values["rms_lsb"], rms_bar_lsb))
+    if expect == "rounding" and abs(values["mean_lsb"]) >= mean_bar_lsb:
+        failed.append("mean_lsb")
+        red.append("mean_lsb: %.4f LSB where the trait says round-to-nearest"
+                   % values["mean_lsb"])
+    if values["rms_lsb"] > rms_bar_lsb:
+        failed.append("rms_lsb")
+        red.append("rms_lsb: %.3f LSB above the %.2f LSB bar"
+                   % (values["rms_lsb"], rms_bar_lsb))
+    values["failed_readouts"] = failed
+    return _result("RESIDUAL", "LSB", values, render.axes(), criteria, red)
+
+
+# --------------------------------------------------------------------------
+# 17 TRUEPEAK
+# --------------------------------------------------------------------------
+
+def _interpolator(taps_per_phase=24, factor=4):
+    length = taps_per_phase * factor
+    index = np.arange(-length, length + 1)
+    kernel = np.sinc(index / float(factor)) * np.blackman(2 * length + 1)
+    return kernel / float(kernel[::factor].sum()), length
+
+
+def oversample(x, factor=4, taps_per_phase=24, trim=True):
+    """Zero-stuff and interpolate: the reconstructed waveform between the
+    samples, which is where a limiter with no true-peak detection
+    overshoots.
+
+    `trim` drops the interpolator's own start-up and run-out from each end,
+    and it is on by default because without it this measurement reports an
+    overshoot the class never produced. Measured, on the worst-phase f_s/4
+    tone whose true peak is exactly 3.0103 dB above its sample peak: read
+    untrimmed, the peak of the reconstruction lands at **upsampled sample
+    10** - inside the kernel's own transient - and the tone reads
+    -2.8954 dB TP, an excess of 3.10 dB. Trimmed, it reads -2.9895 dB TP,
+    an excess of 3.0101 dB, against a theoretical -2.9897. The error is
+    0.09 dB of pure filter ringing, on every true-peak reading, and it lands
+    on the wrong side: it would report a ceiling exceeded that was met.
+    """
+    x = np.asarray(x, dtype=np.float64)
+    stuffed = np.zeros(len(x) * factor)
+    stuffed[::factor] = x
+    kernel, length = _interpolator(taps_per_phase, factor)
+    out = np.convolve(stuffed, kernel, mode="same")
+    if trim and len(out) > 4 * length:
+        out = out[length:len(out) - length]
+    return out
+
+
+def truepeak(render, *, ceiling_dbfs=None, tolerance_db=0.5, factor=4,
+             read="true_peak"):
+    """TRUEPEAK - inter-sample peak, BS.1770's 4x oversampling, against the
+    sample peak and against the ceiling.
+
+    `read` exists so the battery can run the **faulted** measurement as well
+    as the correct one: `read="sample_peak"` is the fault - judge the ceiling
+    on the sample peak instead of the oversampled one - and it must certify a
+    build the correct read fails.
+
+    Worked against the Limiter's measured pair. With true-peak detection off the
+    palette reads sample peak -6.00 dBFS / true peak -2.95 dB TP; with it on,
+    -7.93 dBFS / -4.88 dB TP. The two sample peaks do **not** collapse to one
+    number, so a faulted measurement does not return an obviously broken
+    pair - it returns a different, entirely plausible one. What it certifies
+    is the real fault: with the flag off the sample peak reads -6.00 dBFS,
+    exactly its ceiling, so the faulted read calls the ceiling met while
+    3.05 dB escapes in the reconstructed waveform. **The red is against the
+    ceiling in dB TP, not against the other setting.**
+
+    A probe set with no worst-phase f_s/4 tone in it reads green on a
+    limiter with no true-peak detection at all - `Limiter` L1's own
+    disconfirmation clause - so `tone_fs4` is required material here, not
+    optional.
+    """
+    require_signal(render, "truepeak render")
+    per_channel = []
+    for index in range(render.channels):
+        channel = render.float[:, index]
+        per_channel.append({
+            "channel": index,
+            "sample_peak_dbfs": round(peak_db(channel), 3),
+            "true_peak_dbtp": round(peak_db(oversample(channel, factor)), 3),
+        })
+    sample_peak = max(entry["sample_peak_dbfs"] for entry in per_channel)
+    true_peak = max(entry["true_peak_dbtp"] for entry in per_channel)
+    judged = true_peak if read == "true_peak" else sample_peak
+
+    values = {
+        "per_channel": per_channel,
+        "sample_peak_dbfs": round(sample_peak, 3),
+        "true_peak_dbtp": round(true_peak, 3),
+        "inter_sample_excess_db": round(true_peak - sample_peak, 3),
+        "oversampling_factor": factor,
+        "read": read,
+        "judged_dbfs": round(judged, 3),
+    }
+    criteria = {"ceiling_dbfs": ceiling_dbfs, "tolerance_db": tolerance_db,
+                "read": read}
+    red, failed = [], []
+    if ceiling_dbfs is not None:
+        over = judged - float(ceiling_dbfs)
+        values["over_ceiling_db"] = round(over, 3)
+        values["meets_ceiling"] = over <= tolerance_db
+        if over > tolerance_db:
+            failed.append("true_peak_dbtp" if read == "true_peak"
+                          else "sample_peak_dbfs")
+            red.append("%s: %.2f against a ceiling of %.2f (%.2f dB over, "
+                       "bar %.2f)" % (read, judged, float(ceiling_dbfs), over,
+                                      tolerance_db))
+    values["failed_readouts"] = failed
+    return _result("TRUEPEAK", "dB TP", values, render.axes(), criteria, red)
+
+
+# --------------------------------------------------------------------------
+# 18 NULL
+# --------------------------------------------------------------------------
+
+def null(one, other, *, floor_dbfs, reference=None, channel=None):
+    """NULL - one path defeated, and what must then vanish.
+
+    Sample-wise difference of two renders of the same class, reported as a
+    level in dBFS against a **stated floor**. The floor is the measurement:
+    two silences null perfectly, and a null with no floor is exactly the
+    check `compare_rig.py:36` had to be repaired to stop passing. So the
+    reference side - the render that carries what the defeated path was
+    supposed to remove - is refused if it does not itself clear the floor.
+    There must be something here to defeat.
+
+    Exports the null depth, the first offset above the floor, and the digest
+    of both sides. The planted fault is the seed's own: re-wire OCT2 from the
+    dry tap and the null goes red; the control that must pass beside it is
+    the unmodified build, which nulls below -80 dBFS.
+    """
+    a = one.float if channel is None else one.float[:, channel:channel + 1]
+    b = other.float if channel is None else other.float[:, channel:channel + 1]
+    count = min(len(a), len(b))
+    a, b = a[:count], b[:count]
+    witness = reference if reference is not None else one
+    witness_db = rms_db(witness.float)
+    if witness_db <= floor_dbfs:
+        raise MeasurementRefused(
+            "NULL: the reference render is at %.2f dBFS, at or below the "
+            "stated floor of %.2f - there is nothing here to defeat, and "
+            "two silences null perfectly"
+            % (witness_db, floor_dbfs))
+
+    difference = a - b
+    depth = rms_db(difference)
+    above = np.nonzero(np.abs(difference).max(axis=1)
+                       > 10.0 ** (floor_dbfs / 20.0))[0]
+    values = {
+        "null_depth_dbfs": round(depth, 3),
+        "peak_difference_dbfs": round(peak_db(difference), 3),
+        "floor_dbfs": float(floor_dbfs),
+        "reference_dbfs": round(witness_db, 3),
+        "first_offset_above_floor": int(above[0]) if above.size else None,
+        "samples_above_floor": int(above.size),
+        "digest_a": "%08x" % one.digest,
+        "digest_b": "%08x" % other.digest,
+    }
+    criteria = {"floor_dbfs": float(floor_dbfs)}
+    red, failed = [], []
+    if depth > floor_dbfs:
+        failed.append("null_depth_dbfs")
+        red.append("null_depth_dbfs: %.2f dBFS against a stated floor of "
+                   "%.2f - the defeated path is still audible in the "
+                   "difference, first at sample %s"
+                   % (depth, floor_dbfs, values["first_offset_above_floor"]))
+    values["failed_readouts"] = failed
+    return _result("NULL", "dBFS", values, one.axes(), criteria, red)
+
+
+# --------------------------------------------------------------------------
+# 19 COST - the board's number, judged here
+# --------------------------------------------------------------------------
+
+def real_time_factor(audio_seconds, wall_seconds):
+    """audio-seconds / wall-seconds. 1.0 is exactly keeping up, which is
+    already too slow: an interrupt, a GC pause or a flash read pushes it
+    under."""
+    if float(wall_seconds) <= 0.0:
+        raise ValueError("wall_seconds must be positive")
+    return float(audio_seconds) / float(wall_seconds)
+
+
+def cost(subject, render, *, audio_seconds, wall_seconds, blocks,
+         board=None, ram_bytes=None, settings=None, gain_reduction_db=None,
+         minimum_gain_reduction_db=1.0, rt_bar=None):
+    """COST - CPU on the boards, as a real-time factor, judged on the
+    desktop.
+
+    The arithmetic is `measure_voice_headroom.py`'s and the run is the
+    board's; this is the gate the row has to pass to enter the table, and it
+    is where the two ways of ranking fast without being fast are refused.
+
+      1. **A muted class ranks fastest.** A class whose output is never
+         pulled, or whose source returns silence, is the cheapest entry in
+         any cost table. The render is refused before the row exists -
+         `require_signal`, spec section 1, and COST is where absence reading
+         as agreement is most expensive.
+      2. **An idling class costs what a wire costs.** A compressor below its
+         threshold, a drive stage at Drive 0, a reverb at Mix 0. Where the
+         caller states the gain reduction the probe actually produced, a row
+         taken below `minimum_gain_reduction_db` is refused - and the
+         settings and the measured gain reduction are exported beside the
+         figure either way, so a reader can see the probe reached the
+         expensive path.
+
+    The caveat travels with the number, because it is part of it: no I2S
+    device is opened, one subject is measured per run, so derate.
+    """
+    require_signal(render, "cost render for %s" % subject)
+    if (gain_reduction_db is not None
+            and float(gain_reduction_db) < float(minimum_gain_reduction_db)):
+        raise MeasurementRefused(
+            "COST: %s idled - the probe produced %.2f dB of gain reduction "
+            "against the %.2f dB this row requires. This figure is a wire's, "
+            "not the class's, and it would rank near the top of the table."
+            % (subject, float(gain_reduction_db),
+               float(minimum_gain_reduction_db)))
+
+    factor = real_time_factor(audio_seconds, wall_seconds)
+    values = {
+        "subject": subject,
+        "board": board,
+        "blocks": int(blocks),
+        "blocks_per_s": round(float(blocks) / float(wall_seconds), 3),
+        "ms_per_block": round(1000.0 * float(wall_seconds) / float(blocks), 4),
+        "rt_factor": round(factor, 4),
+        "audio_seconds": float(audio_seconds),
+        "wall_seconds": float(wall_seconds),
+        "ram_bytes": ram_bytes,
+        "render_fnv1a": "%08x" % render.digest,
+        "render_byte_sum": render.byte_sum,
+        "settings": dict(settings or {}),
+        "gain_reduction_db": gain_reduction_db,
+        "caveat": "no I2S device opened; one subject per run; derate",
+    }
+    criteria = {"rt_bar": rt_bar,
+                "minimum_gain_reduction_db": minimum_gain_reduction_db}
+    red, failed = [], []
+    if rt_bar is not None and factor < float(rt_bar):
+        failed.append("rt_factor")
+        red.append("rt_factor: %.3f against a bar of %.3f on %s"
+                   % (factor, float(rt_bar), board))
+    values["failed_readouts"] = failed
+    return _result("COST", "rt factor", values, render.axes(), criteria, red)
+
+
+# --------------------------------------------------------------------------
+# 20 ROUNDTRIP - the platform path, not the effect graph
+# --------------------------------------------------------------------------
+
+def roundtrip(emitted, captured, *, block_frames, correlation_floor=0.3,
+              starvation_count=None, settings=None, channel=0,
+              target_ms=None):
+    """ROUNDTRIP - output looped back to input on the board (vision section
+    9a), judged here.
+
+    Three guards, because the cheapest way to get a beautiful round-trip
+    figure is not to measure a round trip:
+
+      1. **A correlation floor.** With the loopback wire out, the capture is
+         whatever the converter hears; the cross-correlation peak collapses
+         and the run is refused rather than reported as a fast round trip.
+      2. **The analysed stream must not be the emitted one.** Guard 1 does
+         not catch the second fault: correlating the emitted click against
+         the *playback* buffer is correlating it with itself, which peaks
+         perfectly at lag 0 and satisfies the floor while the reported
+         latency collapses toward zero. The digests must differ.
+      3. **The peak must sit at least one block out.** The same fault by a
+         different door - a playback buffer that is not byte-identical to
+         what was emitted still peaks inside a block, and a round trip
+         cannot be shorter than the buffer it passes through.
+
+    `starvation_count` is the caller's, and the spec is explicit that it is
+    counted rather than guessed - wrap the transport's write and count
+    buffer-empty events - so it travels with the number and is exported even
+    when it is zero.
+    """
+    require_signal(emitted, "roundtrip emitted")
+    require_signal(captured, "roundtrip captured")
+    if emitted.digest == captured.digest:
+        raise MeasurementRefused(
+            "ROUNDTRIP: the analysed stream is byte-identical to the emitted "
+            "one (FNV %08x). This is the playback buffer, not a capture - "
+            "correlating it against the emitted click correlates the click "
+            "with itself." % emitted.digest)
+
+    out = emitted.float[:, channel]
+    back = captured.float[:, min(channel, captured.channels - 1)]
+    count = max(len(out), len(back))
+    left, right = np.zeros(count), np.zeros(count)
+    left[:len(out)] = out - out.mean()
+    right[:len(back)] = back - back.mean()
+    norm = math.sqrt(float(np.sum(left ** 2)) * float(np.sum(right ** 2)))
+    if norm <= 0.0:
+        raise MeasurementRefused("ROUNDTRIP: nothing to correlate")
+    correlation = np.correlate(right, left, mode="full")[count - 1:] / norm
+    lag = int(np.argmax(correlation))
+    peak = float(correlation[lag])
+
+    if peak < correlation_floor:
+        raise MeasurementRefused(
+            "ROUNDTRIP: the correlation peak is %.3f, below the %.3f floor - "
+            "nothing that was emitted came back. Is the loopback wire in?"
+            % (peak, correlation_floor))
+    if lag < int(block_frames):
+        raise MeasurementRefused(
+            "ROUNDTRIP: the correlation peak is at lag %d, inside one block "
+            "(%d frames). A round trip cannot be shorter than the buffer it "
+            "passes through - this is the playback buffer, not a capture."
+            % (lag, int(block_frames)))
+
+    values = {
+        "lag_samples": lag,
+        "round_trip_ms": round(1000.0 * lag / float(emitted.rate), 4),
+        "correlation_peak": round(peak, 4),
+        "block_frames": int(block_frames),
+        "starvation_count": starvation_count,
+        "settings": dict(settings or {}),
+        "emitted_fnv1a": "%08x" % emitted.digest,
+        "captured_fnv1a": "%08x" % captured.digest,
+    }
+    criteria = {"correlation_floor": correlation_floor,
+                "lag_floor_frames": int(block_frames),
+                "target_ms": target_ms}
+    red, failed = [], []
+    if target_ms is not None and values["round_trip_ms"] > float(target_ms):
+        failed.append("round_trip_ms")
+        red.append("round_trip_ms: %.3f ms against a target of %.3f"
+                   % (values["round_trip_ms"], float(target_ms)))
+    if starvation_count:
+        failed.append("starvation_count")
+        red.append("starvation_count: %d buffer-empty events during the run; "
+                   "this setting starves" % int(starvation_count))
+    values["failed_readouts"] = failed
+    return _result("ROUNDTRIP", "ms", values, emitted.axes(), criteria, red)
+
+
+# --------------------------------------------------------------------------
+# The sweep driver - the kit's answer to Phase 2's largest finding
+#
+# 28 of the 45 clauses
+# an independent refutation pass broke across sixteen classes broke for one
+# reason - the row was quantified over a span ("every probe", "any Q in
+# 0.5...16", "both slopes") and was measured at ONE point in it, with the
+# point chosen after the trait was frozen. Nothing above reads a class's own
+# macro grid; every measurement takes the setting its caller names.
+#
+# `macro_sweep` is the one entry point that takes a measurement, the class,
+# and a span in the class's OWN macro units, runs the measurement across that
+# span's grid - the stops first, because `BandPass` T1 and `LowPass` T1 both
+# miss their bar at a macro's end position - and reports the WORST cell with
+# the point it occurred at, in the units the panel reads.
+#
+# The evidence template's Tier 2 "Quantified over" column is what feeds
+# `spans`.
+# --------------------------------------------------------------------------
+
+class MacroSpan:
+    """One axis of a sweep: a macro of the class under test, and the stretch
+    of its 0-127 travel the trait quantifies over.
+
+    `macro` is the macro's index or its `MACRO_LABELS` name. `low` and `high`
+    are MIDI positions, so a row that quantifies over a knob's full travel is
+    `MacroSpan(0)` and one that claims only the top half is
+    `MacroSpan(0, 64, 127)`. `midpoints` is how many interior points to add
+    between the stops; the stops themselves are always run, and always first.
+
+    A span with `low == high` is a point, not a span, and `macro_sweep`
+    refuses it: that is exactly the defect this driver exists to catch.
+    """
+
+    def __init__(self, macro, low=0, high=127, *, midpoints=1, label=None):
+        self.macro = macro
+        self.low = float(low)
+        self.high = float(high)
+        self.midpoints = int(midpoints)
+        self.label = label
+        self.index = None               # filled in by `macro_sweep`
+
+    def positions(self):
+        """The MIDI positions this span is run at: both stops, then the
+        interior points, evenly spaced between them."""
+        stops = [self.low, self.high]
+        interior = []
+        for step in range(1, self.midpoints + 1):
+            fraction = step / float(self.midpoints + 1)
+            interior.append(self.low + (self.high - self.low) * fraction)
+        return [round(value, 6) for value in stops + interior]
+
+    def __repr__(self):
+        return ("MacroSpan(%r, %g, %g, midpoints=%d)"
+                % (self.macro, self.low, self.high, self.midpoints))
+
+
+def _as_span(span):
+    if isinstance(span, MacroSpan):
+        return span
+    if isinstance(span, dict):
+        return MacroSpan(**span)
+    if isinstance(span, (tuple, list)):
+        return MacroSpan(*span)
+    return MacroSpan(span)
+
+
+def _macro_index(subject, macro):
+    labels = tuple(getattr(subject, "MACRO_LABELS", ()))
+    if isinstance(macro, str):
+        if macro not in labels:
+            raise ValueError("%s has no macro named %r; it has %r"
+                             % (type(subject).__name__, macro, labels))
+        return labels.index(macro)
+    index = int(macro)
+    if not 0 <= index < len(labels):
+        raise ValueError("%s has %d macros; no index %d"
+                         % (type(subject).__name__, len(labels), index))
+    return index
+
+
+def _figure_of(result, figure):
+    """The number a sweep compares cells on."""
+    if callable(figure):
+        return float(figure(result))
+    if isinstance(result, dict) and "values" in result:
+        values = result["values"]
+        if figure is None:
+            raise MeasurementRefused(
+                "SWEEP: a measurement result carries several readouts (%s); "
+                "name the one the trait's bar is on with `figure=`"
+                % ", ".join(sorted(str(key) for key in values)))
+        if figure not in values:
+            raise MeasurementRefused(
+                "SWEEP: the measurement has no readout %r; it has %s"
+                % (figure, ", ".join(sorted(str(key) for key in values))))
+        return float(values[figure])
+    if figure is not None and isinstance(result, dict):
+        return float(result[figure])
+    return float(result)
+
+
+_WORST = {
+    "max": lambda values: max(range(len(values)), key=lambda i: values[i]),
+    "min": lambda values: min(range(len(values)), key=lambda i: values[i]),
+    "abs": lambda values: max(range(len(values)), key=lambda i: abs(values[i])),
+}
+
+
+def macro_sweep(subject, spans, measure_at, *, figure=None, worst="abs",
+                bar=None, unit=None, name="SWEEP", max_cells=256,
+                restore=True):
+    """Run one trait measurement across the span the trait quantifies over,
+    and report the worst cell and the point it occurred at.
+
+    `subject`   a live instance of the class under test, or a zero-argument
+                factory returning one. It is driven, never rendered: the
+                driver moves its macros and reads them back with `macro()`,
+                so every cell is reported in the class's own units as well as
+                on the 0-127 grid. Reading the settings back off the instance
+                is the discipline of the pattern revision's section 3.
+    `spans`     one `MacroSpan` per axis, or anything `MacroSpan` accepts
+                (`0`, `"Threshold"`, `(0, 64, 127)`). This is the evidence
+                template's **Quantified over** column, in macro units.
+    `measure_at`  the caller's closure: takes `{macro_index: midi_value}`,
+                renders the class at those settings and returns a kit
+                measurement result (or a bare number).
+    `figure`    which readout of that result the trait's bar is on: a key
+                into `result["values"]`, or a callable taking the result.
+    `worst`     `"abs"` (default - the largest deviation either way),
+                `"max"`, `"min"`, or a callable taking the list of figures
+                and returning the index of the worst.
+    `bar`       the trait's bar. When given, the sweep is RED if the worst
+                cell exceeds it - which is the point: a row measured at one
+                setting inside its own span is a demonstration *at that
+                point*, and the point belongs in the verdict.
+
+    Refuses, rather than returning a plausible number, when a span is a
+    single point (`low == high`), when there are no spans at all, or when the
+    grid is larger than `max_cells`.
+    """
+    if callable(subject) and not hasattr(subject, "MACRO_LABELS"):
+        subject = subject()
+    spans = [_as_span(span) for span in (spans or ())]
+    if not spans:
+        raise MeasurementRefused(
+            "SWEEP: no span. A trait that quantifies over nothing is a trait "
+            "measured at a point, which is the defect this driver exists to "
+            "catch (pattern revision section 1.1).")
+    for span in spans:
+        span.index = _macro_index(subject, span.macro)
+        if span.low == span.high:
+            raise MeasurementRefused(
+                "SWEEP: macro %d (%s) is swept from %g to %g - that is a "
+                "point, not a span. Measuring a span at one point is what "
+                "broke 28 of Phase 2's 45 clauses; state the span the row "
+                "quantifies over, or say in the verdict that the row holds "
+                "at this point only."
+                % (span.index, subject.MACRO_LABELS[span.index],
+                   span.low, span.high))
+
+    grids = [span.positions() for span in spans]
+    total = 1
+    for grid in grids:
+        total *= len(grid)
+    if total > max_cells:
+        raise MeasurementRefused(
+            "SWEEP: %d cells over %d spans, past the %d-cell ceiling. Narrow "
+            "the span or lower `midpoints` - and say in the verdict which "
+            "part of the span was run." % (total, len(spans), max_cells))
+
+    before = {}
+    if restore:
+        for span in spans:
+            before[span.index] = subject.get_macro(span.index)
+
+    cells, figures, measured = [], [], None
+    try:
+        for combination in _grid(grids):
+            settings, units = {}, {}
+            for span, position in zip(spans, combination):
+                settings[span.index] = position
+                subject.set_macro(span.index, position)
+            for span in spans:
+                label = (span.label
+                         or subject.MACRO_LABELS[span.index])
+                units[label] = round(float(subject.macro(span.index)), 6)
+            result = measure_at(dict(settings))
+            if measured is None and isinstance(result, dict):
+                measured = result.get("measurement")
+            value = _figure_of(result, figure)
+            cells.append({"settings": dict(settings), "units": dict(units),
+                          "figure": value,
+                          "at_a_stop": all(
+                              position in (span.low, span.high)
+                              for span, position in zip(spans, combination))})
+            figures.append(value)
+    finally:
+        if restore:
+            for index, position in before.items():
+                subject.set_macro(index, position)
+
+    chooser = worst if callable(worst) else _WORST.get(worst)
+    if chooser is None:
+        raise ValueError("worst must be 'abs', 'max', 'min' or a callable")
+    index = int(chooser(figures))
+    worst_cell = cells[index]
+
+    values = {
+        "worst": worst_cell["figure"],
+        "at": dict(worst_cell["settings"]),
+        "at_units": dict(worst_cell["units"]),
+        "at_a_stop": worst_cell["at_a_stop"],
+        "points": len(cells),
+        "spread": round(max(figures) - min(figures), 6),
+        "spans": [{"macro": span.index,
+                   "label": subject.MACRO_LABELS[span.index],
+                   "midi": [span.low, span.high],
+                   "units": [round(float(_unit_at(subject, span.index, edge)),
+                                   6) for edge in (span.low, span.high)]}
+                  for span in spans],
+        "cells": cells,
+        "measurement": measured,
+    }
+    criteria = {"worst": worst if isinstance(worst, str) else "callable",
+                "bar": bar, "figure": figure if not callable(figure)
+                else getattr(figure, "__name__", "callable")}
+    red = []
+    if bar is not None and abs(worst_cell["figure"]) > abs(float(bar)):
+        red.append("worst %s: %.6f at %s, against a bar of %.6f"
+                   % (figure or "figure", worst_cell["figure"],
+                      worst_cell["units"], float(bar)))
+    axes = {"subject": type(subject).__name__,
+            "sample_rate": getattr(subject, "sample_rate", None)}
+    return _result(name, unit, values, axes, criteria, red)
+
+
+def _unit_at(subject, index, midi):
+    """What macro `index` stands for at MIDI position `midi`, read back off
+    the instance and restored afterwards."""
+    before = subject.get_macro(index)
+    try:
+        subject.set_macro(index, midi)
+        return subject.macro(index)
+    finally:
+        subject.set_macro(index, before)
+
+
+def _grid(grids):
+    """The cartesian product of the per-span position lists, stops first."""
+    if not grids:
+        return
+    combination = [0] * len(grids)
+    while True:
+        yield tuple(grids[axis][combination[axis]]
+                    for axis in range(len(grids)))
+        axis = len(grids) - 1
+        while axis >= 0:
+            combination[axis] += 1
+            if combination[axis] < len(grids[axis]):
+                break
+            combination[axis] = 0
+            axis -= 1
+        if axis < 0:
+            return
+
+
+# --------------------------------------------------------------------------
+# Reading a branch INSIDE the graph (audiocomponents#78)
+# --------------------------------------------------------------------------
+#
+# Several rebuilt drive classes split their input and sum a wet branch under
+# the dry:
+#
+#     source -> Splitter -> tap 0 -> Mixer voice 0              (dry)
+#                        -> tap 1 -> ... -> Mixer voice 1       (wet)
+#
+# To read what the wet branch alone does, build packs and refutation probes
+# subclassed the class and pointed `_output` at a node inside the graph, so
+# the Mixer - and with it tap 0 - was never pulled. audiocomponents#78 read
+# 70 dB of measurement floor off an instrument like that and blamed the
+# unread tap.
+#
+# THE UNREAD TAP IS NOT WHAT COSTS THE 70 dB. At audiodsp `3388df4`, which
+# carries audiodsp#87, a tap nobody reads cannot corrupt the tap somebody
+# does: a counting ramp through a `Splitter` with one tap pulled comes back
+# seamless at every source block size from 256 frames to 40000 - nearly five
+# rings - on CPython, MicroPython and CircuitPython alike, and draining the
+# dry tap in lockstep with a direct wet read gives a byte-identical render.
+# `Splitter._pull` only runs when the tap being read is starved, so that
+# tap's own cursor is at the write head when the write begins, and one
+# write is capped at one ring.
+#
+# What costs the 70 dB is that the two instruments SIT AT DIFFERENT PLACES
+# IN THE STREAM. A `Mixer` hands back its first block before it has pulled
+# anything, so a render taken through the mixer lags the same render taken
+# off an inner node by one mixer block - 256 frames on `Exciter`. Both ask
+# for the same number of frames, so the instrument that is ahead runs off
+# the end of its probe and reads the class's own decay into silence. A
+# rectangular transform reads that step as broadband low-frequency energy:
+# at 1010 Hz, Tune 600, Harmonics 1.0, Mix 0.7, bins 1-6 re the fundamental
+# read -33.5 dB with a probe exactly as long as the render and -112.9 dB
+# with a probe 256 frames longer. Nothing about the Splitter changed
+# between those two numbers.
+#
+# So the unsupported way is wrong twice and only one of them is the ring.
+# Both are guarded here. `unread_taps` refuses an instrument that pulls one
+# side of a split and not the other - not because the ring will corrupt it,
+# but because it is not the class's output and its stream offset is not the
+# one anything else was measured at. `require_live` refuses a render that
+# outlived its probe, which is the reading that actually moved.
+#
+# The supported way to read a wet branch is `mute_dry` below: the class's
+# own output, with the dry voice at zero. Every tap stays pulled, the
+# offset is the class's own, and neither Mix nor Output can dilute an alias
+# or a harmonic into looking healthy.
+#
+# **These walks read private attributes of the CPython twins.** The native
+# builds' nodes hold their sources in C, so the walk finds nothing there
+# and `unread_taps` returns an empty list rather than a wrong one. That is
+# the honest degradation: the kit's analysis half is CPython (spec section
+# 1), and every pack reading taken this way was taken on CPython.
+
+
+class StarvedTapError(MeasurementRefused):
+    """A render was taken through a graph that pulls one tap of a Splitter
+    and leaves another unpulled - the wet branch read off an inner node,
+    with the dry side of the split read by nobody.
+
+    Refused rather than reported: the instrument is not the class's output,
+    so its stream offset is not the offset anything it is compared against
+    was measured at.
+    """
+
+
+class ExhaustedProbeError(MeasurementRefused):
+    """A render outlived its probe: its tail is silence, so a measurement
+    over it is reading the class's decay and not the class."""
+
+
+def _node_like(value):
+    return value is not None and hasattr(value, "_get_buffer")
+
+
+def _upstream(node):
+    """The nodes one pull on `node` pulls in turn.
+
+    **Every node-like attribute, not a list of names.** A node type names its
+    source whatever it likes - `audiospeed.SpeedChanger` calls it `source`
+    where `audiobiquad` calls it `_source` - and a walk that misses one edge
+    reports the whole branch behind it as unread. That cost the Phase 4
+    integration branch twenty red tests the day this landed. Reaching too
+    far is the safe direction here: an edge that is not really pulled only
+    makes the check quieter.
+
+    Two shapes are not a plain attribute. A `SplitterTap` is followed to its
+    Splitter's source and **not** to its sibling taps, because a sibling is
+    not on this pull path and that is the whole question being asked. A
+    `Mixer` is followed through its voices, and a voice that is not playing
+    is not pulled.
+    """
+    out = []
+    owner = getattr(node, "_owner", None)
+    if owner is not None and hasattr(owner, "_taps"):
+        source = getattr(owner, "_source", None)
+        if _node_like(source):
+            out.append(source)
+        return out
+    voices = getattr(node, "voice", None)
+    if isinstance(voices, (list, tuple)):
+        for voice in voices:
+            if not getattr(voice, "playing", True):
+                continue
+            sample = getattr(voice, "_sample", None)
+            if _node_like(sample):
+                out.append(sample)
+    try:
+        held = vars(node)
+    except TypeError:                       # a native node keeps no __dict__
+        held = {}
+    for name, value in held.items():
+        if name == "voice":
+            continue
+        if _node_like(value) and value is not node:
+            out.append(value)
+        elif isinstance(value, (list, tuple)):
+            for item in value:
+                if _node_like(item) and item is not node:
+                    out.append(item)
+    return out
+
+
+def reachable_nodes(node, *, limit=4096):
+    """Every node a pull on `node` reaches, `node` included.
+
+    Identity, not equality: two taps of the same Splitter are different
+    objects holding the same ring.
+    """
+    seen = []
+    pending = [node] if _node_like(node) else []
+    while pending and len(seen) < limit:
+        current = pending.pop()
+        if any(current is known for known in seen):
+            continue
+        seen.append(current)
+        pending.extend(_upstream(current))
+    return seen
+
+
+def splitters(effect):
+    """`(name, splitter)` for every `audioroute.Splitter` the class holds.
+
+    Off `enumerate_nodes`' register, which is the authority on what a class
+    built (audiocomponents#53), plus a scan of the private attributes for
+    one it never registered. A Splitter is not itself a sample - it hands
+    out taps - so it is recognised by holding `tap()` and `_taps`.
+    """
+    found = []
+
+    def remember(name, value):
+        if (value is not None and hasattr(value, "tap")
+                and hasattr(value, "_taps")
+                and not any(value is known for _, known in found)):
+            found.append((name, value))
+
+    for name, node in enumerate_nodes(effect):
+        remember(name, node)
+    for name, value in vars(effect).items():
+        remember(name, value)
+        if isinstance(value, (list, tuple)):
+            for index, item in enumerate(value):
+                remember("%s[%d]" % (name, index), item)
+    return found
+
+
+def unread_taps(node, effect=None):
+    """The Splitter taps a render of `node` would leave unpulled.
+
+    Returns `[(splitter_name, tap_index, read_indices), ...]`, one row per
+    Splitter that this pull path reads **unevenly** - some taps on it, some
+    not.
+
+    **`effect` is optional on purpose.** Every Splitter that matters is
+    found from the pull path itself: a tap on the path knows its own
+    Splitter, and that Splitter knows its other taps. So a probe that
+    renders a bare node - which is every probe written before
+    audiocomponents#78 - is checked without being rewritten, and naming the
+    effect only improves the name in the message.
+
+    A Splitter none of whose taps are reached is not a row: that is a
+    section the class has routed round, which every one of these classes
+    does at Mix 0, where the output is the borrowed source and the whole
+    split is bypassed. An uneven split is the audiocomponents#78 shape.
+    """
+    reached = reachable_nodes(node)
+    named = dict((id(splitter), name)
+                 for name, splitter in (splitters(effect)
+                                        if effect is not None else ()))
+    found = []
+    for seen in reached:
+        owner = getattr(seen, "_owner", None)
+        if (owner is not None and hasattr(owner, "_taps")
+                and not any(owner is known for known in found)):
+            found.append(owner)
+    if effect is not None:
+        for _, splitter in splitters(effect):
+            if not any(splitter is known for known in found):
+                found.append(splitter)
+    rows = []
+    for splitter in found:
+        taps = getattr(splitter, "_taps", ())
+        read = [index for index, tap in enumerate(taps)
+                if any(tap is seen for seen in reached)]
+        if not read or len(read) == len(taps):
+            continue
+        name = named.get(id(splitter), "a Splitter")
+        for index, tap in enumerate(taps):
+            if index not in read:
+                rows.append((name, index, tuple(read)))
+    return rows
+
+
+def require_whole_graph(node, effect=None, *, what="render"):
+    """Refuse a pull path that reads one side of a split and not the other.
+
+    Raises `StarvedTapError` naming the Splitter, the tap left out and the
+    taps taken. Returns `node`, so it reads as a guard at the top of a
+    render.
+
+    A guard that cannot read the graph says nothing. Refusing a render
+    because the walk tripped would be a checker failing on its own
+    introspection, which is worse than not checking.
+    """
+    try:
+        rows = unread_taps(node, effect)
+    except Exception:                       # pragma: no cover - fail open
+        return node
+    if rows:
+        where = "; ".join(
+            "%s tap %d unread (taps read: %s)"
+            % (name, index, ", ".join(str(i) for i in read) or "none")
+            for name, index, read in rows)
+        raise StarvedTapError(
+            "%s pulls one side of a split and not the other - %s. That is "
+            "not the class's output: it sits one mixer block earlier in the "
+            "stream than every reading it would be compared against, and "
+            "audiocomponents#78 cost 70 dB of floor to exactly that. Read "
+            "the wet branch with `mute_dry(effect)` - the class's own "
+            "output with the dry voice at zero, which keeps every tap "
+            "pulled - or say `allow_starved_taps=True` if the point of the "
+            "render is the defect itself." % (what, where))
+    return node
+
+
+def silent_tail_frames(render, *, floor_lsb=2.0, channel=None):
+    """How many frames of silence a render ends on.
+
+    The floor is in LSB because a class that has run out of material decays
+    to zero and stays there; anything still dithering is not silence.
+    """
+    data = render.data if channel is None else render.data[:, channel:channel + 1]
+    if data.size == 0:
+        return 0
+    live = np.nonzero(np.abs(data).max(axis=1) >= floor_lsb)[0]
+    if not len(live):
+        return int(render.frames)
+    return int(render.frames - 1 - live[-1])
+
+
+def require_live(render, *, what="render", allow_frames=0, floor_lsb=2.0):
+    """Refuse a render that outlived its probe.
+
+    `allow_frames` is how much silence the tail is *expected* to hold - zero
+    for a continuous probe, and the length of the silent half for a burst.
+
+    This is the guard audiocomponents#78 needed and did not have. A class
+    whose source has run dry keeps handing back silence rather than an empty
+    buffer, so the render loop never notices, the render is the length that
+    was asked for, and the only tell is that the last frames are zeros. A
+    settled-half transform over such a render reads the step down to silence
+    as a low-frequency floor tens of dB above the class's own.
+    """
+    silent = silent_tail_frames(render, floor_lsb=floor_lsb)
+    if silent > allow_frames:
+        raise ExhaustedProbeError(
+            "%s %s ends on %d silent frames of %d, against %d expected: the "
+            "render outlived its probe and a measurement over it is reading "
+            "the class's decay. Give the probe more frames than the render "
+            "asks for (audiocomponents#78)."
+            % (what, render.label or "", silent, render.frames, allow_frames))
+    return render
+
+
+class _MacroMute:
+    """A macro wearing a mixer's clothes, so a caller's restore loop -
+    `target.voice[index].level = level` - puts a Mix macro back without
+    knowing it was one."""
+
+    def __init__(self, effect):
+        self.voice = _MacroVoices(effect)
+
+
+class _MacroVoices:
+    def __init__(self, effect):
+        self._effect = effect
+
+    def __getitem__(self, index):
+        return _MacroVoice(self._effect, index)
+
+
+class _MacroVoice:
+    def __init__(self, effect, index):
+        self._effect = effect
+        self._index = index
+
+    @property
+    def level(self):
+        return self._effect.get_macro(self._index)
+
+    @level.setter
+    def level(self, value):
+        self._effect.set_macro(self._index, int(round(value)))
+
+
+def mute_dry(effect, *, voices=None):
+    """Read a class's WET branch without leaving a Splitter tap unpulled.
+
+    The supported instrument for a wet-path trait: the class's own output,
+    with every DRY mixer voice at zero level. A dry voice is one playing a
+    bare `Splitter` tap - the copy of the input that goes under the wet
+    branch - and a Mixer pulls every voice it is playing whatever its level,
+    so the split stays even and the stream offset stays the class's own.
+
+    It is a stricter reading than the mixed output as well: with the dry
+    voice out, neither Mix nor Output can dilute an alias or a harmonic into
+    looking healthy.
+
+    **Every Mixer a pull on the output reaches is searched, not the output
+    mixer alone.** A class that sums its dry copy on an *inner* mixer - a
+    tone stack after the sum, which is where a Tube Screamer's is - was
+    refused when this looked at `effect._output.voice` and nowhere else,
+    and the pack then read the mixed output and called it a wet floor.
+    `Overdrive` is the worked example: its dry tap is `_circuit.voice[0]`
+    and `_output` is the Level mixer behind the tone low-pass, and every
+    alias floor its pack published was 5.6 to 6.6 dB optimistic
+    (audiocomponents#68, moved here from the tests-side wrapper by #81).
+
+    **A dry leg that is not a mixer voice at all.** `audioshaper.Waveshaper`
+    blends inside the node - `out = (1-mix)*source + mix*post_gain*shaped`
+    (`audiodsp/src/shared/audiodsp_shaper.c:253`) - and the node is
+    write-only, so there is no voice to mute and nothing to read back.
+    `Fuzz`'s germanium graph is that shape: its dry copy never reaches a
+    `Mixer`. For a class like that the dry is muted through the class's own
+    surface, by pushing the macro labelled `Mix` to full and putting it back
+    afterwards, which is the same muting done one layer up. It is the last
+    reach tried, so a class with a real dry voice is unaffected, and it is
+    not tried at all on a pull path that starves a tap - there the class is
+    being read at an inner node, and a Mix push would turn a refusal into a
+    wet-branch reading of the probe itself.
+
+    `voices` names voice indices on the output mixer to mute instead of
+    finding them, for a class whose dry copy is not a bare tap.
+
+    Returns `[(mixer, voice_index, level_before), ...]`, so a caller can put
+    the levels back. Raises `MeasurementRefused` when no dry voice is found
+    anywhere - a wet instrument that mutes nothing is a mixed reading
+    wearing the wrong name.
+    """
+    name = getattr(effect, "NAME", type(effect).__name__)
+    output = getattr(effect, "output", None)
+    if output is None:
+        output = getattr(effect, "_output", None)
+    if voices is not None:
+        mixer_voices = getattr(output, "voice", None)
+        if not isinstance(mixer_voices, (list, tuple)):
+            raise MeasurementRefused(
+                "mute_dry: %s's output is %r, not a Mixer, so the voices "
+                "named cannot be muted." % (name, output))
+        muted = []
+        for index in voices:
+            muted.append((output, index, mixer_voices[index].level))
+            mixer_voices[index].level = 0.0
+        return muted
+
+    taps = []
+    for _, splitter in splitters(effect):
+        taps.extend(getattr(splitter, "_taps", ()))
+    muted = []
+    for node in reachable_nodes(output):
+        mixer_voices = getattr(node, "voice", None)
+        if not isinstance(mixer_voices, (list, tuple)):
+            continue
+        # Through a `Port`: a voice armed lazily (`Component._play_voice`)
+        # plays a stand-in pointed at the tap, not the tap itself.
+        bare = [index for index, voice in enumerate(mixer_voices)
+                if any(port_target(getattr(voice, "_sample", None)) is tap
+                       for tap in taps)]
+        # A mixer where EVERY voice plays a bare tap is not a blend, it is a
+        # selector: a fan-in choosing which copy of the input goes on to be
+        # processed. There is no wet on it to keep, and muting it does not
+        # read a wet branch - it starves one. `DeEsser` is the case: its
+        # `_pre` mixer picks the whole signal or the high band alone as the
+        # gain cell's INPUT, and muting both voices left the ducker with
+        # nothing to duck. The class read -45 dBFS of noise with the tone
+        # 0.1 dB above its own alias floor, which no measurement should ever
+        # have been allowed to call a wet reading (audiocomponents#81).
+        if len(bare) == len(mixer_voices):
+            continue
+        for index in bare:
+            muted.append((node, index, mixer_voices[index].level))
+            mixer_voices[index].level = 0.0
+    if muted:
+        return muted
+
+    labels = tuple(getattr(effect, "MACRO_LABELS", ()))
+    # Only when there is a whole graph to mute. A class built as a wire -
+    # and a class sitting at Mix 0, which is the same thing - hands back
+    # the borrowed source as its output; a class read at an inner node
+    # leaves the other side of its split unpulled. Pushing a Mix macro in
+    # either case would turn a refusal into a wet-branch reading of the
+    # probe itself, which is how a null build goes green on a measurement
+    # that cannot fail.
+    # `port_target`, because a port's answer to "are you the borrowed
+    # source" is always no - it is a wire, never the source. Asked of the
+    # wire this clause went true on a class built as a wire, and the Mix
+    # push below turned a refusal into a wet reading of the probe itself:
+    # exactly the null build going green that the comment above forbids.
+    if "Mix" in labels and getattr(effect, "_source", None) is not \
+            port_target(output):
+        require_whole_graph(output, effect, what="mute_dry of %s" % name)
+        index = labels.index("Mix")
+        before = effect.get_macro(index)
+        effect.set_macro(index, 127)
+        return [(_MacroMute(effect), index, before)]
+
+    raise MeasurementRefused(
+        "mute_dry: no mixer a pull on %s's output reaches plays a bare "
+        "Splitter tap, and it has no Mix macro to push, so no dry leg was "
+        "found. Name the voices with `voices=(...)` if the class carries "
+        "its dry copy some other way." % (name,))

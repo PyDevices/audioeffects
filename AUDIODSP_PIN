@@ -1,0 +1,470 @@
+# The audiodsp floor. Every gate in this repository runs against this exact
+# audiodsp commit: the components are held to a fixed core the same way
+# audiodsp itself is held to a fixed CircuitPython (its CIRCUITPYTHON_ORACLE).
+#
+# A floating core makes a component failure unattributable -- you cannot tell
+# a rewritten instrument from a moved node underneath it. Moving this pin is
+# its own change, with the gates re-run and the goldens re-read, never a
+# side effect of some other work.
+#
+# From 2026-09-02 this pin named an UNRELEASED commit rather than a release
+# tag, deliberately: audiodsp carried four synthio fixes that the accuracy
+# program needed -- the CPython press semantics and filter cascade (b420dac),
+# a re-pressed finished note being dropped entirely (afb6b71, also reported
+# upstream), ring modulation, which the CPython target had never implemented
+# (52a1d4e) and which three Phase 2 instruments depend on, and envelope
+# reassignment not being live on the CPython target (d84470a). The release
+# waited until the bug hunt settled; the floor did not need to.
+#
+# Moved to d84470a on 2026-09-02. That fix is what makes one circuit shared by
+# two voices with different decays behave correctly under CPython, as it
+# already did on MicroPython and the oracle: before it, a closed hat struck
+# 250 ms after an open hat rang for 400 ms instead of 53 ms. It changes the
+# rendered sound of tr808 and cr78, whose hats share a circuit, so both were
+# re-listened.
+#
+# Moved to v0.2.0 on 2026-09-03, the first audiodsp release that contains the
+# four fixes named above, plus the release-tail reclaim (aed9336) and the
+# 14-everywhere Note ceiling (63efb13). The pin names a release again for the
+# first time since it moved to d84470a; the floor in each pyproject.toml is
+# raised to the same release, so floor and pin agree for the first time as
+# well. The tag resolves to the commit in the second column.
+#
+#
+# Moved to 2f6cbc3 on 2026-09-07 by the effects program's Phase 1
+# (audiocomponents#29). That commit is audiodsp main
+# with the eight palette nodes Phase 0's survey asked for and Phase 1 built
+# (audiodsp#37-#44, #47): four FeedbackDelay options, eleven Dynamics options,
+# audioshaper.Waveshaper, audiobiquad.Biquad/AllPass, audioladder.Ladder,
+# audioverb.Tank, audiomath.SubOctave and audioroute.MidSide, each with its
+# own parity probe and golden, all fifteen probes byte-identical on CPython
+# and MicroPython. No release: audiodsp is released once, at Phase 7, when
+# the effects work is complete (decided 2026-09-06), so this pin names a commit
+# and the pyproject floors stay at v0.2.0 until then. This is also the first
+# floor to carry the 64-voice ceiling (audiodsp 8f8b10d); the three
+# instruments the ceiling moves at the gate's material are retired to
+# REBUILT with a listening test of 2026-09-06 as the blessing (audiodsp#31).
+#
+# Moved to cebb7ca on 2026-09-15, for audiomodal.Bank. `acoustickit` imports
+# it, so the floor had to carry it or the kit could not be built at all -- CI
+# installs audiodsp from this pin and nothing else. Still no release, for the
+# reason above: audiodsp is released once, at Phase 7.
+#
+# Moved to 3388df4 on 2026-09-17, in the effects program's Phase 4 fix round,
+# on a ruling of the same day: a toolkit defect is fixed the moment it is
+# found and the phase pins to the merge commit, the version to be named later.
+# That commit is audiodsp PR #86: the CPython mixer twin scales a voice in
+# float32 as the kernel does (audiodsp#84 - CPython and the native builds now
+# agree at fractional voice levels, where a sparse +-1 LSB separated them); no
+# shared kernel fuses a multiply-add (audiodsp#79 - proven on hardware the same
+# day: the P4 and the S3 render identical digests on all fifteen float nodes,
+# where six biquad rows split at cebb7ca); a looping sample shorter than one
+# packed word is refused at play() instead of hanging the native mixer
+# (audiodsp#85); and a Splitter takes a block bigger than its ring in pieces
+# instead of writing over itself (audiodsp#87). What still separates a board
+# from a desktop is audiocomponents#75: a filter setting a class derives in
+# Python float, which is single precision on an ESP32.
+#
+# Moved to 977ef26 the same evening, under the same ruling: audiodsp PR #93
+# fixes two upstream CircuitPython 10.3.0 defects in audiospeed.SpeedChanger on
+# the MicroPython and CPython targets as documented deviations - the rate
+# rounds to its Q16 step instead of truncating (audiodsp#92) and the phase
+# carries across a source buffer instead of restarting (audiodsp#91) - found by
+# Bitcrusher's fix round, the only class that uses the node; PR #90 adds the
+# CircuitPython copy-manifest lines audiomodal needed. Proven on both boards:
+# the hold probe matches the CPython twin on all fifty lines on the P4, the S3
+# and desktop MicroPython, and nothing else moved from 3388df4.
+#
+# Moved to e3b95e7 on 2026-09-17 late evening, same ruling: audiodsp PR #98
+# adds audioshaper.SampleHold (audiodsp#97), an exact sample-and-hold of
+# audiodsp's own, because a SpeedChanger down-then-up pair can never be made
+# reciprocal at Q16 rate resolution - the Phase 4 gate audit traced
+# Bitcrusher's slow flange (one sample per ~190k frames) to the node. Nothing
+# that existed changed: every verify_dsp row is byte-identical, audiospeed is
+# untouched. Board proof of the new node is owed by Phase 4's board run.
+#
+# Moved to 9018e35 on 2026-09-18, same ruling: the CPython twin's mixer voice
+# now borrows its source node's buffer the way the native one does
+# (MixerVoice.c stores a pointer at play(); the twin copied). Saturation's
+# coupling-pole charge pulls the wet chain behind an attached voice, so on
+# every native build and both boards the voice mixed the settled block and on
+# CPython it mixed the bang. No native C changed - the boards stay at the
+# e3b95e7 firmware, which is DSP-identical - and verify_dsp reads 49/0/0 with
+# every earlier row byte-identical. Also in the range since e3b95e7: docs and
+# tests only (the Waveshaper headroom note, audiodsp_util.float32, the
+# soundtrack render gate, the upstream PR material, the re-pinned oracle).
+#
+# 2026-09-21: moved to 02b1841 (audiodsp PR #107), because this repository's
+# stable output needs it. A Component's `output` is an `audioroute.Port` now -
+# a zero-copy wire whose identity never changes, so a Rack, a hand-wired Mixer
+# and the audio pump all hear a knob that re-points the graph (Mix from zero,
+# Phaser's stages, Distortion's Character). On the old pin that node does not
+# exist, `_component.PORT` falls back to None, and the suite is green with
+# `TheOutputPortIsAWire` SKIPPING, planted fault included: `OK (skipped=6)`
+# where it should read `OK (skipped=2)`. The same merge brings the pump's
+# portable engine (`audiopump`: the block pull off the interpreter thread, the
+# push ring, the event queue the instruments' `scheduled()` writes to, the
+# tap), the pump lock as port hooks that default to no-ops, and the lock
+# audit's fixes under every node. No DSP changed: `verify_dsp` reads 49/0/0,
+# every parity gate is the one already published, and the 65 digest cells and
+# the 249-patch smoke are identical with and without the port on all three
+# interpreters. Re-run here at the pin: the whole suite, `Ran 1519 tests`.
+#
+# 2026-09-21: 02b1841 -> 4e58091, the core's rename. The repository is
+# `audiodsp` and so is everything in it: the distribution is
+# `pydevices-audiodsp`, the helper package `audiodsp_util`, the CPython
+# extension `_audiodsp`, and every C identifier and header carries the
+# `audiodsp_` prefix. The pin HAS to move with it: CI installs
+# `pydevices-audiodsp @ git+...@<pin>` and pip refuses a checkout whose
+# project name is not the one asked for. No DSP changed -- the core's five
+# parity digests are the ones 02b1841 printed, and a unix firmware links to
+# the same text/data/bss. Re-run here at the pin: `Ran 1519 tests`,
+# `OK (skipped=2)`, validate_api 55 instruments and 45 effects, the smoke
+# green -- the same counts as at 02b1841.
+#
+# 2026-09-27: 4e58091 -> v0.6.1 (094dde5), decided the same day. The
+# effects program's Phase 5 (Time) was un-parked in a cloud session, where
+# the desktop interpreters are built from the audiodsp checkout beside
+# this one -- and at 4e58091 the unix MicroPython no longer links under
+# micropython-pydevices' current overlay: every usermod entry in the module
+# table comes up undefined (the manifest names the modules the way audiodsp
+# main has named them since #144), so not one desktop gate could run at the
+# floor this file named, so the pin moved. And, the same hour: v0.6.1 was
+# tagged on 2026-09-25 and is on TestPyPI, on the MIP index and on
+# production PyPI (uploaded by hand after the Trusted Publisher step failed
+# that day); the only commit past it
+# is #151, which moves the PyPI upload into audiodsp's own workflow, and no
+# source file differs -- so the desktop pair built from main (dd84add) is
+# the release's DSP byte for byte. What moved beneath the components between
+# 4e58091 and v0.6.1, by `git log 4e58091..v0.6.1 -- src`: a mixer voice at
+# level 1.0 is a wire (audiodsp#129); the shaper's oversample ceiling is 16
+# and a build-time knob (#131); a deinit() holds the pump lock over its whole
+# body (#132); the pump's 64-bit status words are read under the 32-bit-
+# atomics rule (#133); a file-backed source is refused at handover and the
+# funnel refuses a loop entered at any node (#134, #135); a Tap read with
+# nothing new says so (#136); a refused press is counted, so the instrument
+# layer can see it (#137); a strike on a modal bank can carry a frame (#138);
+# audiomodal's inner loop runs over the modes that can sound (#139); the
+# pump's per-block path can be placed in IRAM (#142, #143); and ulab is named
+# by the manifest once for every port (#144). Re-run here at the new pin, on
+# the cloud desktop (Linux x86-64, Python 3.12, MicroPython v1.29.0 +
+# overlay, CircuitPython 10.3.0 + the apply scripts): the unit suite `Ran
+# 1548 tests ... OK (skipped=2)`, two more than the 1546 the same tree
+# counted before this move's test edits, because #129 is the fix the four
+# audiodsp#95 plants were waiting for (Mix 0 through
+# the dry voice at unity, in Compressor, DeEsser, DynamicEQ and
+# MultibandCompressor: it cannot fire on this floor, so each is a control
+# now, and Compressor and MultibandCompressor gained the one-LSB dry-path
+# plant the other two already had, so every WIRE row still has a fault it
+# is shown catching); validate_api 55 instruments and 45 effects;
+# validate_metadata valid; flake8 clean; the smoke 45 classes, 249 patches,
+# 0 failures on CPython, MicroPython and CircuitPython; verify_dsp 49
+# comparisons, 0 failures, on all three. Pending both boards:
+# this move has not been proven on the P4 or the S3 -- there is no board in
+# the cloud -- and the Phase 5 board test plan carries it as its first row.
+# The pyproject floors stay at >=0.5.1; raising them is a release-time
+# change and Phase 7's.
+#
+# 2026-09-27: v0.6.1 -> v0.6.2 (1c89b03), as decided the same
+# day: "merge it and release and move the pin ... Work unattended and
+# continue with effects after the release and pin move." v0.6.2 is on
+# TestPyPI and production PyPI (the first upload through audiodsp's own
+# Trusted Publisher). What moved beneath the components between v0.6.1 and
+# v0.6.2, by `git log v0.6.1..v0.6.2 -- src`: audiopump.Tap gained a C
+# stream reader (#152; no DSP node touched), and audioecho.FeedbackDelay's
+# fed-back term is truncated toward zero exactly where round-to-nearest
+# could hand a repeat back unchanged (#154, `recirculated()`,
+# src/shared/audiodsp_feedback_delay.c:344, called at :529), so a tail
+# reaches exact zero at every feedback. Below feedback 0.5 the output is
+# byte-identical; above it a tail's last few LSB differ, 1-3 LSB and at most
+# 6 at 0.99. That fix turned ten assertions red here, each pinning the old
+# floor: DigitalDelay's floor test, CombFilter's parked-residue, parked-ring
+# and un-reset-line tests, and Flanger's F8 audio T60 at Color max, which
+# reads 1.91 s against its 2.0 s bar (2.13 s at v0.6.1: the floor was
+# holding the ring up). The first eight are rewritten to the fixed
+# behaviour, each shown red at v0.6.1; Flanger's two stay red for the gate
+# audit, because the bar is not the pin move's to lower. Re-run here at the
+# new pin on a workstation (Linux x86-64, Python 3.12, MicroPython
+# v1.29.0 + overlay and CircuitPython 10.3.0 + the apply scripts, both
+# rebuilt from v0.6.2): the unit suite `Ran 1601 tests ... FAILED
+# (failures=2, skipped=2)`, the two being Flanger's F8 rows above;
+# validate_api 55 instruments and 45 effects; validate_metadata valid;
+# flake8 clean; the smoke 45 classes, 249 patches, 0 failures on CPython,
+# MicroPython and CircuitPython, line for line what v0.6.1 printed. A
+# burst-and-two-seconds census of the whole catalogue (every class and
+# parked rebuild, constructor default and every patch, 316 cells)
+# moved 18 cells, the same 18 with the same digests on all three
+# interpreters: CombFilter (5), the parked Flanger (6), TapeDelay (3),
+# AnalogDelay (2), PingPongDelay (1) and the parked DigitalDelay (1).
+# Pending both boards, as v0.6.1 was.
+#
+# 2026-09-28: v0.6.2 -> v0.6.3rc1 (bd7d2e2), a pre-release of the next
+# patch, on a ruling of the same day, "fix the node now, in parallel".
+# It is on TestPyPI only (18 wheels; pre-releases skip production PyPI and
+# MIP), so CI's `git+...@v0.6.3rc1` install is the one that reaches it.
+# What moved beneath the components, by `git log v0.6.2..v0.6.3rc1 --
+# src`: audiodsp#161, four fixes to audioecho.FeedbackDelay. A loop
+# low-pass taken out (damping_hz 0) keeps its state on the tap, and a
+# high-pass taken out (cut_hz 0) holds its state at zero, where both used
+# to freeze and play back out of silence when the filter came back (#158,
+# #159); a damping state that has stopped moving at or below 64 LSB is set
+# onto its input once a block, so a tail reaches exact zero with the
+# low-pass in (#157); a new wow_depth_ms ramps in over 20 ms instead of
+# landing at once (#160). Eight tests here pinned the old node or proved a
+# class-side workaround was needed (DigitalDelay 3, SlapbackDelay 3,
+# CombFilter 2, one of them the stall canary) and went red at the new pin,
+# nothing else did; the workarounds came out in the same change (the
+# 32 x rate tracking off stops, the stall-window stepping, the Repeat Cut
+# disclosure, SlapbackDelay's Wow step) and those tests assert the good
+# behaviour directly, each beside a planted fault. The census (every class
+# and parked rebuild at the default and every patch, 319 cells) is
+# identical to v0.6.2's on CPython, MicroPython and CircuitPython, both
+# before and after the workarounds came out; the library smoke moves 15
+# peaks on all three, all where a patch change on a playing instance moves
+# a wow depth (Chorus 1-5, Vibrato 3-6, the parked Flanger 1-6), which is
+# #160's ramp. Re-run here on a Linux x86-64 workstation, with the desktop
+# interpreters rebuilt at the tag (audioecho.__revision__
+# v0.0.3-290-gbd7d2e2 on MicroPython; CircuitPython carries none, and its
+# provenance stamp names the same): the unit suite `Ran 1693 tests ... OK
+# (skipped=3)`; validate_api 55 instruments and 45 effects;
+# validate_metadata valid; flake8 clean; the smoke 45 classes, 259
+# patches, 0 failures on CPython, MicroPython and CircuitPython. Pending
+# both boards.
+#
+# 2026-09-28: v0.6.3rc1 -> v0.6.3rc2 (0d35a90), on this class branch
+# (effects/phase5-convolutionreverb) first, so ConvolutionReverb is audited
+# once, on the fixed node (decided the same day). A pre-release of the next
+# patch, on TestPyPI only, like rc1. What moved beneath the components, by
+# `git log v0.6.3rc1..v0.6.3rc2 -- src`: audiodsp#165, two fixes to
+# audioconvolve.Convolver. A re-synthesis on a node that holds an impulse
+# keeps the node's state: the block in flight is recomputed against the
+# old room and the new and crossfaded over its unplayed frames, no frame
+# of the dry drops at any mix, and from the next block the node is a node
+# built with the new room (#163; load() still resets, and a first
+# synthesis on an empty node still does). A stereo synthesized room gets
+# one energy and one scale per side, so it no longer leans (#164). Mono
+# rooms and measured impulses render the bytes they did; every stereo
+# synthesized room moved. Five ConvolutionReverb tests pinned a defect or
+# a figure of the old node and went red at the new pin, nothing else did;
+# each is restated to the good behaviour beside a planted copy of the old
+# (ResetOnMove renders the v0.6.3rc1 node's bytes on a mono room). Station
+# C's 60 digests agree on CPython, MicroPython and CircuitPython built at
+# the tag (bin/micropython-063rc2, audioecho.__revision__
+# v0.0.3-295-g0d35a90, and bin/circuitpython-063rc2, whose provenance
+# stamp names the same): the 30 stereo cells moved, the 30 mono cells did
+# not. Gates here: the unit suite `Ran 1966 tests ... OK (skipped=3)`
+# (no Flanger F8 failure: effects/phase5 restated F8); validate_api 55 instruments and 45 effects;
+# validate_metadata valid; flake8 clean; the smoke 45 classes, 259
+# patches, 0 failures on CPython and the two new binaries. The old
+# reverb.ConvolutionReverb synthesizes stereo rooms too, so its renders
+# move; no test holds them. Pending both boards, and the pump race on a
+# board (audiodsp#166, open).
+#
+# 2026-09-29: v0.6.3rc1 -> v0.6.3rc3 (b386248), the next pre-release of the
+# same patch, under the same ruling; TestPyPI only, as rc1. What moved
+# beneath the components, by `git log v0.6.3rc1..v0.6.3rc3 -- src`:
+# audiodsp#165, audioconvolve.Convolver keeps the block in flight across a
+# re-synthesis (#163) and normalises each side of a synthesized stereo room
+# on its own (#164); audiodsp#172, audioverb.Tank's tilt pole keeps tracking
+# at tone_db 0 (#168) and set(delays=, taps=) re-cuts a playing node in place
+# (#169); audiodsp#173, a cross-fed stereo audioecho.FeedbackDelay tail
+# reaches exact zero (#170). Nothing on this branch pinned the old
+# behaviour: the unit suite `Ran 1894 tests ... FAILED (failures=1,
+# skipped=2)`, the one failure the provenance test refusing bin/micropython
+# (an rc1 build; it passes pointed at bin/micropython-063rc3). The census
+# (336 cells, three interpreters) moves exactly the 8 library
+# ConvolutionReverb cells, from #164, to the digests audiodsp#165's own
+# census printed; no delay class and no Reverb cell moves. The smoke moves
+# ConvolutionReverb's 7 patch peaks and nothing else. Desktop interpreters
+# built clean at the tag beside the live pair (bin/*-063rc3;
+# audioecho.__revision__ v0.0.3-305-gb386248 on MicroPython, the provenance
+# stamp on CircuitPython). validate_api 55 instruments and 45 effects;
+# validate_metadata valid; flake8 clean; the smoke 45 classes, 259 patches,
+# 0 failures on CPython and both rc3 binaries. Pending both boards.
+#
+# 2026-09-29: v0.6.3rc3 -> v0.6.3 (5afe010), the release, named
+# the same day ("release audiodsp 0.6.3"); on TestPyPI and production
+# PyPI. Nothing moved beneath the components: `git diff v0.6.3rc3 v0.6.3`
+# is VERSION and CHANGELOG.md, no source file. Re-run here on a Linux x86-64
+# workstation with both desktop interpreters rebuilt from clean build
+# directories at the tag (audioecho.__revision__ v0.0.3-308-g5afe010 on
+# MicroPython, the provenance stamp on CircuitPython; kept as bin/*-063)
+# and the venv's audiodsp installed from PyPI: the unit suite `Ran 2280
+# tests ... OK (skipped=2)`, the lifecycle matrix for all eight Phase 5
+# classes included; validate_api, validate_metadata and flake8 clean.
+# Pending both boards.
+#
+# 2026-10-09: v0.6.3 -> eb2d20d, audiodsp main, a commit and not a release
+# (v0.6.4 is behind it). It carries the CircuitPython 11.0.0-alpha.1 resync
+# (audiodsp#221) and, by `git log v0.6.3..eb2d20d -- src`, these changes
+# beneath the components: FeedbackDelay, Tank and Convolver let go of a
+# source once it hands its last buffer, render whatever the source did not
+# fill from silence, so every block is whole and a tail rings out when its
+# source ends, and rest once their state is exactly zero (audiodsp#213); a
+# host reset keeps the source frames a node has already taken (#211);
+# MultiTapDelay keeps its lanes and never spins, and FeedbackDelay's wow and
+# pitch shift park at a zero crossing (#216); upstream's buffer-length and
+# silence-fill fixes (#215); FeedbackDelay gains delay_frames (#206); the
+# CPython mixer forces a pending level move per source stretch (#203);
+# released nodes refuse every method (#198); control writes take the pump
+# lock (#205, #209); Echo stays inside a short line and defaults to mix 0.25
+# on CPython (#200, #197); a looping MP3's second lap (#219); audiometer
+# (#186, #199) and the CPython audiopump engine (#190).
+#
+# The tests that pinned the old nodes are restated to the new behaviour,
+# each with the reason in its own comment (audiocomponents#127): the
+# family's tail sentence in seven docstrings ("When your source ends, the
+# tail rings out as it would on silence.") and the tests that read it, in
+# place of the frozen tail; ConvolutionReverb's short reads, which leave a
+# whole block with the rest silent instead of a short block, and its host
+# reset_buffer, which keeps the frames the node holds; two MultiTapDelay
+# plants that #211 made inert; and the lifecycle matrix's E8-dry event,
+# retired because a native source that runs dry has ended.
+#
+# 2026-10-12: eb2d20d -> v0.6.6rc1 (30cbbf6), a pre-release of the next
+# patch, for the effects program's Phase 6; TestPyPI only, so CI's
+# `git+...@v0.6.6rc1` install is the one that reaches it. The pyproject
+# floors stay at the last final release: the pin is not the floor. What
+# moved beneath the components, by `git log eb2d20d..v0.6.6rc1 -- src`:
+# audiodelays.Echo and MultiTapDelay start a line shortened under the write
+# head at its top, so a Time brought back after a shorter one plays nothing
+# from before, and the CPython Echo clears past a shorter line as the native
+# one does (audiodsp#241); Echo lets go of a looped source that comes back
+# empty instead of hanging the pull (#242); PitchShift and
+# GranularPitchShift start again from a new node's state on a reset (#240)
+# and return from a pull when the source has nothing to give (#243), and
+# PitchShift gains upstream's freeze (#222); Convolver's load() keeps the
+# audio in flight and crossfades the block being played, as synthesize()
+# already did (#237); a Mixer's host reset keeps every voice where it was
+# (#229); a set() on FeedbackDelay, Tank, Dynamics, Waveshaper, Ladder and
+# Bank is staged off the lock and lands whole (#233); an audiopump swap
+# that outlasts the ring fades out and back in (#234); Tank's filters and
+# modulation brought back from 0 start from what is playing (#227); a mono
+# SplitterTap's buffer is the tap's own on CPython too (#228); FeedbackDelay
+# takes its wow and pitch coast rate from what played, and the CPython Echo
+# holds its line still at mix 0 (#226); audiovorbis (#238, #239); and an
+# fmod-free angle reduction for the RP2040 (#225).
+#
+# 2026-10-13: v0.6.6rc1 -> f7a86c9, the effects program's Phase 7 node batch
+# (step 7b): the candidate for audiodsp's next pre-release, v0.6.6rc3, and
+# the final pin of the phase. Named by commit until the tag is cut; the tag
+# names the same source. What moves beneath the components, by `git log
+# v0.6.6rc1..f7a86c9 -- src`: audiodelays.Flanger lets go of a looped source
+# that comes back empty and gives a stalled one silence, instead of spinning
+# the pull; audioecho.FeedbackDelay's upward loop_semitones writes its line
+# through a band limit at 0.7 of the frequency the next pass would carry to
+# Nyquist, so a climb fades out at the top instead of folding back; and both
+# shifters (the loop's two taps and audiodelays.PitchShift's splice) move a
+# splice's incoming side into phase with the outgoing one, so a held note
+# plays its shifted pitch, and a chord its notes, instead of cancelling.
+# Unshifted and downward FeedbackDelay renders, silence and a lone click
+# through either shifter, and a frozen PitchShift window render the bytes they
+# did.
+#
+# Moved to v0.6.6rc3 (a9d36e6) on 2026-10-13: the release of the commit
+# above (audiodsp#245, #247), the same node tree as f7a86c9 outside VERSION
+# and CHANGELOG.md, so CI can install it from GitHub.
+#
+#
+# Moved to v0.6.6rc4 (8d5c282) on 2026-10-14: MultiTapDelay's reset puts the
+# write heads back where a fresh node has them, and audioconvolve.Convolver
+# gains wet_gain (default 1.0, byte-identical there), which
+# ConvolutionReverb uses to trim its four darkest rooms (audiodsp#248).
+#
+# Moved to v0.6.6rc5 (b278d32) on 2026-10-14: audioconvolve.Convolver gains
+# room_peak_gain and room_peak_gain_for, the reading ConvolutionReverb's wet
+# trim is computed from. Every render is byte-identical to rc4's.
+#
+# Moved to v0.6.6rc6 (9399602) on 2026-10-14: audioecho.FeedbackDelay gains
+# wow_depth_ramp_ms, which Vibrato's Engage rides so its Rise ramps on every
+# interpreter, and audioshaper.Waveshaper gains recentre(), which
+# Saturation calls so a gain move in silence with Hysteresis on plays
+# nothing. Every render is byte-identical to rc5's at the defaults of both.
+#
+# Moved to v0.6.6rc8 (f83ddc6) on 2026-10-14, by way of rc7: the CPython
+# extension no longer crashes in garbage collection while a RawSample still
+# exports a buffer; audiodynamics.Dynamics writes a mono block at its own
+# stride, so short source buffers leave no stale frames; audioroute.Splitter
+# gains clear(), which six classes call to drop what the ring held from
+# before a bypass when Mix comes back up; and audioecho.FeedbackDelay takes
+# a new wow_shape by dipping the depth to zero and swapping there, which
+# Vibrato hands its clock law to. Every other render is byte-identical to
+# rc6's.
+#
+# Moved to v0.6.6rc9 (96abd34) on 2026-10-15: audiobiquad.Biquad walks a
+# coefficient move over 20 ms instead of keeping its state through the jump,
+# so LowPass, BandPass and Notch no longer thump at full scale when
+# Frequency jumps to the bottom (audiocomponents#162). Static renders are
+# byte-identical to rc8's; only renders across a coefficient move change.
+#
+# Moved to v0.6.6 (5ef58a4) on 2026-10-15: the release itself, for the
+# audioeffects and audioinstruments 0.4.0 release. `git diff v0.6.6rc9
+# v0.6.6` is VERSION and CHANGELOG.md, no source file, so every gate that
+# ran at rc9 ran on this node tree. The pyproject floors rise to >=0.6.6,
+# the release-time change the earlier entries left to Phase 7.
+#
+# Moved to 6db15e3 on 2026-10-17, for audiosampler (audiodsp#272), which
+# the new `soundfont` and `soundfont_drums` instruments are built on. CI
+# installs audiodsp from this pin and nothing else, so without it they
+# cannot be built. Named by commit; no release carries the module yet.
+# What else moved beneath the components, by `git log v0.6.6..6db15e3 --
+# src`, is v0.6.7's: the CPython extension declares it doesn't need the GIL
+# (#268) and locks each node per call (#267); synthio keeps one block clock
+# per thread on CPython (#266); and Biquad spells out its float-to-double
+# promotions in the SVF handover (#264). audiosampler is a new module and
+# touches no node that existed.
+#
+# Moved to f98eb17 on 2026-10-20, for audiosampler's 128-voice ceiling
+# (audiodsp#289), so an instrument can ask the sampler for more than 64
+# voices. Named by commit; no release carries it yet. What else moved
+# beneath the components, by `git log 6db15e3..f98eb17 -- src`: audiosampler
+# keeps its samples in a SampleBuffer outside the collected heap and fades
+# a stopped or stolen voice over 5 ms; audiomixer passes a unity-level
+# voice through unscaled, and on CPython scales any other in C (#273);
+# synthio returns silence for a block where nothing sounds (#278);
+# audioladder takes buffer_size; audiooscillator is new, and audiopump and
+# audiometer change only their USB paths. audioecho.FeedbackDelay's loop
+# shifter now searches a whole window for a splice that nothing near fits
+# (audiodsp#284), but not on a fading repeat (audiodsp#290): #284 alone
+# dropped PitchShifter's third repeat 19 dB at 22.05 kHz, -5 semitones and
+# Feedback 0.3 (T3), and with #290 it reads 2.5 dB over its bar's
+# reference, as it did before #284. The two `@options` rows in
+# test_measure_effect_cost run the loop shifter on held material and move
+# with #284; their digests are re-read there.
+#
+# Moved to v0.6.9 (4de7609) on 2026-10-21: the release, for the
+# audioeffects and audioinstruments 0.4.1 release, and the first release to
+# carry audiosampler and its 128-voice ceiling, so the pin is named by tag
+# again. What moved beneath the components, by `git log f98eb17..v0.6.9 --
+# src`: audiograph is new, a C graph runner over the existing kernels on
+# all three interpreters; audiomath gains cast_into; audiopump.Ring comes to
+# CircuitPython; the MP3 decoder takes its buffers from the heap on ESP32
+# and the other CMake builds; and audioladder.Ladder takes a `cutoff` audio
+# input, with the oscillator's exp2 moved into a shared header for it. A
+# Ladder with no cutoff input connected renders the configured filter bit
+# for bit, and LadderFilter moves its cutoff with set() only, so no node a
+# component builds on renders differently. The pyproject floors rise to
+# >=0.6.9.
+#
+# Moved to 0c0824e on 2026-10-29, for the sampler's filter, modulation
+# envelope and LFOs (audiodsp#337, merged as this commit), which `soundfont`
+# now hands every region's own to. CI installs audiodsp from this pin and
+# nothing else, so without it play() refuses the new keywords. Named by
+# commit; no release carries it yet. What else moved beneath the
+# components, by `git log v0.6.9..0c0824e -- src`: audiofeatures is new;
+# audiograph becomes an audio sample the pump pulls, gains a clipping
+# two-pole filter, an overdrive, an exponential VCA curve and a TANH node,
+# and pages its tables; audiobiquad takes buffer_size; and the CircuitPython
+# modules are resynced with 11.0.0-alpha.2 (46f78dc). That resync is the one
+# that renders differently: the Mixer now scales a voice as
+# (x * level) >> 15, rounding toward minus infinity, where it scaled by
+# level / 32767 and truncated. Level 1.0 is the exact wire it was, and a
+# level below unity moves by up to one LSB. Every effect test that changed
+# result was bisected to 46f78dc (all pass at 1877bb9, the commit before).
+# MultiTapDelay and AirSpace drop the mono 1 - 2^-15 dry they used to
+# dodge the float mixer, the Harmonizer tests model the new arithmetic, and
+# AirSpace's get_buffer digests are re-read. A sampler voice that sets none
+# of the new keywords renders the bytes it did.
+#
+# <ref> <commit>   -- ref is what CI installs (git+https://...@<ref>)
+0c0824e3966998613d8c5314cefb1d752bc70693 0c0824e3966998613d8c5314cefb1d752bc70693

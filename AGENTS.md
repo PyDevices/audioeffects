@@ -1,0 +1,13 @@
+# AGENTS.md
+
+- Test the code you changed, not the suite: `python tools/scoped_tests.py class:DeEsser` (or `effects`, `contract`, `auto`; `--list` prints the choice and runs nothing). The full run is very long ([CONTRIBUTING.md](CONTRIBUTING.md#run-the-tests)).
+- CI also runs `python tools/validate_api.py`, `python tests/parity/effects_library_smoke.py` and `python -m flake8` (defect checks only, no layout rules).
+- Set up against the audiodsp commit `AUDIODSP_PIN` names, not a TestPyPI release; a gate result against a floating core can't be attributed ([setup](CONTRIBUTING.md#set-up)). Moving the pin is its own change with the gates re-run.
+- In a git worktree, an editable install still imports the main clone's `lib`. Put `PYTHONPATH=$PWD/lib` first, or your edit won't run.
+- Instrument sound is held to hashes of the original scripts. `--capture-old` can't absorb a deliberate change; name the instrument in `REBUILT` in `tests/parity/run_instruments_parity.py` instead ([how](CONTRIBUTING.md#the-instrument-parity-gate)). Don't re-capture a golden casually.
+- The parity gate and the live scheduling-seam gate need a MicroPython build with audiodsp built in, so CI doesn't run them.
+- Don't edit `VERSION`, tag or dispatch a release; the version is named in the release pull request ([Release](CONTRIBUTING.md#release)). An editable install reports `0.0.0`; that is cosmetic.
+- No C here. If a fix has to go below the Python, it goes in [audiodsp](https://github.com/PyDevices/audiodsp).
+- The pages under `docs/reference/` are generated on every build; don't edit or commit them.
+- A frozen module wins over `/lib` on MicroPython and CircuitPython, so a copied or mip-installed `audioinstruments` never runs until you rebuild or put `/lib` first. On a source checkout set `PYTHONPATH` (CPython) or `MICROPYPATH` (MicroPython) to `lib`.
+- Examples follow one style. Start a file under `examples/` with the three REUSE licence lines the repo's other files use, then a docstring: a one-line imperative summary under 72 characters, a short paragraph on what it shows, then `Needs:`, `Run it:` and `Tested on:` in that order. `Tested on:` names only where the file ran, so run it before you write the line. Put the settings a reader may change in UPPER_CASE constants under a `# Change these to match your setup.` comment, and put a full-sentence comment above each step. Leave out issue numbers, bench port names and session history. If an example draws, use pygraphics, never `framebuf`. A style-only rewrite changes comments, docstrings and layout, never behaviour: compare the code with docstrings and comments stripped, before and after.

@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pydevices-audioeffects"
+dynamic = ["version"]
+description = "Audio effects built on audiodsp's audio nodes for PyDevices"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{name = "PyDevices contributors"}]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+# The audiodsp floor is the newest audiodsp RELEASE. It is not the pin:
+# AUDIODSP_PIN (repo root) names the exact commit the gates run against,
+# and may sit ahead of any release.
+# 0.5.1 is the first release the core PUBLISHED under this name: it was renamed
+# on 2026-09-21, and v0.5.0 was tagged that day and published nothing. So there
+# is no older pydevices-audiodsp to be compatible with.
+dependencies = ["pydevices-audiodsp>=0.6.9"]
+
+[project.urls]
+Repository = "https://github.com/PyDevices/audiocomponents"
+Issues = "https://github.com/PyDevices/audiocomponents/issues"
+
+[tool.setuptools]
+# Every package directory under lib/audioeffects, listed by hand: the
+# package-dir mapping below ("." is the package) rules out packages.find,
+# which would discover rebuilt/ as a top-level "rebuilt". v0.3.0 shipped
+# without audioeffects.rebuilt and failed on import; tools/wheel_gate.py
+# (the "Wheel" job in tests.yml) fails if a directory is left off again.
+packages = ["audioeffects", "audioeffects.rebuilt"]
+
+[tool.setuptools.package-dir]
+audioeffects = "."
+
+[tool.setuptools.dynamic]
+version = {file = "VERSION"}

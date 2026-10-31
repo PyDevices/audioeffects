@@ -1,0 +1,1234 @@
+"""`DynamicEQ`'s own invariant, trait and planted-fault battery.
+
+The class gate asks for two
+things this file carries: every Tier 1 invariant green at 48 kHz, and every
+demonstrated Tier 2 trait shown **red on a planted fault of the same kind**.
+Three-rate coverage is the evidence pack's. Numbers are
+printed as they are measured so the pack quotes a run and not a
+recollection.
+
+Every fault below is planted in a **live instance**, by reaching into the
+graph the class built, so the control and the faulted run are the same code
+path with one thing changed. A fault planted in the module would prove that a
+different class fails.
+"""
+
+import array
+import math
+import re
+import unittest
+
+import audiocore
+
+from audioeffects import _component
+from audioeffects import dynamiceq as module
+#: The subject is named directly. `DynamicEQ` has come home to
+#: `audioeffects/dynamiceq.py`; `rebuilt.ADOPTED` no longer lists it. These
+#: tests still import the home module so a planted-fault subclass is
+#: measured against this file, not only `create()`.
+
+#: `_component` reads VENDOR off the module a class is defined in, and the
+#: planted-fault subclasses below are defined here. Without this they would
+#: refuse to construct - a fault that cannot fail.
+VENDOR = "PyDevices"
+
+RATE = 48000
+CHANNELS = 2
+FULL_SCALE = 32767.0
+
+
+# --------------------------------------------------------------------------
+# The rig
+
+
+def amp(level_db):
+    return int(round(FULL_SCALE * (10.0 ** (level_db / 20.0))))
+
+
+def sine(hz, amplitude, frames, rate=RATE, channels=CHANNELS):
+    data = array.array('h', bytes(2 * channels * frames))
+    step = 2.0 * math.pi * hz / rate
+    for index in range(frames):
+        value = int(round(amplitude * math.sin(step * index)))
+        for channel in range(channels):
+            data[index * channels + channel] = value
+    return data
+
+
+def burst(hz, amplitude, on_frames, total_frames, lead, rate=RATE,
+          channels=CHANNELS):
+    """Silence, tone, silence. The lead matters: `audiocore.RawSample` hands
+    its buffer back from the beginning, so a burst at frame 0 replays after a
+    `reset()` and reads exactly like a node that was never cleared."""
+    data = array.array('h', bytes(2 * channels * total_frames))
+    step = 2.0 * math.pi * hz / rate
+    for index in range(on_frames):
+        value = int(round(amplitude * math.sin(step * index)))
+        for channel in range(channels):
+            data[(lead + index) * channels + channel] = value
+    return data
+
+
+def impulse(amplitude, at, total_frames, channels=CHANNELS):
+    data = array.array('h', bytes(2 * channels * total_frames))
+    for channel in range(channels):
+        data[at * channels + channel] = amplitude
+    return data
+
+
+class _OldRingSource:
+    """The `Splitter` as it was before audiodsp#87, written out in Python.
+
+    A call bigger than the 8192-frame ring kept only its tail, so the head
+    of a whole-buffer source never reached the graph. The node does not do
+    that any more, and the guard's planted fault needs something that does
+    or the block ladder is a measurement that cannot fail.
+    """
+
+    RING_FRAMES = 8192
+
+    def __init__(self, inner):
+        self._inner = inner
+        self.sample_rate = inner.sample_rate
+        self.channel_count = inner.channel_count
+        self.bits_per_sample = getattr(inner, "bits_per_sample", 16)
+        self.samples_signed = getattr(inner, "samples_signed", True)
+
+    def _reset_buffer(self, *args, **kwargs):
+        return self._inner._reset_buffer(*args, **kwargs)
+
+    def _get_buffer(self, *args, **kwargs):
+        state, data = self._inner._get_buffer(*args, **kwargs)
+        raw = bytes(data)
+        stride = 2 * self.channel_count
+        frames = len(raw) // stride
+        if frames > self.RING_FRAMES:
+            raw = raw[(frames - self.RING_FRAMES) * stride:]
+        return state, memoryview(bytearray(raw))
+
+
+#: T1's sweep. The two skirt frequencies are not decoration: at f0 itself
+#: the notch is exactly zero and the band-pass is exactly unity whatever Q
+#: is, so a mistuned branch is invisible there and visible on the skirt -
+#: which is where the planted faults below read 0.22 and 0.40 dB.
+T1_SWEEP = (100.0, 500.0, 1500.0, 2500.0, 3000.0, 3600.0, 6000.0, 12000.0)
+
+
+class ThroughTheDryVoice(module.DynamicEQ):
+    """The wiring this class shipped with before audiodsp#95: Mix 0 routed
+    through the Mixer's dry voice at level 1.0 instead of handing back the
+    class's input. Nothing else moves - the levels are the same numbers - so
+    the only difference in the render is the mixer's own `level / 32767`
+    multiply.
+    """
+
+    NAME = 'DynamicEQ'
+
+    def _play_voices(self):
+        _component.open_level_gates(
+            self._mixer,
+            [self._mixer.voice[0], self._mixer.voice[1],
+             self._mixer.voice[2]],
+            self._silence)
+        self._mixer.play(self._taps[0], voice=0, loop=True)
+        self._mixer.play(self._notch, voice=1, loop=True)
+        self._mixer.play(self._cell, voice=2, loop=True)
+        self._primed = True
+
+    def _refresh_output(self):
+        if not self._ready:
+            return
+        if not self._primed:
+            self._play_voices()
+        self._output = self._tail
+
+
+def ramp_fs(frames, channels=CHANNELS):
+    """Full-scale ramp. The only probe that reaches audiodsp#95's mechanism:
+    it starts at |value| 32736, which nothing peaking under -6.02 dBFS has.
+    """
+    values = array.array('h')
+    last = float(frames - 1)
+    for index in range(frames):
+        value = max(-32768, min(32767,
+                                int(round(-32768 + 65535.0 * index / last))))
+        for _ in range(channels):
+            values.append(value)
+    return values
+
+
+def build(data, cls=None, rate=RATE, channels=CHANNELS, **options):
+    source = audiocore.RawSample(data, sample_rate=rate,
+                                 channel_count=channels)
+    return (cls or module.DynamicEQ).create(source, rate, **options), source
+
+
+def render(node, frames, channels=CHANNELS):
+    out = array.array('h')
+    while len(out) // channels < frames:
+        result, buffer = audiocore.get_buffer(node)
+        raw = bytes(buffer)
+        if not raw:
+            break
+        chunk = array.array('h')
+        chunk.frombytes(raw)
+        out.extend(chunk)
+    return out[:frames * channels]
+
+
+def rms(data, skip=0, channels=CHANNELS, channel=0):
+    total = 0.0
+    count = 0
+    for index in range(skip * channels + channel, len(data), channels):
+        value = float(data[index])
+        total += value * value
+        count += 1
+    return math.sqrt(total / count) if count else 0.0
+
+
+def gain_db(wet, dry):
+    if wet <= 0.0 or dry <= 0.0:
+        return float('-inf')
+    return 20.0 * math.log10(wet / dry)
+
+
+def tone_gain(hz, level_db, frames=16384, rate=RATE, channels=CHANNELS,
+              **options):
+    """Composite gain on a steady tone, read after the detector settles.
+
+    16384 frames is 341 ms at 48 kHz. The RMS starts at `frames // 2`, so
+    the detector has 170 ms; this class's attack is a few ms. Not used for
+    a tail or a release.
+    """
+    data = sine(hz, amp(level_db), frames, rate, channels)
+    effect, _ = build(data, rate=rate, channels=channels, **options)
+    out = render(effect.output, frames, channels)
+    skip = frames // 2
+    return gain_db(rms(out, skip, channels), rms(data, skip, channels))
+
+
+def law(over_db, ratio, knee_db=6.0):
+    """`audiodsp/src/shared/audiodsp_dynamics.c:392-403`, in Python."""
+    half = knee_db * 0.5
+    slope = 1.0 - 1.0 / ratio
+    if over_db <= -half:
+        return 0.0
+    if over_db < half and knee_db > 0.0:
+        x = over_db + half
+        return -slope * x * x / (2.0 * knee_db)
+    return -slope * over_db
+
+
+def h_bp_db(hz, centre, q, rate=RATE):
+    """|H_bandpass(f)| in dB from S1's own coefficients."""
+    w0 = 2.0 * math.pi * centre / rate
+    alpha = math.sin(w0) / (2.0 * q)
+    cos0 = math.cos(w0)
+    w = 2.0 * math.pi * hz / rate
+    br = alpha - alpha * math.cos(-2 * w)
+    bi = -alpha * math.sin(-2 * w)
+    ar = (1.0 + alpha) - 2.0 * cos0 * math.cos(-w) + (1.0 - alpha) \
+        * math.cos(-2 * w)
+    ai = -2.0 * cos0 * math.sin(-w) + (1.0 - alpha) * math.sin(-2 * w)
+    num = math.sqrt(br * br + bi * bi)
+    den = math.sqrt(ar * ar + ai * ai)
+    return 20.0 * math.log10(num / den) if num > 0 else float('-inf')
+
+
+def composite_db(hz, centre, q, level_db, threshold_db, ratio, rate=RATE):
+    """The closed form T5 is measured against: both sections share a
+    denominator, so the sum is one numerator over it."""
+    w0 = 2.0 * math.pi * centre / rate
+    alpha = math.sin(w0) / (2.0 * q)
+    cos0 = math.cos(w0)
+    scale = 10.0 ** (law(level_db + h_bp_db(hz, centre, q, rate)
+                         - threshold_db, ratio) / 20.0)
+    w = 2.0 * math.pi * hz / rate
+    br = (1.0 + scale * alpha) - 2.0 * cos0 * math.cos(-w) \
+        + (1.0 - scale * alpha) * math.cos(-2 * w)
+    bi = -2.0 * cos0 * math.sin(-w) + (1.0 - scale * alpha) \
+        * math.sin(-2 * w)
+    ar = (1.0 + alpha) - 2.0 * cos0 * math.cos(-w) + (1.0 - alpha) \
+        * math.cos(-2 * w)
+    ai = -2.0 * cos0 * math.sin(-w) + (1.0 - alpha) * math.sin(-2 * w)
+    return 20.0 * math.log10(math.sqrt(br * br + bi * bi)
+                             / math.sqrt(ar * ar + ai * ai))
+
+
+def _tone_level_db(data, hz=750.0, rate=RATE, channels=CHANNELS,
+                   skip=24000):
+    """One tone's level out of a two-tone probe, by a single-bin DFT over a
+    whole number of cycles."""
+    frames = len(data) // channels - skip
+    cycles = int(frames * hz / rate)
+    span = int(round(cycles * rate / hz))
+    real = imag = 0.0
+    step = 2.0 * math.pi * hz / rate
+    for index in range(span):
+        value = float(data[(skip + index) * channels])
+        real += value * math.cos(step * index)
+        imag -= value * math.sin(step * index)
+    return 20.0 * math.log10(2.0 * math.sqrt(real * real + imag * imag)
+                             / span)
+
+
+def _reset_residual(clear):
+    """Reset the class 32 frames after a 300 Hz burst at Q 12 - inside the
+    ring-down - and report the loudest sample it leaves behind."""
+    data = burst(300.0, amp(-3.0), 4800, 96000, 4800)
+    effect, _ = build(data, frequency=300.0, q=12.0, threshold_db=-60.0,
+                      ratio=8.0)
+    render(effect.output, 4800 + 4800 + 32)
+    clear(effect)
+    after = render(effect.output, 2400)
+    return max(abs(v) for v in after)
+
+
+# --------------------------------------------------------------------------
+# Tier 1 - the invariants
+
+
+class Tier1(unittest.TestCase):
+    def test_wire_at_mix_zero_is_byte_identical(self):
+        """WIRE. Mix 0 is the dry tap at unity and both branches at zero, so
+        it is a byte compare and not a claim about the split being flat.
+
+        8192 frames is enough for a byte identity; a 1 s tone was leftover
+        length.
+        """
+        data = sine(1000.0, amp(-4.4), 8192)
+        effect, _ = build(data, mix=0.0)
+        out = render(effect.output, 8192)
+        self.assertEqual(effect.latency_samples, 0)
+        self.assertEqual(bytes(out), bytes(data))
+
+    def test_wire_at_mix_zero_holds_at_full_scale(self):
+        """The same row on the probe that can see audiodsp#95.
+
+        A tone at -4.4 dBFS peaks at 19700 and the mixer's `level / 32767`
+        lift starts at 32736, so the row above could not have caught a dry
+        voice at unity. This one is a full-scale ramp, and the fault is
+        planted below.
+        """
+        for rate in (22050, 44100, 48000):
+            with self.subTest(rate=rate):
+                data = ramp_fs(8192)
+                effect, _ = build(data, rate=rate, mix=0.0)
+                out = render(effect.output, 8192)
+                effect.deinit()
+                self.assertEqual(bytes(out), bytes(data))
+
+    def test_level_is_honest_below_threshold(self):
+        """LEVEL. Nothing is added anywhere: a tone 10 dB under the threshold
+        comes out at unity through the whole processor."""
+        moved = tone_gain(3000.0, -41.0)
+        print("\n  LEVEL: -41 dBFS at f0 -> %+0.4f dB" % moved)
+        self.assertLess(abs(moved), 0.05)
+
+    def test_tail_reaches_exact_zero_at_every_band(self):
+        """TAIL. Burst then silence; the last non-zero frame and the residual
+        after it. `audiobiquad`'s float state is flushed below 1e-20, which is
+        the whole reason this class is not on the ported biquad."""
+        for centre in (60.0, 400.0, 3000.0):
+            data = burst(centre, amp(-3.0), 9600, 158400, 4800)
+            effect, _ = build(data, frequency=centre, q=2.0,
+                              threshold_db=-60.0, ratio=8.0)
+            out = render(effect.output, 158400)
+            last = 0
+            for index in range(len(out) // CHANNELS):
+                if out[index * CHANNELS] or out[index * CHANNELS + 1]:
+                    last = index
+            residual = max(abs(v) for v in out[-4800 * CHANNELS:])
+            print("  TAIL %7.1f Hz: last non-zero frame %6d, residual %d LSB"
+                  % (centre, last, residual))
+            self.assertEqual(residual, 0)
+            self.assertLessEqual(last - 14400, effect.tail_samples)
+
+    def test_latency_is_zero_at_48k_and_44k1(self):
+        """CLICK. An impulse comes out where it went in, at full height.
+
+        One rate: latency 0 is not a per-rate coefficient claim. 4096
+        frames holds an impulse at frame 50 with a long quiet after it.
+        44.1 kHz stays in the evidence pack and in
+        `test_rate_honesty_at_44k1_and_22k05`.
+        """
+        rate = RATE
+        data = impulse(20000, 50, 4096)
+        effect, _ = build(data, rate=rate)
+        out = render(effect.output, 4096)
+        peak = max(abs(v) for v in out)
+        at = 0
+        for index in range(len(out) // CHANNELS):
+            if abs(out[index * CHANNELS]) == peak:
+                at = index
+                break
+        print("  CLICK %d Hz: peak %d at frame %d, reported %d"
+              % (rate, peak, at, effect.latency_samples))
+        self.assertEqual(peak, 20000)
+        self.assertEqual(at - 50, effect.latency_samples)
+
+    def test_reset_clears_every_node_and_leaves_the_source_rendering(self):
+        """STATE. The reset lands 32 frames after the burst ends, inside the
+        ring-down, so there is really something to clear; and the burst leads
+        with silence, because `RawSample` replays a burst at frame 0 whatever
+        the class did."""
+        residual = _reset_residual(lambda effect: effect.reset())
+        print("  STATE: residual after reset %d LSB" % residual)
+        self.assertLess(residual, 100)
+
+        data = burst(3000.0, amp(-3.0), 4800, 96000, 4800)
+        effect, source = build(data, frequency=3000.0, q=8.0,
+                               threshold_db=-60.0, ratio=8.0)
+        render(effect.output, 12000)
+        effect.reset()
+        self.assertEqual(effect.patch_index, 0)
+        # The borrowed source is never reset and never deinitialised.
+        self.assertIsNotNone(audiocore.get_buffer(source)[1])
+        effect.deinit()
+        effect.deinit()
+        self.assertIsNotNone(audiocore.get_buffer(source)[1])
+        with self.assertRaises(RuntimeError):
+            effect.output
+
+    def test_deinit_releases_every_node_the_class_built(self):
+        effect, source = build(sine(1000.0, amp(-6.0), 4800))
+        nodes = [effect._guard, effect._notch, effect._band, effect._cell,
+                 effect._mixer] + list(effect._taps)
+        render(effect.output, 2400)
+        effect.deinit()
+        for node in nodes:
+            with self.assertRaises(Exception):
+                audiocore.get_buffer(node)
+
+    def test_capabilities_is_empty_and_the_transport_is_never_read(self):
+        """`capabilities` names `"tempo_sync"` if and only if the transport
+        is read, so the honest test is to hand the class a transport that
+        records being called and render through it."""
+        calls = []
+
+        def transport():
+            calls.append(1)
+            return _component.static_transport()
+
+        data = sine(1000.0, amp(-6.0), 8192)
+        source = audiocore.RawSample(data, sample_rate=RATE, channel_count=2)
+        effect = module.DynamicEQ.create(source, RATE,
+                                     transport=transport)
+        render(effect.output, 8192)
+        for index in range(len(effect.MACRO_LABELS)):
+            effect.set_macro(index, 64)
+        effect.program_change(2)
+        render(effect.output, 2400)
+        print("\n  CAPS: transport read %d times, capabilities %r"
+              % (len(calls), effect.capabilities))
+        self.assertEqual(effect.capabilities, ())
+        self.assertEqual(calls, [])
+
+    def test_mono_is_the_same_processing(self):
+        """Every invariant holds at `channel_count` 1."""
+        for channels in (1, 2):
+            moved = tone_gain(3000.0, -10.0, channels=channels)
+            print("  MONO: %d channel -> %+0.3f dB at f0" % (channels, moved))
+            self.assertLess(abs(moved + 14.577), 0.05)
+
+    def test_rate_honesty_at_44k1_and_22k05(self):
+        """Tier 1's rate row: the law holds at every rate, and a band above
+        the running rate's usable span clamps rather than refusing.
+
+        This row *is* about rate handling, so it keeps the three-rate loop.
+        """
+        for rate in (48000, 44100, 22050):
+            moved = tone_gain(3000.0, -10.0, frames=rate, rate=rate)
+            print("  RATE %5d: %+0.3f dB at f0" % (rate, moved))
+            self.assertLess(abs(moved + 14.577), 0.35)
+        effect, _ = build(sine(1000.0, amp(-6.0), 2400), rate=22050)
+        effect.set_macro(0, 127)
+        print("  RATE clamp at 22050: asked %0.1f Hz, applied %0.1f Hz"
+              % (effect.macro(0), effect.frequency_hz))
+        self.assertAlmostEqual(effect.frequency_hz, 22050 * 0.4, places=3)
+        self.assertGreater(effect.macro(0), effect.frequency_hz)
+
+    def test_pulling_output_allocates_nothing(self):
+        import gc
+        effect, _ = build(sine(1000.0, amp(-6.0), 8192))
+        render(effect.output, 4800)
+        gc.collect()
+        before = len(gc.get_objects())
+        for _ in range(20):
+            audiocore.get_buffer(effect.output)
+        gc.collect()
+        print("  ALLOC: live objects %d -> %d" % (before,
+                                                  len(gc.get_objects())))
+        self.assertLessEqual(len(gc.get_objects()) - before, 8)
+
+
+# --------------------------------------------------------------------------
+# Tier 2 - the traits
+
+
+class Tier2(unittest.TestCase):
+    def test_t1_the_split_is_exact(self):
+        """T1. Detector idle: reconstruction within 0.05 dB, and an impulse
+        out at its input peak."""
+        worst = 0.0
+        for hz in T1_SWEEP:
+            moved = tone_gain(hz, -20.0, threshold_db=0.0, ratio=1.0)
+            print("\n  T1 %8.1f Hz -> %+0.4f dB" % (hz, moved))
+            worst = max(worst, abs(moved))
+        print("  T1 worst deviation from unity: %0.4f dB" % worst)
+        self.assertLess(worst, 0.05)
+        for centre, q in ((100.0, 0.5), (3000.0, 2.0), (10000.0, 8.0)):
+            data = impulse(20000, 50, 4096)
+            effect, _ = build(data, frequency=centre, q=q,
+                              threshold_db=0.0, ratio=1.0)
+            out = render(effect.output, 4096)
+            print("  T1 impulse f0 %6.0f Q %3.1f -> peak %d at frame %d"
+                  % (centre, q, max(abs(v) for v in out),
+                     max(range(len(out)), key=lambda i: abs(out[i]))
+                     // CHANNELS))
+            self.assertEqual(max(abs(v) for v in out), 20000)
+
+    def test_t2_and_t3_the_gain_law(self):
+        """T2 and T3. Five levels, each against the law that applies there."""
+        worst = 0.0
+        for level in (-41.0, -30.0, -21.0, -10.0, -4.0):
+            moved = tone_gain(3000.0, level)
+            predicted = law(level + 30.0, 4.0)
+            print("\n  T2 %7.2f dBFS -> %+8.3f dB (law %+7.3f, d %+0.3f)"
+                  % (level, moved, predicted, moved - predicted))
+            worst = max(worst, abs(moved - predicted))
+            if level == -41.0:
+                self.assertLess(abs(moved), 0.05)     # T3
+        print("  T2 worst deviation from the law: %0.3f dB" % worst)
+        self.assertLess(worst, 1.0)
+
+    def test_t4_out_of_band_is_untouched(self):
+        """T4. Two octaves down, idle and hard at work."""
+        idle = tone_gain(750.0, -41.0)
+        working = tone_gain(750.0, -4.0)
+        print("\n  T4 750 Hz idle %+0.4f dB, working %+0.4f dB, delta %0.4f"
+              % (idle, working, abs(working - idle)))
+        self.assertLess(abs(idle), 0.2)
+        self.assertLess(abs(working), 0.2)
+        self.assertLess(abs(working - idle), 0.2)
+
+    def test_t5_the_bell_is_the_closed_form(self):
+        """T5. One frequency at a time at a fixed level, never a sweep."""
+        worst = 0.0
+        for hz in (1000., 1500., 2000., 2500., 3000., 3600., 4500., 6000.):
+            moved = tone_gain(hz, -10.0)
+            predicted = composite_db(hz, 3000.0, 2.0, -10.0, -30.0, 4.0)
+            print("\n  T5 %6.0f Hz -> %+8.3f dB (closed form %+8.3f,"
+                  " d %+0.3f)" % (hz, moved, predicted, moved - predicted))
+            worst = max(worst, abs(moved - predicted))
+        print("  T5 worst deviation: %0.3f dB" % worst)
+        self.assertLess(worst, 0.5)
+
+    def test_t6_mix_is_the_range_control(self):
+        """T6. The composite at f0 against `20 log10((1-m) + m*g1)`, and an
+        out-of-band control that must not move at all."""
+        g1_db = tone_gain(3000.0, -10.0, mix=1.0)
+        g1 = 10.0 ** (g1_db / 20.0)
+        worst = 0.0
+        for mix in (0.0, 0.25, 0.5, 0.75, 0.9, 1.0):
+            moved = tone_gain(3000.0, -10.0, mix=mix)
+            predicted = 20.0 * math.log10((1.0 - mix) + mix * g1)
+            print("\n  T6 mix %4.2f -> %+8.3f dB (closed form %+8.3f,"
+                  " d %+0.3f)" % (mix, moved, predicted, moved - predicted))
+            worst = max(worst, abs(moved - predicted))
+        print("  T6 worst deviation: %0.4f dB" % worst)
+        self.assertLess(worst, 0.2)
+        out_of_band = [tone_gain(375.0, -10.0, mix=mix)
+                       for mix in (0.0, 0.5, 1.0)]
+        print("  T6 375 Hz across the sweep: %s"
+              % ", ".join("%+0.4f" % v for v in out_of_band))
+        self.assertLess(max(out_of_band) - min(out_of_band), 0.05)
+        effect, _ = build(sine(1000.0, amp(-6.0), 2400), mix=0.75)
+        self.assertAlmostEqual(effect.range_db, 12.0, places=1)
+
+    def test_expand_cuts_the_band_when_the_band_is_quiet(self):
+        """The `expand=True` build, which is the direction S6 calls
+        expansion: over the threshold it is a wire, under it the band goes
+        away."""
+        loud = tone_gain(3000.0, -6.0, expand=True, threshold_db=-30.0,
+                         ratio=4.0)
+        quiet = tone_gain(3000.0, -46.0, expand=True, threshold_db=-30.0,
+                          ratio=4.0)
+        print("\n  EXPAND: -6 dBFS -> %+0.3f dB, -46 dBFS -> %+0.3f dB"
+              % (loud, quiet))
+        self.assertLess(abs(loud), 0.1)
+        self.assertLess(quiet, -20.0)
+
+
+# --------------------------------------------------------------------------
+# Metadata and surface
+
+
+class Surface(unittest.TestCase):
+    def test_patch_zero_is_the_constructors_defaults(self):
+        """Held to the spans rather than to a hand-copied list."""
+        defaults = (3000.0, 2.0, -30.0, 4.0, 2.0, 80.0, 1.0, 0.0)
+        spans = module.DynamicEQ._MACRO_RANGES
+        expected = tuple(
+            _component.macro_of(spans[index], value,
+                                module.DynamicEQ.MACRO_MODES[index])
+            for index, value in enumerate(defaults))
+        self.assertEqual(module.DynamicEQ.PATCHES[0][1], expected)
+
+    def test_patch_index_follows_the_contract(self):
+        effect, _ = build(sine(1000.0, amp(-6.0), 2400))
+        self.assertEqual(effect.patch_index, 0)
+        effect.set_macro(2, 100)
+        self.assertIsNone(effect.patch_index)
+        effect.program_change(3)
+        self.assertEqual(effect.patch_index, 3)
+        effect.program_change(99)               # a wire index nobody has
+        self.assertEqual(effect.patch_index, 3)
+
+    def test_the_surface_is_within_the_ceiling_and_named(self):
+        cls = module.DynamicEQ
+        self.assertLessEqual(len(cls.MACRO_LABELS), 16)
+        self.assertGreater(len(cls.PATCHES), 1)
+        self.assertEqual(cls.TIER, _component.AUDIODSP)
+        self.assertEqual(cls.REQUIRES,
+                         ("audiobiquad", "audiodynamics", "audioroute"))
+
+    def test_listen_solos_the_processed_band(self):
+        effect, _ = build(sine(750.0, amp(-10.0), 24000))
+        out = render(effect.output, 24000)
+        effect.set_macro(7, 127)
+        soloed = render(effect.output, 24000)
+        print("\n  LISTEN: 750 Hz through, rms %0.1f -> soloed rms %0.1f"
+              % (rms(out, 12000), rms(soloed, 12000)))
+        self.assertGreater(rms(out, 12000), 100.0)
+        self.assertLess(rms(soloed, 12000), rms(out, 12000) * 0.2)
+
+
+# --------------------------------------------------------------------------
+# The planted faults - one of the same kind per demonstrated trait
+
+
+class PlantedFaults(unittest.TestCase):
+    """Each fault is planted in a live instance, so the control and the
+    faulted run differ by exactly the thing being tested."""
+
+    def _faulted_gain(self, hz, level_db, mutate, frames=16384, **options):
+        data = sine(hz, amp(level_db), frames)
+        effect, _ = build(data, **options)
+        mutate(effect)
+        out = render(effect.output, frames)
+        skip = frames // 2
+        return gain_db(rms(out, skip), rms(data, skip))
+
+    def _worst_over_the_sweep(self, mutate):
+        worst = 0.0
+        for hz in T1_SWEEP:
+            moved = self._faulted_gain(hz, -20.0, mutate,
+                                       threshold_db=0.0, ratio=1.0)
+            print("    %8.1f Hz -> %+0.4f dB" % (hz, moved))
+            worst = max(worst, abs(moved))
+        return worst
+
+    def test_t1_goes_red_when_one_branch_is_detuned(self):
+        """T1's fault: 1 % between the two sections, which is what a class
+        that pushed Frequency to one branch and not the other would do.
+
+        Read over T1's own sweep, because at f0 the notch is zero and the
+        band-pass is unity and a mistune is invisible there. That is the
+        whole reason the sweep has skirt points in it.
+        """
+        def detune(effect):
+            effect._band.frequency = effect._notch.frequency * 1.01
+
+        print("\n  T1 fault, band branch detuned 1%:")
+        worst = self._worst_over_the_sweep(detune)
+        print("  T1 fault worst %0.4f dB against a 0.05 dB bar" % worst)
+        self.assertGreater(worst, 0.05)
+
+    def test_t1_goes_red_when_the_widths_diverge(self):
+        def widen(effect):
+            effect._band.Q = effect._notch.Q * 1.1
+
+        print("\n  T1 fault, Q 10% apart:")
+        worst = self._worst_over_the_sweep(widen)
+        print("  T1 fault worst %0.4f dB against a 0.05 dB bar" % worst)
+        self.assertGreater(worst, 0.05)
+
+    def test_t2_goes_red_when_the_knee_is_dropped(self):
+        """T2's fault: a hard knee where the node has a 6 dB soft one. The
+        knee probe sits exactly on the threshold, where the law says -0.56 dB
+        and a hard knee says 0."""
+        clean = tone_gain(3000.0, -30.0)
+
+        def harden(effect):
+            effect._cell.set(knee_db=0.0)
+
+        faulted = self._faulted_gain(3000.0, -30.0, harden)
+        predicted = law(0.0, 4.0)
+        print("\n  T2 fault: law %+0.3f, clean %+0.3f, hard knee %+0.3f"
+              % (predicted, clean, faulted))
+        self.assertLess(abs(clean - predicted), 1.0)
+        self.assertGreater(abs(faulted - predicted), 0.4)
+
+    def test_t2_goes_red_on_a_wrong_ratio(self):
+        clean = tone_gain(3000.0, -10.0)
+
+        def wrong(effect):
+            effect._cell.set(ratio=2.0)
+
+        faulted = self._faulted_gain(3000.0, -10.0, wrong)
+        predicted = law(20.0, 4.0)
+        print("  T2 fault: law %+0.3f, clean %+0.3f, ratio 2 %+0.3f"
+              % (predicted, clean, faulted))
+        self.assertLess(abs(clean - predicted), 1.0)
+        self.assertGreater(abs(faulted - predicted), 1.0)
+
+    def test_t3_goes_red_when_the_idle_band_is_cut(self):
+        """T3's claim is 'below threshold it is a wire'. Lifting the
+        threshold moves the detector (the first-pass fault) and is not
+        that claim. This fault leaves the detector alone and attenuates
+        the band voice: idle at f0 is then -6 dB, and no macro can put
+        that cut back (Mix 0 is a dry wire; Mix 1 still sums the cut
+        band)."""
+        clean = tone_gain(3000.0, -41.0)
+
+        def cut_idle_band(effect):
+            effect._mixer.voice[2].level = 0.5
+
+        faulted = self._faulted_gain(3000.0, -41.0, cut_idle_band)
+        print("\n  T3 fault: clean %+0.4f dB, band voice 0.5 %+0.4f dB"
+              % (clean, faulted))
+        self.assertLess(abs(clean), 0.05)
+        self.assertGreater(abs(faulted), 0.05)
+
+    def test_t4_goes_red_on_the_broadband_ducker_topology(self):
+        """T4's fault: put the gain cell on the *whole* signal and key it
+        from the band, which is a de-esser - the thing S6 says a dynamic EQ
+        is not, because its crossover "affects fairly broad frequency areas".
+
+        Keying the cell off the dry tap while leaving it on the band branch
+        is **not** this fault and was tried first: out of band the band
+        branch carries almost nothing, so ducking it moves the sum by 0.07 dB
+        whatever the key hears. The topology is what T4 is about.
+        """
+        clean_idle = tone_gain(750.0, -41.0)
+        clean_work = tone_gain(750.0, -4.0)
+
+        def ducker(effect):
+            effect._cell.play(effect._taps[0])
+            effect._cell.key(effect._band)
+            # The cell is tap 0's reader now: the dry voice lets go of it
+            # (two readers on one tap starve whichever pulls second).
+            effect._mixer.voice[0].stop()
+            effect._mixer.voice[0].level = 0.0
+            effect._mixer.voice[1].level = 0.0
+            effect._mixer.voice[2].level = 1.0
+
+        # The key has to have something in it, so the probe carries the band
+        # tone as well as the out-of-band one.
+        def two_tone(level_db):
+            band = sine(3000.0, amp(level_db), 48000)
+            away = sine(750.0, amp(-10.0), 48000)
+            return array.array('h', [band[i] + away[i]
+                                     for i in range(len(band))])
+
+        results = []
+        for level_db, mutate in ((-41.0, None), (-4.0, None),
+                                 (-41.0, ducker), (-4.0, ducker)):
+            data = two_tone(level_db)
+            effect, _ = build(data)
+            if mutate is not None:
+                mutate(effect)
+            out = render(effect.output, 48000)
+            results.append(_tone_level_db(out) - _tone_level_db(data))
+        print("\n  T4 fault: clean 750 Hz %+0.3f -> %+0.3f dB (delta %0.3f);"
+              " ducker %+0.3f -> %+0.3f dB (delta %0.3f)"
+              % (results[0], results[1], abs(results[1] - results[0]),
+                 results[2], results[3], abs(results[3] - results[2])))
+        self.assertLess(abs(clean_work - clean_idle), 0.2)
+        self.assertLess(abs(results[1] - results[0]), 0.2)
+        self.assertGreater(abs(results[3] - results[2]), 0.2)
+
+    def test_t5_goes_red_when_the_detector_reads_the_wrong_band(self):
+        """T5's fault: the detector's selectivity is |H_bp|, so key it from a
+        band an octave away and the closed form stops describing the skirt."""
+        hz = 2500.0
+        clean = tone_gain(hz, -10.0)
+        predicted = composite_db(hz, 3000.0, 2.0, -10.0, -30.0, 4.0)
+
+        def mistune(effect):
+            effect._cell.set(sidechain_hz=6000.0, sidechain_poles=2)
+
+        faulted = self._faulted_gain(hz, -10.0, mistune)
+        print("\n  T5 fault at %0.0f Hz: closed form %+0.3f, clean %+0.3f,"
+              " mistuned key %+0.3f" % (hz, predicted, clean, faulted))
+        self.assertLess(abs(clean - predicted), 0.5)
+        self.assertGreater(abs(faulted - predicted), 0.5)
+
+    def test_t6_goes_red_when_the_dry_voice_is_not_the_complement(self):
+        """T6's fault: leave the dry voice at unity while the wet voices
+        blend, which is what a class that treated Mix and Range as two
+        different mechanisms would do."""
+        g1 = 10.0 ** (tone_gain(3000.0, -10.0, mix=1.0) / 20.0)
+        mix = 0.5
+        clean = tone_gain(3000.0, -10.0, mix=mix)
+
+        def unbalance(effect):
+            effect._mixer.voice[0].level = 1.0
+
+        faulted = self._faulted_gain(3000.0, -10.0, unbalance, mix=mix)
+        predicted = 20.0 * math.log10((1.0 - mix) + mix * g1)
+        print("\n  T6 fault: closed form %+0.3f, clean %+0.3f, dry at unity"
+              " %+0.3f" % (predicted, clean, faulted))
+        self.assertLess(abs(clean - predicted), 0.2)
+        self.assertGreater(abs(faulted - predicted), 0.2)
+
+    def test_wire_goes_red_on_a_one_lsb_dry_path(self):
+        """WIRE's fault: 32767/32768 on the dry voice. Inaudible, and the byte
+        compare must still refuse it.
+
+        The fault has to put the mixer back in the path to plant it at all,
+        because Mix 0 no longer runs through one - which is the point of the
+        row above it.
+        """
+        data = sine(1000.0, amp(-4.4), 8192)
+        effect, _ = build(data, ThroughTheDryVoice, mix=0.0)
+        effect._mixer.voice[0].level = 32767.0 / 32768.0
+        out = render(effect.output, 8192)
+        first = None
+        for index in range(min(len(out), len(data))):
+            if out[index] != data[index]:
+                first = index
+                break
+        print("\n  WIRE fault: first differing sample %r" % (first,))
+        self.assertIsNotNone(first)
+
+    def test_the_dry_voice_at_unity_is_a_wire_since_audiodsp_v0_6_1(self):
+        """audiodsp#95's plant, kept as a control now that it cannot fire.
+
+        A mixer voice at level 1.0 was not unity - upstream's Q15 level was
+        `1.0 * 32768` and the kernel divided by 32767 - so the wiring this
+        class shipped with came out one LSB high at every sample from
+        32736 up: three of 16384 on a full-scale ramp, all in the right
+        channel. audiodsp v0.6.1 (#129) made the voice at 1.0 exact and the
+        pin moved there on 2026-09-27 (`AUDIODSP_PIN`). The row above still
+        has its fault, the one-LSB voice; this is the floor's own control,
+        on the ramp because nothing below -6.02 dBFS could reach the old
+        defect. If it goes red the floor has moved back under the suite.
+        """
+        data = ramp_fs(8192)
+        effect, _ = build(data, ThroughTheDryVoice, mix=0.0)
+        out = render(effect.output, 8192)
+        differ = [index for index in range(min(len(out), len(data)))
+                  if out[index] != data[index]]
+        print("\n  WIRE unity control: %d differing, first %r"
+              % (len(differ), differ[0] if differ else None))
+        self.assertEqual(differ, [])
+
+    def test_tail_goes_red_on_a_held_dc_state(self):
+        """TAIL's fault: the audiodsp#23 shape, a state that never arrives.
+        Planted by running the same graph on the ported Q12 biquad."""
+        import audiofilters
+        import synthio
+        data = burst(60.0, amp(-3.0), 9600, 158400, 4800)
+        source = audiocore.RawSample(data, sample_rate=RATE, channel_count=2)
+        guard = audiofilters.Filter(
+            filter=None, mix=1, buffer_size=1024, sample_rate=RATE,
+            channel_count=2, bits_per_sample=16, samples_signed=True)
+        guard.play(source, loop=False)
+        ported = audiofilters.Filter(
+            filter=synthio.Biquad(synthio.FilterMode.LOW_PASS,
+                                  frequency=60.0, Q=2.0),
+            mix=1, buffer_size=1024, sample_rate=RATE, channel_count=2,
+            bits_per_sample=16, samples_signed=True)
+        ported.play(guard, loop=False)
+        out = render(ported, 158400)
+        residual = max(abs(v) for v in out[-4800 * CHANNELS:])
+        print("  TAIL fault (ported Q12 biquad at 60 Hz): residual %d LSB"
+              % residual)
+        self.assertGreater(residual, 0)
+
+    def test_click_goes_red_when_latency_is_misreported(self):
+        """CLICK's fault: report 256 short with the DSP untouched."""
+        data = impulse(20000, 50, 4096)
+        effect, _ = build(data)
+
+        class Liar(type(effect)):
+            LATENCY_SAMPLES = 256
+
+        effect.__class__ = Liar
+        out = render(effect.output, 4096)
+        at = 0
+        for index in range(len(out) // CHANNELS):
+            if abs(out[index * CHANNELS]) == 20000:
+                at = index
+                break
+        print("\n  CLICK fault: measured %d, reported %d"
+              % (at - 50, effect.latency_samples))
+        self.assertNotEqual(at - 50, effect.latency_samples)
+
+    def test_the_block_ladder_no_longer_needs_the_guard(self):
+        """The guard's row, rewritten at audiodsp `977ef26`.
+
+        It used to read: a `Splitter` fed straight off a whole-buffer source
+        loses everything past its 8192-frame ring, so an impulse 200 frames
+        into a 40000-frame `RawSample` arrives as silence. audiodsp#87 ended
+        that - the Splitter takes a call bigger than its ring in pieces - and
+        the unguarded split now passes the impulse at full height.
+
+        So the guard is no longer what saves the head, and this is the
+        regression test that says so. The fault of the same kind moved to
+        `test_a_source_that_keeps_only_its_ring_still_loses_the_head`, which
+        is the old Splitter written out in Python, because the node will not
+        do it any more.
+
+        Built here rather than mutated, because the Splitter's source is
+        fixed at construction."""
+        import audiobiquad
+        import audiodynamics
+        import audioroute
+        import audiomixer
+
+        def sum_of_a_split(guarded):
+            # An impulse near the head, inside a 40000-frame buffer. A
+            # continuous tone would *not* catch this: losing the first 32000
+            # frames of a sine still leaves a sine, and the peak reads the
+            # same either way. The thing that is lost is where the audio
+            # started.
+            data = impulse(20000, 200, 40000)
+            source = audiocore.RawSample(data, sample_rate=RATE,
+                                         channel_count=2)
+            if guarded == "old ring":
+                source = _OldRingSource(source)
+                guarded = False
+            if guarded:
+                import audiofilters
+                head = audiofilters.Filter(
+                    filter=None, mix=1, buffer_size=256 * 2 * 2,
+                    sample_rate=RATE, channel_count=2, bits_per_sample=16,
+                    samples_signed=True)
+                head.play(source, loop=False)
+            else:
+                head = source
+            split = audioroute.Splitter(head, taps=3)
+            notch = audiobiquad.Biquad(mode=audiobiquad.NOTCH,
+                                       frequency=3000.0, Q=2.0,
+                                       sample_rate=RATE, channel_count=2)
+            band = audiobiquad.Biquad(mode=audiobiquad.BAND_PASS,
+                                      frequency=3000.0, Q=2.0,
+                                      sample_rate=RATE, channel_count=2)
+            notch.play(split.tap(1))
+            band.play(split.tap(2))
+            cell = audiodynamics.Dynamics(
+                audiodynamics.DYN_COMPRESS, sample_rate=RATE,
+                channel_count=2, threshold_db=-30.0, ratio=4.0)
+            cell.play(band)
+            mixer = audiomixer.Mixer(voice_count=3, sample_rate=RATE,
+                                     channel_count=2, bits_per_sample=16,
+                                     samples_signed=True, buffer_size=2048)
+            for voice in range(3):
+                mixer.voice[voice].level = 1.0 if voice else 0.0
+            mixer.play(split.tap(0), voice=0, loop=True)
+            mixer.play(notch, voice=1, loop=True)
+            mixer.play(cell, voice=2, loop=True)
+            return max(abs(v) for v in render(mixer, 3000))
+
+        clean = sum_of_a_split(True)
+        unguarded = sum_of_a_split(False)
+        old_ring = sum_of_a_split("old ring")
+        print("\n  GUARD row at audiodsp 977ef26: impulse at frame 200 of a"
+              " 40000-frame RawSample, guarded peak %d, unguarded peak %d,"
+              " old-ring peak %d" % (clean, unguarded, old_ring))
+        self.assertGreater(clean, 1000)
+        # audiodsp#87: the head survives without the guard now.
+        self.assertEqual(unguarded, clean)
+        # And the fault of the same kind still fires.
+        self.assertEqual(old_ring, 0)
+
+    def test_state_goes_red_when_a_node_is_left_out_of_the_walk(self):
+        """STATE's fault: a class whose reset reaches the tail only, which is
+        `_core.reset()`'s shape and the defect section 7 names.
+
+        The reset has to land **while the split is still ringing** or the
+        measurement is vacuous: a reset taken after the ring-down has already
+        reached zero leaves nothing for either version to fail to clear. This
+        one resets 32 frames after a 300 Hz burst at Q 12, whose declared
+        tail is 7680 samples.
+        """
+        clean = _reset_residual(lambda effect: effect.reset())
+        faulted = _reset_residual(lambda effect: effect._reset_mixer())
+        print("\n  STATE fault: class reset leaves %d LSB, tail-only reset"
+              " leaves %d LSB" % (clean, faulted))
+        self.assertLess(clean, 100)
+        self.assertGreater(faulted, 1000)
+
+
+# -- the stale blocks (audiocomponents#113) ------------------------------
+
+import os                                                       # noqa: E402
+import sys                                                      # noqa: E402
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "support"))
+import stale_blocks as stale                                    # noqa: E402
+
+class TheBypassComesBackAsBuilt(unittest.TestCase):
+    """Mix back up from 0 after a pause plays nothing that was there before
+    the pause (audiocomponents#113; decided 2026-09-28: "fix the stale
+    blocks"). At Mix 0 the class hands back its source and nothing behind
+    it is pulled, so the graph kept its filters' memory and the block each
+    mixer voice had queued; bringing Mix back played that out of silence.
+    `_component.Component._rejoin` clears the graph and the class re-arms
+    it the way its constructor does.
+    """
+
+    CLS = module.DynamicEQ
+    MIX = 6
+
+    def test_mix_back_after_silence_plays_nothing(self):
+        for rate in stale.RATES:
+            for channels in (2, 1):
+                self.assertEqual(
+                    stale.blip(self.CLS, self.MIX, 127, 0, rate, channels),
+                    (0, 0), (rate, channels))
+        self.assertEqual(stale.blip(self.CLS, self.MIX, 64, 0), (0, 0))
+
+    def test_at_every_patch(self):
+        for patch in sorted(self.CLS.PATCHES):
+            before, after = stale.blip(self.CLS, self.MIX, 127, 0,
+                                       patch=patch)
+            self.assertEqual(before, 0, patch)
+            self.assertLessEqual(
+                after, max(stale.twin(self.CLS, self.MIX, 127, patch=patch),
+                           getattr(self, "BOUNDED", {}).get(patch, 0)),
+                patch)
+
+    def test_it_comes_back_in_step(self):
+        for rate in stale.RATES:
+            for channels in (2, 1):
+                self.assertLessEqual(
+                    stale.in_step(self.CLS, self.MIX, 127, 0, rate,
+                                  channels), 3, (rate, channels))
+
+    def test_a_block_primed_at_construction_is_not_replayed(self):
+        for channels in (2, 1):
+            self.assertEqual(
+                stale.first_blip(self.CLS, self.MIX, channels=channels), 0)
+
+    def test_the_old_rejoin_and_a_clear_without_rearming_are_red(self):
+        # The class before the fix: the graph taken back untouched.
+        before, after = stale.blip(
+            stale.planted(self.CLS, stale.StaleRejoin), self.MIX, 127, 0,
+            patch=1)
+        self.assertEqual(before, 0)
+        self.assertGreater(after, 1000)
+        # A wrong cure: cleared but not re-armed, so the voices keep the
+        # block they queued at construction. Since `LAZY_BUILD` that block
+        # is silence, so the plant primes the source's as the old build did.
+        self.assertGreater(stale.first_blip(
+            stale.planted(self.CLS, stale.EagerClearOnlyRejoin), self.MIX),
+            1000)
+
+    def test_mono_renders_one_block_at_a_time(self):
+        # The mixer used to render 512 mono frames at a time, and the tail
+        # kept the second half queued: a Mix move to 0 between the halves
+        # skipped it, and the move back played it. Rendered a block at a
+        # time, nothing is queued, and the class comes back in step at
+        # 44.1 kHz mono, where the move lands between the halves.
+        self.assertLessEqual(stale.in_step(module.DynamicEQ, 6, 127, 0,
+                                           44100, 1), 3)
+        # The fixed 2048-byte mixer, which is two blocks mono, comes back
+        # in step too now.
+        #
+        # Restated at audiodsp eb2d20d (audiocomponents#127). Up to v0.6.3
+        # clearing the tail on the way back dropped the half the wide mixer
+        # had queued, so that plant came back 256 frames ahead of an
+        # instance that never moved, and this test held it red. Dropping
+        # it was the node's defect, fixed in audiodsp#211: a reset keeps the
+        # source frames a node has already taken.
+        real = module.audiomixer.Mixer
+
+        def wide(*args, **kwargs):
+            kwargs["buffer_size"] = 2048
+            return real(*args, **kwargs)
+
+        module.audiomixer.Mixer = wide
+        try:
+            self.assertLessEqual(stale.in_step(module.DynamicEQ, 6, 127, 0,
+                                               44100, 1), 3)
+        finally:
+            module.audiomixer.Mixer = real
+
+
+class OldPeriodsTail(module.DynamicEQ):
+    """The bound before audiocomponents#114: 4 periods of `Q / f0`, from
+    a burst at fixed settings."""
+
+    NAME = 'DynamicEQ'
+
+    @property
+    def tail_samples(self):
+        self._check_live()
+        corner = self._corner_hz or 1.0
+        return int(4.0 * self.macro(self._WIDTH) * self._sample_rate
+                   / corner) + 1
+
+
+class TheTailAfterAMove(unittest.TestCase):
+    """A large move down in Frequency as the input stops rings out inside
+    the bound read after the move (audiocomponents#114). Since audiodsp
+    v0.6.6rc9 the biquad walks a corner move over 20 ms (#162) and no
+    longer carries the old section's state into the new one, so the move
+    barely rings and even the old bound holds at the same cells."""
+
+    #: (rate, channels, patch, Frequency from, Frequency to). Patch 1's
+    #: move rang 19 372 frames against the old 15 875 at 48 kHz up to rc8,
+    #: and 56 at rc9.
+    CELLS = ((48000, 2, 1, 127, 0), (22050, 2, None, 127, 0),
+             (22050, 1, 3, 127, 0))
+
+    def test_the_ring_ends_inside_the_bound(self):
+        import tail_ring
+        for rate, channels, patch, high, low in self.CELLS:
+            got, bound = tail_ring.ring(
+                "DynamicEQ", rate, channels, patch, start=((0, high),),
+                moves=((0, low),))
+            self.assertLessEqual(got, bound, (rate, channels, patch))
+
+    def test_the_walk_keeps_the_ring_inside_the_old_bound(self):
+        # Red up to audiodsp rc8, where the move rang past it.
+        import tail_ring
+        for rate, channels, patch, high, low in self.CELLS:
+            got, bound = tail_ring.ring(
+                "DynamicEQ", rate, channels, patch, start=((0, high),),
+                moves=((0, low),), cls=OldPeriodsTail)
+            self.assertLessEqual(got, bound, (rate, channels, patch))
+
+
+class TheClaims(unittest.TestCase):
+    """The docstring's claims that no older test holds on its own."""
+
+    def test_mix_one_has_no_range_limit(self):
+        effect, _ = build(sine(1000.0, amp(-6.0), 2400), mix=1.0)
+        self.assertEqual(effect.range_db, float("inf"))
+
+    def test_construction_needs_its_three_modules(self):
+        import sys
+        for name in module.DynamicEQ.REQUIRES:
+            with self.subTest(module=name):
+                saved = sys.modules.get(name)
+                sys.modules[name] = None
+                try:
+                    with self.assertRaises(ImportError):
+                        build(sine(1000.0, amp(-6.0), 2400))
+                finally:
+                    sys.modules[name] = saved
+
+
+CLAIMS = (
+    ("`DynamicEQ` - one equaliser band that only moves when there is "
+     "something in it.",
+     ("Tier1.test_level_is_honest_below_threshold",
+      "Tier2.test_t2_and_t3_the_gain_law")),
+    ("One EQ band that only moves when there is something in it.",
+     ("Tier1.test_level_is_honest_below_threshold",
+      "Tier2.test_t2_and_t3_the_gain_law")),
+    ("It does nothing until the sound in that band crosses Threshold, and "
+     "then it cuts the band as far as Ratio says.",
+     ("Tier1.test_level_is_honest_below_threshold",
+      "Tier2.test_t2_and_t3_the_gain_law")),
+    ("Everything outside the band is left as it was.",
+     ("Tier2.test_t4_out_of_band_is_untouched",)),
+    ("Below the threshold the band and its complement add back to "
+     "the input within 0.05 dB from 100 Hz to 12 kHz, and an impulse "
+     "comes out at its own height.",
+     ("Tier2.test_t1_the_split_is_exact",)),
+    ("At the default, a 3 kHz tone follows the compressor law within 1 dB, "
+     "and across the bell the cut follows the closed form within 0.5 dB.",
+     ("Tier2.test_t2_and_t3_the_gain_law",
+      "Tier2.test_t5_the_bell_is_the_closed_form")),
+    ("Two octaves down nothing moves by as much as 0.2 dB, idle or working.",
+     ("Tier2.test_t4_out_of_band_is_untouched",)),
+    ("Mix also caps the deepest cut: at 0.75 the band can move by at "
+     "most 12 dB, and at 1 there is no limit.",
+     ("Tier2.test_t6_mix_is_the_range_control",
+      "TheClaims.test_mix_one_has_no_range_limit")),
+    ("Across Mix the cut follows that blend within 0.2 dB, and out of band "
+     "nothing moves.",
+     ("Tier2.test_t6_mix_is_the_range_control",)),
+    ("Mix 0 is the source byte for byte, at full scale and at 48 kHz, "
+     "44.1 kHz and 22.05 kHz.",
+     ("Tier1.test_wire_at_mix_zero_is_byte_identical",
+      "Tier1.test_wire_at_mix_zero_holds_at_full_scale")),
+    ("Bringing Mix back after silence plays nothing.",
+     ("TheBypassComesBackAsBuilt.test_mix_back_after_silence_plays_nothing",
+      "TheBypassComesBackAsBuilt.test_at_every_patch")),
+    ("Listen solos the band being processed.",
+     ("Surface.test_listen_solos_the_processed_band",)),
+    ("Build it with `expand=True` and it cuts the band when the band is "
+     "quiet instead: over the threshold it is a wire within 0.1 dB, and "
+     "16 dB under it the band drops by more than 20 dB.",
+     ("Tier2.test_expand_cuts_the_band_when_the_band_is_quiet",)),
+    ("The law holds within 0.35 dB at 48 kHz, 44.1 kHz and 22.05 kHz, and "
+     "in mono.",
+     ("Tier1.test_rate_honesty_at_44k1_and_22k05",
+      "Tier1.test_mono_is_the_same_processing")),
+    ("A Frequency above 0.4 of the running rate is built there, and "
+     "`frequency_hz` says what you got.",
+     ("Tier1.test_rate_honesty_at_44k1_and_22k05",)),
+    ("It adds no latency at any setting.",
+     ("Tier1.test_latency_is_zero_at_48k_and_44k1",)),
+    ("The tail reaches exact zero inside `tail_samples`, after a knob move "
+     "too.",
+     ("Tier1.test_tail_reaches_exact_zero_at_every_band",
+      "TheTailAfterAMove.test_the_ring_ends_inside_the_bound")),
+    ("It needs `audiobiquad`, `audiodynamics` and `audioroute`, so a stock "
+     "CircuitPython board can't run it.",
+     ("TheClaims.test_construction_needs_its_three_modules",)),
+)
+
+
+def _flat(text):
+    return " ".join(text.split())
+
+
+def claim_problems(doc, claims=CLAIMS):
+    """What is wrong between a docstring and `claims`: a sentence missing, a
+    named test that does not exist, a figure outside every claim."""
+    doc = _flat(doc)
+    problems = []
+    rest = doc
+    for sentence, tests in claims:
+        if sentence not in doc:
+            problems.append("missing: %s" % sentence)
+        rest = rest.replace(sentence, " ")
+        for name in tests:
+            owner, _, test = name.partition(".")
+            if not hasattr(globals().get(owner), test):
+                problems.append("no test %s" % name)
+    for match in re.finditer(r"\S*\d\S*", rest):
+        problems.append("figure outside a claim: %s" % match.group())
+    return problems
+
+
+class Claims(unittest.TestCase):
+    def test_every_claim_is_in_the_docstring_and_tested(self):
+        doc = module.__doc__ + " " + module.DynamicEQ.__doc__
+        self.assertEqual(claim_problems(doc), [])
+        # The checker can fail: a figure outside a claim, a claim the
+        # docstring does not carry, a test that does not exist.
+        self.assertTrue(claim_problems(doc + " It reads 12 ms."))
+        self.assertTrue(claim_problems(_flat(doc).replace(
+            "within 0.35 dB", "within 0.3 dB")))
+        self.assertTrue(claim_problems(
+            doc, CLAIMS + (("Latency", ("TheClaims.test_nothing_here",)),)))
+
+
+#: Not here, because they change only a reported tail or latency:
+#: `OldPeriodsTail`.
+KIT_PLANTS = {
+    "ThroughTheDryVoice": (ThroughTheDryVoice, 0),
+}
+
+
+if __name__ == '__main__':
+    unittest.main()
