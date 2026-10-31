@@ -498,10 +498,14 @@ class TestCabinetSimTier1(unittest.TestCase):
         # allocates its own frames, and `kit_probes.ArraySource` allocates
         # an int per pull as its read position walks past the small-int
         # cache. What the row asks about is the class and the nodes it
-        # built, so that is what this counts.
+        # built, so that is what this counts. A checkout is itself called
+        # audioeffects, so the match is the package folder, not the name.
         mine = [stat for stat in after.compare_to(before, "lineno")
                 if stat.size_diff > 0
-                and ("audioeffects" in stat.traceback[0].filename
+                and (("/audioeffects/" in stat.traceback[0].filename
+                      .replace("\\", "/")
+                      and "/tests/" not in stat.traceback[0].filename
+                      .replace("\\", "/"))
                      or "audiobiquad" in stat.traceback[0].filename)]
         self.assertEqual([str(stat) for stat in mine], [],
                          "the class or its nodes allocated on a pull")
