@@ -9,8 +9,6 @@ checked with LVGL and the panel stood in for, so nothing here draws.
 
 import importlib.util
 import os
-import sys
-import types
 import unittest
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

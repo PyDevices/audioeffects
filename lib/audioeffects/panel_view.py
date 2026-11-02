@@ -34,7 +34,6 @@ try:
     from controlkit._draw import fill as _fill
     from controlkit._draw import finish as _finish
     from controlkit._draw import label as _label
-    from controlkit._draw import plain as _plain
     from controlkit._draw import text_width as _text_width
     from controlkit._safe import safe
     from controlkit.dotmatrix import DotMatrix
