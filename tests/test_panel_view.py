@@ -2,7 +2,7 @@
 
 A fake effect stands in for a rebuilt class: the same declarations
 (``MACRO_LABELS``, ``PATCHES``) and the same macro calls. ``build()`` is
-checked against a fake ``controlpanel`` module, so nothing here draws.
+checked with LVGL and the panel stood in for, so nothing here draws.
 
     python -m unittest tests.test_panel_view
 """
@@ -131,22 +131,22 @@ class Adapter(unittest.TestCase):
 
 class Build(unittest.TestCase):
     def setUp(self):
+        # LVGL and the shared controls are stood in for: the guard passes and
+        # Panel records what build() hands it.
         self.calls = []
-        fake = types.ModuleType("controlpanel")
+        self._lv = panel_view.lv
+        self._panel = panel_view.Panel
+        panel_view.lv = object()
 
-        def build(adapter, screen=None, **options):
+        def panel(adapter, screen=None, group=None, **options):
             self.calls.append((adapter, screen, options))
             return "panel"
 
-        fake.build = build
-        self._saved = sys.modules.get("controlpanel")
-        sys.modules["controlpanel"] = fake
+        panel_view.Panel = panel
 
     def tearDown(self):
-        if self._saved is None:
-            del sys.modules["controlpanel"]
-        else:
-            sys.modules["controlpanel"] = self._saved
+        panel_view.lv = self._lv
+        panel_view.Panel = self._panel
 
     def test_an_effect_is_wrapped_and_handed_over_with_its_options(self):
         result = panel_view.build(FakeEffect(), screen="scr", title="Fake")
@@ -155,6 +155,11 @@ class Build(unittest.TestCase):
         self.assertIsInstance(adapter, panel_view.EffectAdapter)
         self.assertEqual(screen, "scr")
         self.assertEqual(options, {"title": "Fake"})
+
+    def test_without_the_shared_controls_build_says_so(self):
+        panel_view.lv = None
+        with self.assertRaises(ImportError):
+            panel_view.build(FakeEffect())
 
     def test_an_adapter_is_used_as_it_is(self):
         adapter = panel_view.EffectAdapter(FakeEffect())
