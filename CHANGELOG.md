@@ -8,6 +8,13 @@ together from PyDevices/audiocomponents, and the history from v0.4.2rc1 back
 covers both packages. Releases up to and including audiodsp's v0.1.1 shipped
 both packages from audiodsp, and are recorded in its changelog.
 
+## v0.5.1.dev0 (2026-11-02)
+
+- panel_view: drop unused imports
+- panel_view imports controlkit
+- audioeffects: panel_view lays out the control panel for an effect; loads without the shared controls
+- Effect panel adapter: EffectAdapter and build(), loaded without LVGL
+
 ## v0.5.0 (2026-10-31)
 
 ### Changed
