@@ -8,7 +8,7 @@ together from PyDevices/audiocomponents, and the history from v0.4.2rc1 back
 covers both packages. Releases up to and including audiodsp's v0.1.1 shipped
 both packages from audiodsp, and are recorded in its changelog.
 
-## Unreleased
+## v0.5.1 (2026-11-03)
 
 ### Removed
 
@@ -18,6 +18,8 @@ both packages from audiodsp, and are recorded in its changelog.
   Import the class from `audioeffects` (`from audioeffects import Reverb`) or
   from its module (`audioeffects.reverb`). The classes and their output are
   unchanged.
+
+- Remove the audioeffects.rebuilt import path (#5)
 
 ## v0.5.1.dev0 (2026-11-02)
 
