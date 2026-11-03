@@ -17,7 +17,7 @@ refer to that archived repository, and they still resolve at
 
 | Path | What's there |
 |---|---|
-| [`lib/audioeffects/`](lib/audioeffects/) | One module per effect, plus `_component.py` (the base every effect is built on) and `rebuilt/`, which only keeps the old `audioeffects.rebuilt.<module>` import paths working. |
+| [`lib/audioeffects/`](lib/audioeffects/) | One module per effect, plus `_component.py` (the base every effect is built on). |
 | [`tools/validate_api.py`](tools/validate_api.py), [`tools/validate_metadata.py`](tools/validate_metadata.py) | The validators that enforce the runtime API and the metadata manifest. |
 | [`tools/effect_probes/`](tools/effect_probes/) | The measurement kit's test signals and their manifest. The audio files are generated, never committed. |
 | `tools/` | Rendering and measurement tools besides. |

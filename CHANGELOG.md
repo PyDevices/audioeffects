@@ -8,6 +8,17 @@ together from PyDevices/audiocomponents, and the history from v0.4.2rc1 back
 covers both packages. Releases up to and including audiodsp's v0.1.1 shipped
 both packages from audiodsp, and are recorded in its changelog.
 
+## Unreleased
+
+### Removed
+
+- `audioeffects.rebuilt`. The delay, reverb, pitch and rack classes moved to
+  their own modules directly under `audioeffects` in 0.5.0, and the old
+  `audioeffects.rebuilt.<module>` import paths were kept working until now.
+  Import the class from `audioeffects` (`from audioeffects import Reverb`) or
+  from its module (`audioeffects.reverb`). The classes and their output are
+  unchanged.
+
 ## v0.5.1.dev0 (2026-11-02)
 
 - panel_view: drop unused imports

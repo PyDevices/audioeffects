@@ -19,8 +19,6 @@ settings = configure(
         "audioroute", "audiosampler", "audioshaper", "audioverb",
         "synthio",
     ],
-    # `rebuilt` only keeps old import paths alive.
-    api_skip=["rebuilt"],
     version_file="../VERSION",
 )
 
