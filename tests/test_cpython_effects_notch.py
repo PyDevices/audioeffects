@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Notch`'s own invariant and planted-fault tests.
 
 The class's Tier 2 traits are measured in the evidence pack with the kit;

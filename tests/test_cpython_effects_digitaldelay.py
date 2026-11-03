@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`DigitalDelay`'s own invariant and planted-fault tests.
 
 The dossier's Tier 2 rows are T1-T5. Each row here is the

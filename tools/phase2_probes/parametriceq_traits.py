@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """ParametricEQ's Tier 2 traits, measured with the kit, each beside the
 planted fault of the same kind that has to turn it red.
 

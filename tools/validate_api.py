@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Validate the live audio-component API across the provider catalogue.
 
 This is intentionally a small runtime check rather than an inheritance check:

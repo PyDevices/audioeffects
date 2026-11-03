@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`LowPass` - the two-pole analog prototype every synth and console
 low-pass is a version of, digitised without losing its tail.
 

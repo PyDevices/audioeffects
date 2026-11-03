@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Rack` - a serial chain of effects, as a single effect.
 
 The player's text is the class docstring, and the sentences in it that make

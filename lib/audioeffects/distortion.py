@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Distortion` - the ProCo Rat, with a Boss pedal as a second character.
 
 The player's text is the class docstring; the `CLAIMS` table in the

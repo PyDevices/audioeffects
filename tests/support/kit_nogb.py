@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """A board build with no `audiocore.get_buffer`.
 
 CircuitPython's default board builds compile `audiocore.get_buffer` out

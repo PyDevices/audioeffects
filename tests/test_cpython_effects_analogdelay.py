@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`AnalogDelay`'s own invariant and planted-fault tests.
 
 The dossier was frozen at the Station A critique revision, with the

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`AirSpace`'s own trait and planted-fault tests.
 
 The card (frozen 2026-10-12) has five traits, T1-T5. Each is measured here

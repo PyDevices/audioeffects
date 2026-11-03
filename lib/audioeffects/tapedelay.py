@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`TapeDelay` - a tape echo with two transports: the Roland RE-201's motor
 and the Maestro EP-3's sliding head.
 

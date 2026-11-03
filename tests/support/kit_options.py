@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The constructor options the kit builds a class with.
 
 Most classes are run at their defaults ({}). A class whose defaults are

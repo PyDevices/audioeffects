@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`SlapbackDelay` - one tape repeat after the dry, in mono: the Sun Studio slap.
 
 The player's text is the class docstring, and every sentence in it that

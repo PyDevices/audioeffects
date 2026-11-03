@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The planted-fault battery for measurements 11-20 of the kit spec.
 
 A measurement whose planted-fault run

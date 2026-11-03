@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The effects kit: nine mechanical checks on one class, no model in the loop.
 
     python tests/support/kit.py DigitalDelay [--only tail,plants,...]

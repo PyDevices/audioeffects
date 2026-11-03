@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Plant validity: each planted fault a class's tests use differs from the
 clean class at the defaults, and no knob position and no patch of the
 clean class renders what the plant renders.

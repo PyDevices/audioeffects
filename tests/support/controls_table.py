@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Every effect's knobs, their spans and its patches, built from the classes.
 
 `docs/reference/effect-controls.md` publishes these tables so someone can

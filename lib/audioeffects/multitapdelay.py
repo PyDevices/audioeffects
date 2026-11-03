@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`MultiTapDelay` - one recording read by several heads on a fixed grid.
 
 The player's text is the class docstring, and every sentence in it that

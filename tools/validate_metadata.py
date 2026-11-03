@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Validate audio component metadata declared by the audiodsp providers.
 
 This module deliberately uses only the Python standard library.  It is a

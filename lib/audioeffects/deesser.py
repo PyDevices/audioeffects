@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The dbx 902 de-esser: sibilance measured against the programme, not
 against a threshold knob.
 

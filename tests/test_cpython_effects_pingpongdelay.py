@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`PingPongDelay`'s own invariant and planted-fault tests.
 
 The dossier, frozen at the Station A critique's re-freeze, has Tier 2

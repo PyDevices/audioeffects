@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Exciter` - dry plus a high-passed harmonic branch.
 
 The player's text is the class docstring; the `CLAIMS` table in the

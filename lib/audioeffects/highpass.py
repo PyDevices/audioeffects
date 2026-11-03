@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`HighPass` - the low-cut: a two-pole analog high-pass whose transmission
 zero at DC is exact, not nearly.
 

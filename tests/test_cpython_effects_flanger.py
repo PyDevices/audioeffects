@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Flanger`'s trait and planted-fault tests.
 
 Six traits, T1 to T6 (the card's), each with its measurement run over the

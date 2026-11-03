@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Run the tests that this change can break, and no more.
 
 The full suite renders audio and grows with every rebuilt class. Most changes

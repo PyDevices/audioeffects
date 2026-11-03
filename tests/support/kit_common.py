@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """What the effects kit's checks share: material, rendering, the printed
 cell and the table of declared exceptions.
 

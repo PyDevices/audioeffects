@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Forty-five effect classes built out of audiodsp's audio nodes.
 
 Every class wires itself from an audio source - a synthesizer, an

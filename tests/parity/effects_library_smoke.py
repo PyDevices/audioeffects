@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Every audioeffects class builds through the factory and renders, on
 whichever interpreter runs this.
 

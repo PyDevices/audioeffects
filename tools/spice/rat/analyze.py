@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Print clipper peaks/THD and the gain-stage AC peak from out/."""
 import csv
 import math

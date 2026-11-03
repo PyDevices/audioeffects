@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`TransientShaper` - transient shaping in the SPL Transient Designer's shape.
 
 The player's text is the class docstring; the `CLAIMS` table in the class's

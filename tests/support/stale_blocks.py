@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The stale-block measurement, shared by the ten classes' tests
 (audiocomponents#113).
 

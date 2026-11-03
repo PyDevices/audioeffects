@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The effects catalogue: what `audioeffects` serves and how `create()`
 finds it.
 

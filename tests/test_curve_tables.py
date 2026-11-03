@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Every int16 curve table in the library, held to three bars.
 
 A `Waveshaper` curve is a lookup table, and a lookup table can be wrong in

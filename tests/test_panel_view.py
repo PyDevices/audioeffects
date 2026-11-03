@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The effect panel's adapter, on CPython with no LVGL and no audiodsp.
 
 A fake effect stands in for a rebuilt class: the same declarations

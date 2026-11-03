@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """SP-1200 12-bit linear DAC staircase for `audioeffects.bitcrusher`.
 
 S1: "The DAC is a standard 12 bit linear device" in complement-offset

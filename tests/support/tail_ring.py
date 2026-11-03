@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """How long a class rings after its input stops, against what it declares
 (audiocomponents#114).
 

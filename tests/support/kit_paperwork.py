@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The paperwork check: the class has a CHANGELOG line, and every source
 citation in its module resolves against the audiodsp pin.
 

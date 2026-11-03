@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`AutoPan`'s invariant and planted-fault tests (effects Phase 3).
 
 Traits

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Freeze audioeffects into a MicroPython firmware.
 
 A firmware build that names audioeffects takes this file.

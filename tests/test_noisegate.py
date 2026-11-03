@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`NoiseGate`'s own invariants and its planted faults (Phase 2, Drawmer
 DS201).
 

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The lifecycle matrix (`tests/support/lifecycle.py`) on every effect
 class the package serves (`audioeffects.ALL`, all 45), on CPython and on the
 two native interpreters.

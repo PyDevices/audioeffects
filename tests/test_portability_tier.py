@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The portability tier, tested where it can be tested.
 
 Roadmap section 3 gives every class one of two tiers:

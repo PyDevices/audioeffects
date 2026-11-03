@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Overdrive` - a Tube Screamer-shaped boost: dry plus a clipped shelf.
 
 The player's text is the class docstring; the `CLAIMS` table in the

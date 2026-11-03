@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """analyze.py -- read the CSVs run.sh left in out/ and print the numbers.
 
 numpy only.  Run with a python that has numpy, e.g.

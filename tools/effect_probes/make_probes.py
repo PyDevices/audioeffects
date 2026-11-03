@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Generate the measurement kit's probe material, once, on CPython.
 
     tools/effect_probes/make_probes.py [--dry-run] [--verify] [--ensure]

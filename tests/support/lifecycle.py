@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The shared lifecycle matrix for audioeffects classes.
 
 One fixed set of lifecycle EVENTS (reset, a host reset of the output,

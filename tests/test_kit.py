@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The effects kit's own proof: every check goes red on a planted fault and
 its control is green on the same cell, and a class that does nothing at
 all is never read as a pass.

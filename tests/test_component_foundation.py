@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The Phase 2 construction module, held to what roadmap section 3 asks of it.
 
 Every check that can go wrong quietly is paired with a **planted fault**: a

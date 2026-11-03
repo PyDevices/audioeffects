@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`AirSpace` - a tape echo sent into a chamber, with the dry beside it.
 
 You send your signal to a tape echo whose repeats feed an echo chamber, and
