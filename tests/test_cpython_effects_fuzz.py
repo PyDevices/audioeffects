@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Fuzz`'s own invariant and planted-fault tests.
 
 The dossier was frozen

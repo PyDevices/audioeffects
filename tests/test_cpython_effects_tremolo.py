@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Tremolo`'s own invariant and planted-fault tests.
 
 Exhaustive rates live in the evidence pack, not in this file.

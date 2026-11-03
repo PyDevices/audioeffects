@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`PitchShifter`'s trait and planted-fault tests.
 
 Four traits: T1 the interval, T2 the splice's arrivals, T3 the repeats

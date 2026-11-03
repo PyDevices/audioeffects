@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`AirSpace`'s planted faults, one or two per trait of its card.
 
 Kept apart from the test module, and free of numpy and unittest, so the

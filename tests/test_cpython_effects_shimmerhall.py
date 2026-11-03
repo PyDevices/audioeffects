@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`ShimmerHall`'s trait and planted-fault tests.
 
 Six traits: T1 the Bloom stagger, T2 the interval, T3 the octaves climbing

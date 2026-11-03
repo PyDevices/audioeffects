@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Bitcrusher` — a linear hold, the SP-1200's two numbers as knobs.
 
 The player's text is the class docstring; the `CLAIMS` table in the class's

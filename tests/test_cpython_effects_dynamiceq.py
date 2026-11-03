@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`DynamicEQ`'s own invariant, trait and planted-fault battery.
 
 The class gate asks for two

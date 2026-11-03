@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Derive Distortion's waveshaper tables from the Rat and DS-1 clipper circuits.
 
 The tables are the static solution of a silicon pair to ground:

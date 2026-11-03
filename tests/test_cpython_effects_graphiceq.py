@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`GraphicEQ`, rebuilt: its Tier 1 invariants and its own planted faults.
 
 This file is the part of the evidence pack that

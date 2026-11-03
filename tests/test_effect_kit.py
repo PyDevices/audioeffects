@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The measurement kit's planted-fault battery, measurements 1-10.
 
 Every planted fault lands as a test here, in `test_rig_comparator.py`'s shape -

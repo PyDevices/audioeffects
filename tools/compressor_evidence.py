@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Station C's measurements for `Compressor`, as one runnable file.
 
 Every table in the class's evidence pack is one case here, so a

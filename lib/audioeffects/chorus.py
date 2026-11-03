@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Chorus` - one delayed voice on a clock-modulated bucket-brigade line.
 
 The player's text is the class docstring; the `CLAIMS` table in the class's

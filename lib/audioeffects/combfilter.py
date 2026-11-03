@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`CombFilter` - a delay line short enough to be a pitch, fed back on
 itself.
 

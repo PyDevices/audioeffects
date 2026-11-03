@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The cost tool's Phase 5 additions (housekeeping, 2026-09-28).
 
 `tools/measure_effect_cost.py` is a board tool and its timings are not

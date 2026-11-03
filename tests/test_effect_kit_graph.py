@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The kit's two graph guards, each with its planted fault and its control.
 
 audiocomponents#78 read 70 dB of measurement floor off a wet-branch

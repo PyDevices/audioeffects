@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The measurement kit's first ten measurements, over rendered audio.
 
 The kit specifies twenty measurements. This module implements the first ten -

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The level pass: real material at three levels, so a trait measured on
 sines at one level is read again where the input level moves it.
 

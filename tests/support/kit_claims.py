@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The claims check: every sentence in a class's docstring that makes a
 claim is tied to a test, and that test exists and passes.
 

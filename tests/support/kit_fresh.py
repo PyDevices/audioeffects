@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Reset equals fresh: after `reset()`, from every patch, a class renders
 byte for byte what a fresh instance at patch 0 renders.
 

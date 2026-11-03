@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The contract every class in `audioeffects.ALL` is held to.
 
 Exports and metadata, the factory and the rate it owns, building and

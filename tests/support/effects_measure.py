@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """What the audioeffects test modules build and measure with.
 
 The effects suite is split by what retires each part. The contract-level

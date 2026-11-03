@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """What does ONE effect, or ONE audiodsp node, cost this board per block?
 
     mpftp put -d <port> tools/measure_effect_cost.py /measure_effect_cost.py

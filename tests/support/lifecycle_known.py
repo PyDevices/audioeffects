@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """What is red in the lifecycle matrix today, class by class: the rows
 `tests/test_lifecycle_matrix.py` holds as KNOWN_RED.
 

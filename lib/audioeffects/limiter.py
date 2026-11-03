@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """A lookahead brickwall limiter: a ceiling the signal does not get past.
 
 The player's text is the class docstring; the `CLAIMS` table in the class's

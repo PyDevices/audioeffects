@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """A synced class follows a host tempo change without a control moving
 (audiocomponents#118).
 

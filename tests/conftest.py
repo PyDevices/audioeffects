@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """pytest's view of the suite, for CI's parallel run (pytest-xdist).
 
 The tests are plain unittest and `python -m unittest discover -s tests`

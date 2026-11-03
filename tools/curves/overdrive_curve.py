@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """TS808 feedback-diode curve for `audioeffects.overdrive`.
 
 Derives one normalised Q15 table from the circuit values of the

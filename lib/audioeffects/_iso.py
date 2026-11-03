@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """ISO centre frequencies, kept as a shared private constant.
 
 The old family GraphicEQ walked these ten centres. The rebuilt GraphicEQ

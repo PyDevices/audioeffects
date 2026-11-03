@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`ParametricEQ` - the Pultec EQP-1A's two low networks and its resonant
 top, with three API 550A proportional-Q bells in the middle.
 

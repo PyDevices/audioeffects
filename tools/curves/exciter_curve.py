@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """1N914 one-sided clipper curve for `audioeffects.exciter`.
 
 Derives one normalised Q15 table from the component values of the

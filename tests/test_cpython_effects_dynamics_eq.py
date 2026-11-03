@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """What the dynamics and EQ classes do to a signal today.
 
 Where a bell lands, what a corner costs, whether lookahead catches the

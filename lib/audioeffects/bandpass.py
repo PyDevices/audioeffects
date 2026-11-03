@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`BandPass` - the two-pole resonant band-pass, rebuilt on `audiobiquad`.
 
 The player's text is the class docstring; the `CLAIMS` table in the

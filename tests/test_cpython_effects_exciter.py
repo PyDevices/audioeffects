@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Exciter`'s own invariant and planted-fault tests.
 
 The dossier was frozen

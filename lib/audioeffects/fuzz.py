@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Fuzz` - a biased germanium pair, with a Big Muff cascade as a second character.
 
 The player's text is the class docstring; the `CLAIMS` table in the class's

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Refuse a `bin/` interpreter that does not contain the audiodsp this
 repository's gates are read at.
 

@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Drive curve for `audioeffects.phaser`.
 
 `Phaser`'s Drive is a cubic soft clip, `y = x - x**3 / 3` over x in ±1 - the

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """A NaN constructor option is the option left out, on every effect.
 
 The API reference promises it for macros (NaN is the bottom stop) and each

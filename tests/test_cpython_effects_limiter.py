@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Limiter`'s own invariant and planted-fault tests.
 
 The dossier's Tier 2 rows are L1..L7 and each

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The planted faults for the measurement kit's first ten measurements.
 
 The discipline these are held to: a fault that does not turn its own

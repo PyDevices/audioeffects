@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The lifecycle matrix on the audiodsp nodes the effects stand on
 (`tests/support/node_matrix.py`), on CPython and on the two native
 interpreters.

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """What the modulation classes do to a signal today.
 
 Ring modulation is the one modulation trait the old surface pinned: the

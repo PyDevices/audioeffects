@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`StereoWidener`'s trait and planted-fault tests.
 
 Six traits: H1-H3 for Haas, M1-M2 for Mid/Side, W for the wire. Each has

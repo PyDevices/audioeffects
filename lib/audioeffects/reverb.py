@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Reverb` - Dattorro's plate network, cut four ways: a plate, a room, a
 chamber and a hall.
 

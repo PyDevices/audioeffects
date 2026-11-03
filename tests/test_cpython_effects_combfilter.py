@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`CombFilter`'s own invariant and planted-fault tests.
 
 The Tier 2 traits are measured in the evidence pack with the kit; what is

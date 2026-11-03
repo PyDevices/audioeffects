@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Mix back up from 0 plays nothing from before (Phase 7, step 7f, F3).
 
 At Mix 0 the host reads the source itself, so whatever the node at the head

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """A reset comes back as a fresh instance at patch 0, for the classes the
 kit's fresh check found red when it was built (Phase 7, step 7d).
 

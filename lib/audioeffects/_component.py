@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The construction shape every rebuilt effect class is built on.
 
 It replaced `_core.py`, the pre-contract shape, in which a module-level

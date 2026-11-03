@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Probe material and a render loop for the measurement kit's fault battery.
 
 Two things live here, both deliberately small:

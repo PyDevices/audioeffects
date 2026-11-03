@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The lifecycle matrix on audiodsp nodes, before any class is built on them.
 
 `lifecycle.py` judges effect classes. This module wraps each node a phase

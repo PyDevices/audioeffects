@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`DigitalDelay` - a clean digital delay with the Boss DD-2's control law.
 
 Your dry signal passes untouched, and one clean repeat follows it, fed back

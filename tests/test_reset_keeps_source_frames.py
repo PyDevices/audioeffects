@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """A reset part-way through a source buffer keeps the frames the graph took.
 
 A host that hands an effect 100-frame buffers and resets it after twelve

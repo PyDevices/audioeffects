@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The tail harness: the output reaches exact zero inside the tail the class
 reports, read after every control event, on a DC step and on low bursts.
 

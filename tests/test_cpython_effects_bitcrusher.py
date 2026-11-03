@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Bitcrusher`'s own invariant and planted-fault tests.
 
 Exhaustive rate coverage lives in the evidence pack, not here.

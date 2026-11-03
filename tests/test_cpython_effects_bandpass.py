@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`BandPass`'s own invariant and planted-fault tests (effects Phase 2).
 
 The dossier's traits were frozen 2026-09-07, and this file's numbers are

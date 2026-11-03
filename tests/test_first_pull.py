@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Settings changed between construction and the first pull land as a fresh
 instance at those settings would (Phase 7, step 7f).
 

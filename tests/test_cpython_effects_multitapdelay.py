@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`MultiTapDelay`'s own invariant and planted-fault tests.
 
 The dossier, frozen at the Station A revision, has Tier 2 rows

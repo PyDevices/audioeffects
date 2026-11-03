@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The rebuilt `Rack`: a serial chain of effects as one effect.
 
 One test per trait of the class card (T1-T6), each shown red on the card's

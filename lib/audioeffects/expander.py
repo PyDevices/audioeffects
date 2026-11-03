@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Expander` - a downward expander in the Drawmer DS201's shape.
 
 The player's text is the class docstring; the `CLAIMS` table in the class's

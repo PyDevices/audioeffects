@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`TransientShaper`'s own invariant and planted-fault tests (Phase 2).
 
 The class gate asks for these beside the contract-level suite: a fault that

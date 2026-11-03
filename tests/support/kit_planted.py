@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The kit's planted faults: tiny components that each break one thing a
 kit check measures, beside the controls that break nothing.
 

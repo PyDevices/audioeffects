@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`PingPongDelay` - repeats that alternate between the speakers.
 
 The player's text is the class docstring, and every sentence in it that

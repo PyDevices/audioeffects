@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The sweep driver's battery: a measurement run over the span its trait
 quantifies over, not at a point inside it.
 

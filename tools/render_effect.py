@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """Render one audioeffects class over one probe, on any of the three
 interpreters, and export the WAV plus the FNV digest the measurement kit
 compares.

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`ShimmerHall` - a hall that rings an octave above what you play.
 
 You play into a hall, and a pitch shifter beside it makes the tail ring at

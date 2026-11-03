@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Expander`'s own planted-fault tests, and the two checks that say a fault
 and a reading are worth citing at all.
 

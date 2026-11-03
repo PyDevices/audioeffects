@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`LadderFilter`'s input ceiling and the class docstring's claims, each
 tied to its test by the `CLAIMS` table.
 

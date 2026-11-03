@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`GraphicEQ` - ten octave bands and two level sliders, after the MXR
 M-108 Ten Band.
 

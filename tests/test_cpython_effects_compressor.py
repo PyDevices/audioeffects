@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Compressor`'s own planted-fault checks, in the suite.
 
 The class gate asks each rebuilt class for its invariant and planted-fault

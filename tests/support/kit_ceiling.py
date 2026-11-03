@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The input ceiling: rendered at the level the class says it is clean at,
 on the worst material, the output never wraps, never sits on a rail the
 input was not on, and never goes silent while the input plays.

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`RingMod` - Bode multiplier-type ring, with a switching character.
 
 The player's text is the class docstring; the `CLAIMS` table in the class's

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`ConvolutionReverb`'s own invariant and planted-fault tests.
 
 The dossier's Tier 2 rows are D1-D6. Each row here is the

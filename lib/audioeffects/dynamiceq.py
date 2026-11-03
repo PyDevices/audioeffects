@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`DynamicEQ` - one equaliser band that only moves when there is
 something in it.
 

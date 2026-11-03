@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """The player's text against its `CLAIMS` table, and the two readings every
 class's table leans on: latency and the modules it needs.
 

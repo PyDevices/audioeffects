@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`AnalogDelay` - a bucket-brigade delay whose Time knob is its clock.
 
 The player's text is the class docstring, and every sentence in it that

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`NoiseGate` - a noise gate after the Drawmer DS201.
 
 The player's text is the class docstring; the `CLAIMS` table in the class's

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Brad Barnett
+#
+# SPDX-License-Identifier: MIT
+
 """`Octaver`'s trait and planted-fault tests.
 
 Six traits, T1 to T6, each with its measurement run over the span listed
