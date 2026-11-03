@@ -33,10 +33,10 @@ Issues = "https://github.com/PyDevices/audioeffects/issues"
 [tool.setuptools]
 # Every package directory under lib/audioeffects, listed by hand: the
 # package-dir mapping below ("." is the package) rules out packages.find,
-# which would discover rebuilt/ as a top-level "rebuilt". v0.3.0 shipped
-# without audioeffects.rebuilt and failed on import; tools/wheel_gate.py
-# (the "Wheel" job in tests.yml) fails if a directory is left off again.
-packages = ["audioeffects", "audioeffects.rebuilt"]
+# which would discover any subpackage as a top-level package. v0.3.0 shipped
+# without a subpackage and failed on import; tools/wheel_gate.py (the "Wheel"
+# job in tests.yml) fails if a directory is left off again.
+packages = ["audioeffects"]
 
 [tool.setuptools.package-dir]
 audioeffects = "."
