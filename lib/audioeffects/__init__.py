@@ -47,55 +47,68 @@ def channel_count():
     return _FORMAT[1]
 
 
-from .compressor import Compressor
-from .limiter import Limiter
-from .expander import Expander
-from .noisegate import NoiseGate
-from .deesser import DeEsser
-from .transientshaper import TransientShaper
-from .multibandcompressor import MultibandCompressor
-from .parametriceq import ParametricEQ
-from .graphiceq import GraphicEQ
-from .lowpass import LowPass
-from .highpass import HighPass
-from .bandpass import BandPass
-from .notch import Notch
-from .ladderfilter import LadderFilter
-from .combfilter import CombFilter
-from .dynamiceq import DynamicEQ
-from .reverb import Reverb
-from .convolutionreverb import ConvolutionReverb
-from .digitaldelay import DigitalDelay
-from .slapbackdelay import SlapbackDelay
-from .tapedelay import TapeDelay
-from .analogdelay import AnalogDelay
-from .pingpongdelay import PingPongDelay
-from .multitapdelay import MultiTapDelay
-from .chorus import Chorus
-from .phaser import Phaser
-from .tremolo import Tremolo
-from .autopan import AutoPan
-from .vibrato import Vibrato
-from .ringmod import RingMod
-from .flanger import Flanger
-from .overdrive import Overdrive
-from .distortion import Distortion
-from .bitcrusher import Bitcrusher
-from .cabinetsim import CabinetSim
-from .fuzz import Fuzz
-from .saturation import Saturation
-from .exciter import Exciter
-from .pitchshifter import PitchShifter
-from .harmonizer import Harmonizer
-from .octaver import Octaver
-from .stereowidener import StereoWidener
-from .rack import Rack
-from .shimmerhall import ShimmerHall
-from .airspace import AirSpace
+# Each effect's class and the module that holds it. A class is imported the
+# first time it is used, so a firmware can freeze only the effects it plays
+# and a program pays only for the ones it touches; `from audioeffects import
+# Reverb` and `audioeffects.Reverb` work as before.
+_MODULES = {
+    "Compressor": "compressor",
+    "Limiter": "limiter",
+    "Expander": "expander",
+    "NoiseGate": "noisegate",
+    "DeEsser": "deesser",
+    "TransientShaper": "transientshaper",
+    "MultibandCompressor": "multibandcompressor",
+    "ParametricEQ": "parametriceq",
+    "GraphicEQ": "graphiceq",
+    "LowPass": "lowpass",
+    "HighPass": "highpass",
+    "BandPass": "bandpass",
+    "Notch": "notch",
+    "LadderFilter": "ladderfilter",
+    "CombFilter": "combfilter",
+    "DynamicEQ": "dynamiceq",
+    "Reverb": "reverb",
+    "ConvolutionReverb": "convolutionreverb",
+    "DigitalDelay": "digitaldelay",
+    "SlapbackDelay": "slapbackdelay",
+    "TapeDelay": "tapedelay",
+    "AnalogDelay": "analogdelay",
+    "PingPongDelay": "pingpongdelay",
+    "MultiTapDelay": "multitapdelay",
+    "Chorus": "chorus",
+    "Phaser": "phaser",
+    "Tremolo": "tremolo",
+    "AutoPan": "autopan",
+    "Vibrato": "vibrato",
+    "RingMod": "ringmod",
+    "Flanger": "flanger",
+    "Overdrive": "overdrive",
+    "Distortion": "distortion",
+    "Bitcrusher": "bitcrusher",
+    "CabinetSim": "cabinetsim",
+    "Fuzz": "fuzz",
+    "Saturation": "saturation",
+    "Exciter": "exciter",
+    "PitchShifter": "pitchshifter",
+    "Harmonizer": "harmonizer",
+    "Octaver": "octaver",
+    "StereoWidener": "stereowidener",
+    "Rack": "rack",
+    "ShimmerHall": "shimmerhall",
+    "AirSpace": "airspace",
+}
 
 
-#: The package's whole surface, grouped as the modules above are. Every
-#: name here is re-exported; nothing else in a submodule is public.
+def __getattr__(name):
+    module = _MODULES.get(name)
+    if module is None:
+        raise AttributeError(name)
+    cls = getattr(__import__("audioeffects." + module, None, None, [name]), name)
+    globals()[name] = cls
+    return cls
+
+
 __all__ = [
     "configure", "sample_rate", "channel_count", "create", "ALL",
     # dynamics
@@ -141,18 +154,12 @@ def create(name, source, sample_rate, transport=None, **options):
     selected class's ``create`` method owns the actual construction, so a
     consumer does not need to know which module contains it.
     """
-    for exported in __all__:
-        cls = globals().get(exported)
-        if _is_provider(cls) and cls.NAME == name:
-            return cls.create(source, sample_rate, transport=transport,
-                              **options)
-    raise ImportError("audioeffects has no %s" % name)
+    if name not in _MODULES:
+        raise ImportError("audioeffects has no %s" % name)
+    cls = __getattr__(name)
+    return cls.create(source, sample_rate, transport=transport, **options)
 
 
-# Stable provider names, not implementation module names. This is computed
-# from the already-imported public classes and never constructs an effect.
-ALL = tuple(sorted(
-    globals()[name].NAME
-    for name in __all__
-    if _is_provider(globals().get(name))
-))
+# Stable provider names, not implementation module names. Each class's NAME
+# is its class name, so this needs no effect imported.
+ALL = tuple(sorted(_MODULES))
