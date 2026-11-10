@@ -9,9 +9,9 @@ Phaser, Saturation, Tremolo and Vibrato, with the exceptions below. The Mix
 of DigitalDelay and PingPongDelay and SlapbackDelay's Level walk too, since
 their delay node does.
 
-A few moves still step. Fuzz coming back from Mix 0 cuts in, Tremolo's Depth
-jumps, a filter corner moves at once, and so does a patch change that rebuilds
-part of a graph. Until those walk too, send such a jump as small steps, one a
+A few moves still step. A filter corner moves at once, and so do a switch, a
+patch change that rebuilds part of a graph, and an effect built at Mix 0 the
+first time its Mix leaves 0. Until those walk too, send such a jump as small steps, one a
 block: the delays' own tests show Mix moved in 127 steps, one a block, steps
 the output by less than one and a half times the steepest step of the tone
 going through it. The rest is on the
@@ -28,7 +28,8 @@ clicking.
 
 Mix 0 is still your signal, byte for byte. An effect that hands you the
 source itself there walks its graph to the dry first and switches once the
-walk has landed, and walks back in from the dry when Mix leaves 0.
+walk has landed, and walks back in from the dry when Mix leaves 0. DeEsser's
+Range 0 works the same way, and Tremolo's Depth 0 walks there and back too.
 
 A delay's Time is not ramped here: it already glides, at the rate its Glide
 control sets. A filter corner that jumps steps the output too, more quietly
@@ -49,7 +50,8 @@ reaches anyone using the bare nodes too, CircuitPython users included.
 
 The nodes that walk are `audiomixer.Mixer`'s voice levels (its `level_ramp`),
 the Waveshaper's `mix` and `post_gain`, the Biquad's and the AllPass's `mix`,
-the Dynamics node's makeup and the FeedbackDelay's `mix`. An
+the Dynamics node's makeup, the FeedbackDelay's `mix` and
+`audiomath.Multiply`'s `mix`. An
 `audioroute.Port` told `play(source, after=frames)` keeps playing what it
 plays until a walk has landed, which is how Mix 0 switches to the source
 without a cut.
