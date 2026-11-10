@@ -750,6 +750,7 @@ class Saturation(_component.Component):
     #: Construction arms the voices on silence (`Component._play_voice`),
     #: so a Mix 0 set before the first pull hands out the source whole.
     LAZY_BUILD = True
+    WALKS_TO_BYPASS = True
     NAME = 'Saturation'
     DISPLAY_NAME = 'Saturation'
     CATEGORIES = ('Distortion',)
@@ -947,8 +948,10 @@ class Saturation(_component.Component):
         self._makeup_shelf.play(self._tilt)
         self._after.play(self._shaper)
         self._mix = self._own(
-            audiomixer.Mixer(voice_count=2,
-                             **self._pcm(MIXER_BUFFER_BYTES * channels)),
+            _component.ramp_levels(
+                audiomixer.Mixer(voice_count=2,
+                                 **self._pcm(MIXER_BUFFER_BYTES * channels)),
+                self._sample_rate),
             reset=self._reset_mixers)
         self._output = self._mix
         # Two frames, not one: `audiocore.get_buffer` of a 1-channel Mixer
@@ -1115,6 +1118,7 @@ class Saturation(_component.Component):
         gates opened, then the voices played.
         """
         self._check_live()
+        self._land_bypass()
         self._resetting = True
         try:
             self._clear_nodes()
@@ -1359,7 +1363,9 @@ class Saturation(_component.Component):
                 # The Splitter drops the source frames it took before the
                 # bypass, which the host has since read past.
                 self._let_go_of_source(self._split, self._source)
-                self._rearm()
+                # The bypass was the dry alone: walk in from there.
+                dry, wet = self._mix.voice
+                self._rearm_from(((dry, 1.0), (wet, 0.0)), self._rearm)
             self._attach()
             self._output = self._mix
             self._latency = self._wet_delay

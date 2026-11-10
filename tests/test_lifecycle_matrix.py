@@ -591,15 +591,18 @@ class TestPlants(unittest.TestCase):
         ("stalemix", "routed", "E5-mix0", "PR"),
         ("depthleak", "depthjump", "E5-mix0", "P1"),
         ("depthpop", "depthjump", "E5-mix0", "P5"),
+        ("loudjump", "loudramp", "E4-m1=127", "P5", 22050),
     )
 
     def test_each_plant_is_red_and_its_control_green(self):
-        for plant, control, event, prop in self.CASES:
+        for row in self.CASES:
+            plant, control, event, prop = row[:4]
+            rate = row[4] if len(row) > 4 else 48000
             with self.subTest(plant=plant):
-                self.assertTrue(plant_cell(plant, event, prop)
+                self.assertTrue(plant_cell(plant, event, prop, rate=rate)
                                 .startswith("RED"), plant)
-                self.assertEqual(plant_cell(control, event, prop), "ok",
-                                 control)
+                self.assertEqual(plant_cell(control, event, prop, rate=rate),
+                                 "ok", control)
 
     def test_a_depth_is_judged_as_a_depth_and_not_as_a_crossfade(self):
         """A depth jumps: its P5 allows the step the jump itself makes. The

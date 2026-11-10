@@ -1497,12 +1497,14 @@ class Bitcrusher(_component.Component):
             threshold_db=DITHER_GATE_DB, attack_ms=0.0,
             release_ms=DITHER_GATE_RELEASE_MS, hold_ms=DITHER_GATE_HOLD_MS,
             depth_db=-80.0, lookahead_ms=0.0)
-        dither_mix = audiomixer.Mixer(voice_count=3, **pcm)
+        dither_mix = _component.ramp_levels(
+            audiomixer.Mixer(voice_count=3, **pcm), rate)
         shaper = audioshaper.Waveshaper(
             sample_rate=rate, channel_count=channels, curve=CURVE,
             oversample=1, mix=1.0, pre_gain=1.0, post_gain=1.0,
             bias=0.0, hysteresis=0.0)
-        blend = audiomixer.Mixer(voice_count=2, **pcm)
+        blend = _component.ramp_levels(
+            audiomixer.Mixer(voice_count=2, **pcm), rate)
         silence = audiocore.RawSample(
             array("h", bytes(2 * 2 * channels)),
             sample_rate=rate, channel_count=channels)
@@ -1644,6 +1646,8 @@ class Bitcrusher(_component.Component):
         self._output_gain = _component.db_to_gain(output_db)
         self._prime_if_wet()
 
+    WALKS_TO_BYPASS = True
+
     def reset(self):
         """Clear every node and restore patch 0, then arm the graph as
         `_build` does, lazily, so a reset is a fresh instance and takes
@@ -1657,6 +1661,9 @@ class Bitcrusher(_component.Component):
     def _prime_if_wet(self):
         mix = getattr(self, "_mix", 1.0)
         if mix <= 0.0:
+            if getattr(self, "_ready", False):
+                # The blend walks to the dry alone before the bypass lands.
+                self._set_levels()
             self._route_around(self._source)
             return
         if not getattr(self, "_ready", False):
@@ -1678,14 +1685,9 @@ class Bitcrusher(_component.Component):
             # re-armed below the way `_build` arms them: levels, gates,
             # then sources (audiocomponents#113).
             self._set_levels()
-            _component.open_level_gates(
-                self._dither_mix, [self._dither_mix.voice[0],
-                                   self._dither_mix.voice[1],
-                                   self._dither_mix.voice[2]],
-                self._silence)
-            _component.open_level_gates(
-                self._blend, [self._blend.voice[0], self._blend.voice[1]],
-                self._silence)
+            # Off a walked bypass the blend walks in from the dry alone.
+            self._rearm_from(((self._blend.voice[0], 1.0),
+                              (self._blend.voice[1], 0.0)), self._open_gates)
             self._dither_primed = False
             self._blend_primed = False
         want = self._sections[-1] if getattr(self, "_band", False) \
@@ -1727,6 +1729,16 @@ class Bitcrusher(_component.Component):
         self._output = self._blend
         self._set_levels()
 
+    def _open_gates(self):
+        _component.open_level_gates(
+            self._dither_mix, [self._dither_mix.voice[0],
+                               self._dither_mix.voice[1],
+                               self._dither_mix.voice[2]],
+            self._silence)
+        _component.open_level_gates(
+            self._blend, [self._blend.voice[0], self._blend.voice[1]],
+            self._silence)
+
     def _set_levels(self):
         """Every mixer level this class owns, from the current macros.
 
@@ -1738,7 +1750,9 @@ class Bitcrusher(_component.Component):
         """
         mix = getattr(self, "_mix", 1.0)
         gain = getattr(self, "_output_gain", 1.0)
-        if gain > 1.0:
+        if gain > 1.0 or mix <= 0.0:
+            # Mix 0 is the source itself, so the blend walks to the dry at
+            # unity before the bypass takes over.
             gain = 1.0
         self._blend.voice[0].level = (1.0 - mix) * gain
         self._blend.voice[1].level = mix * gain

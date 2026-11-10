@@ -519,6 +519,23 @@ def _one_pole(freq, park):
     return f0, min(MAX_Q, max(MIN_Q, q))
 
 
+class _MixAsLevel:
+    """A filter's `mix` under the name a mixer voice gives its level, so
+    `Component._rearm_from` can hold it at the dry and let it walk back
+    with the voices: `audiobiquad.Biquad` walks a `mix` move over 20 ms."""
+
+    def __init__(self, node):
+        self._node = node
+
+    @property
+    def level(self):
+        return self._node.mix
+
+    @level.setter
+    def level(self, value):
+        self._node.mix = value
+
+
 class Overdrive(_component.Component):
     """A Tube Screamer-shaped overdrive: your note at unity, with a
     high-passed, clipped copy added on top.
@@ -680,7 +697,8 @@ class Overdrive(_component.Component):
         self._trim.play(self._shaper)
         self._dc.play(self._trim)
 
-        circuit = audiomixer.Mixer(voice_count=2, **self._pcm())
+        circuit = _component.ramp_levels(
+            audiomixer.Mixer(voice_count=2, **self._pcm()), rate)
         self._lp = audiobiquad.Biquad(
             mode=audiobiquad.LOW_PASS, frequency=TONE_LP_HZ, Q=0.15,
             sample_rate=rate, channel_count=channels)
@@ -688,7 +706,8 @@ class Overdrive(_component.Component):
         # rather than a second summing point the budget cannot price - and
         # the node is built with one, which is what the comment used to
         # claim while asking for two.
-        out = audiomixer.Mixer(voice_count=1, **self._pcm())
+        out = _component.ramp_levels(
+            audiomixer.Mixer(voice_count=1, **self._pcm()), rate)
 
         self._lp.play(circuit)
 
@@ -892,17 +911,36 @@ class Overdrive(_component.Component):
         # frames, and `_rearm` keeps them (`_source_read_past`).
         self._reset_rearmed(self._prime_if_wet, ("_primed",))
 
+    WALKS_TO_BYPASS = True
+
+    def _at_dry(self):
+        """What makes the graph the dry alone: the clip branch out of the
+        circuit sum, the Tone low-pass out of the way and Level at unity,
+        as (stage, level) pairs (`Component._rearm_from`)."""
+        return ((self._circuit.voice[0], 1.0), (self._circuit.voice[1], 0.0),
+                (_MixAsLevel(self._lp), 0.0), (self._out.voice[0], 1.0))
+
     def _prime_if_wet(self):
         mix = self._value(3)
         level = self._value(2)
         if mix <= 0.0:
+            if getattr(self, "_ready", False):
+                # The graph walks to the dry alone, which is the source,
+                # and the bypass takes over once it has landed.
+                for stage, at in self._at_dry():
+                    stage.level = at
             self._route_around(self._source)
             return
         if not getattr(self, "_ready", False):
             self._output = self._out
             return
         if self._rejoin():
-            self._rearm(level)
+            # The levels it comes back to, which a graph off a walked
+            # bypass walks to from the dry alone.
+            self._circuit.voice[0].level = 1.0
+            self._circuit.voice[1].level = 1.0
+            self._out.voice[0].level = level
+            self._rearm_from(self._at_dry(), self._rearm)
             return
         if not self._primed:
             self._play_voice(self._circuit.voice[0], self._dry)
@@ -914,7 +952,7 @@ class Overdrive(_component.Component):
         self._circuit.voice[1].level = 1.0
         self._out.voice[0].level = level
 
-    def _rearm(self, level):
+    def _rearm(self):
         """Arm a graph Mix 0 left un-pulled, the way `_build` arms it.
 
         Back off a bypass the filters, the shaper and the output capacitor
@@ -942,12 +980,16 @@ class Overdrive(_component.Component):
             self._trim.play(self._shaper)
             self._dc.play(self._trim)
             self._lp.play(self._circuit)
-        self._circuit.voice[0].level = 1.0
-        self._circuit.voice[1].level = 1.0
-        self._out.voice[0].level = level
         if self._clip_bias:
             self._shaper.set(post_gain=0.0)
             self._trim.set(bias=0.0)
+        # The Tone low-pass takes its `mix` at once on its first block after
+        # the clear. One block of the quiet line hands it the mix it stands
+        # at now (the dry, off a walked bypass), leaves its state at zero,
+        # and the mix it is handed back walks from there.
+        self._lp.play(self._quiet)
+        self._pull_node(self._lp)
+        self._lp.play(self._circuit)
         _component.open_level_gates(
             self._circuit, [self._circuit.voice[0], self._circuit.voice[1]],
             self._silence)

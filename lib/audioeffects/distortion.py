@@ -785,7 +785,8 @@ class Distortion(_component.Component):
 
     def _mixer_node(self, voices=2):
         node = self._own(
-            audiomixer.Mixer(**self._pcm_mixer(voices)), reset=False)
+            _component.ramp_levels(audiomixer.Mixer(**self._pcm_mixer(voices)),
+                                   self._sample_rate), reset=False)
         self._mixers.append(node)
         return node
 
@@ -1001,6 +1002,8 @@ class Distortion(_component.Component):
             if release is not None:
                 release()
 
+    WALKS_TO_BYPASS = True
+
     def reset(self):
         """Clear every node and restore patch 0, then arm the graph as
         `_build` does, so a reset is a fresh instance (no block primed
@@ -1028,6 +1031,10 @@ class Distortion(_component.Component):
         volume = self.macro(VOL)
         if mix <= 0.0:
             self._latency = 0
+            # The mixer walks to the dry alone, which is the source, and the
+            # bypass takes over once it has landed.
+            for voice, level in self._at_dry():
+                voice.level = level
             self._route_around(self._source)
             return
         # Back off a bypass, the graph behind the mixer has not been pulled
@@ -1057,8 +1064,16 @@ class Distortion(_component.Component):
             self._output = self._mixer
         self._push_wet(mix, volume)
         if rejoin and not pending:
-            self._connect()
+            # Off a walked bypass the mixer walks in from the dry alone.
+            self._rearm_from(self._at_dry(), self._connect)
             self._output = self._mixer
+
+    def _at_dry(self):
+        """The output mixer's voices at the levels that make it the dry
+        alone: (voice, level) pairs."""
+        wet = ((self._tone_lo, self._tone_hi) if self._tone_lo is not None
+               else (self._wet,))
+        return [(self._dry, 1.0)] + [(voice, 0.0) for voice in wet]
 
     def _push_wet(self, mix, volume):
         self._dry.level = 1.0 - mix

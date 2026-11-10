@@ -558,6 +558,8 @@ class MultibandCompressor(_component.Component):
                              self._detectors[band], loop=True)
         self._primed = True
 
+    WALKS_TO_BYPASS = True
+
     def reset(self):
         """Clear every node and restore patch 0, then hand the voices their
         sources at patch 0's levels, as `_build` does. The walk used to
@@ -774,7 +776,12 @@ class MultibandCompressor(_component.Component):
         if self._rejoin(keep=(self._head, self._mixer)):
             self._primed = False
         if not self._primed:
-            self._play_voices()
+            # Off a walked bypass the mixer walks in from the dry alone.
+            voices = self._mixer.voice
+            self._rearm_from(
+                [(voices[0], 1.0)] + [(voices[band + 1], 0.0)
+                                      for band in range(self._bands)],
+                self._play_voices)
         self._output = self._mixer
 
 
@@ -787,6 +794,7 @@ def audiomixer_mixer(rate, channels, voices):
     at the top.
     """
     import audiomixer
-    return audiomixer.Mixer(voice_count=voices, sample_rate=rate,
-                            channel_count=channels, bits_per_sample=16,
-                            samples_signed=True)
+    return _component.ramp_levels(
+        audiomixer.Mixer(voice_count=voices, sample_rate=rate,
+                         channel_count=channels, bits_per_sample=16,
+                         samples_signed=True), rate)

@@ -78,7 +78,10 @@ at patch 0.
 
 - **P1** At Mix 0 the output is the source, byte for byte, on time (shifted
   by `latency_samples`). Events that do not move Mix take Mix back to 0 in
-  the same gap; E5 is judged over the stretch it holds Mix at 0. After
+  the same gap. E5, and E4 taking Mix to 0, hold Mix there for the run and
+  are judged over a stretch as long as the event's gap, from where Mix has
+  walked to 0: 20 ms, or for a class that routes around its graph, the walk
+  it waits for and a block after it, when it has switched to the source. After
   `E8-end` the output is the frames the source handed, then silence.
 - **P2** Silence in gives silence out: after the event and `tail_samples`
   (read after it) + `latency_samples` + one block + the last source buffer,
@@ -87,10 +90,15 @@ at patch 0.
   wait until the output is exactly silent, the move back; the next four
   blocks are exactly 0. A single action is taken in the silence instead.
 - **P4** From `tail_samples + latency_samples + one block` after the last
-  move on, the output is byte-identical to the control's, over 2048 frames
-  of material.
-- **P5** No step within one block of the move larger than 1.5 x the larger
-  of the triangle's own largest step and the control's. Control moves only
+  move on, plus the 20 ms a level walks after a control move, the output
+  is byte-identical to the control's, over 2048 frames of material.
+- **P5** No step within one block of the move larger than 1.5 x the
+  largest of the triangle's own largest step, the control's, and the
+  landing's: an instance given the move's macros before its first pull,
+  read from where the move happens on. A level turned up walks to a
+  louder output whose every step is larger; a jump still steps by the gap
+  between the two outputs, which none of the three forgives. The landing
+  counts for macro moves other than Mix. Control moves only
   (E4, E5, E6, E9, E11): a reset, a deinit and a source fault are cuts by
   definition, and E10 has nothing before it.
 - **PF** (E12) The first block equals the fresh instance's, byte for
@@ -101,7 +109,10 @@ at patch 0.
   return from Mix 0 that routed around the graph, a rejoin: the cell's own
   configuration; a Mix 0 that keeps the graph running prints `na`) on,
   4096 frames are byte-identical to a fresh instance built there and fed
-  the source from the same frame. Where the source stands is read off a
+  the source from the same frame. A class that walks to the dry before its
+  bypass walks back in from it, so its comparison starts once that walk
+  has landed; a return that comes before the bypass switched prints `na`,
+  the graph never having stopped. Where the source stands is read off a
   dry run to the move. No tail is forgiven: a child left at its own patch 0, a line kept
   across a reset or a block primed twice is red here.
   PR runs on the reset events at the cell's own configuration. The kit's
@@ -216,7 +227,9 @@ and `LIFECYCLE_CLASSES=DigitalDelay,TapeDelay` limits it to some classes.
 The helper ships a control and a planted fault for every property, and
 `TestPlants` holds each plant red on its cell with its control green there:
 `DropOnReset` (P1), `HoldDC` (P2), `StaleMix` against `Routed` (P3),
-`LateMove` (P4), `HardSwitch` (P5), `BusyDeinit` (PD), `LatePatch` (PF, a
+`LateMove` (P4), `HardSwitch` (P5), `LoudJump` against `LoudRamp` (P5's
+landing: a level jumping to louder is red, the same level walking there
+over 20 ms green), `BusyDeinit` (PD), `LatePatch` (PF, a
 pre-pull patch that lands a block late), `ResetLeak` against `Routed` (PR,
 a reset that keeps its echo line; P4 reads both as ok) and `ImplPlant`
 (P6, a level a hair different off CPython).

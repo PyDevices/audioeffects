@@ -100,7 +100,9 @@ class AMixZeroAfterAMidStreamArmingIsTheWire(unittest.TestCase):
     source, on time. Each primed a block eagerly, so the bypass after it
     handed out a source 256 frames short (5 ms of the song skipped)."""
 
-    FRAMES = 4096
+    # Long enough for a class that walks to the dry before it switches,
+    # with the 512-frame blocks of a mono mixer.
+    FRAMES = 8192
     TAIL = 1024
 
     def check(self, name, channels, move):

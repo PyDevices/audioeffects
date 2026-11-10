@@ -227,6 +227,8 @@ class Chorus(_component.Component):
     def _build(self, rate=0.8, depth=0.35, mix=0.815, delay_ms=8.8,
                tone_hz=3000.0, patch=None):
         self._shape = clock_shape(0.0)
+        #: The mean `delay_ms` last written, so a move can glide from it.
+        self._delay_written = None
         self._tail = 0
         self._delay = self._own(audioecho.FeedbackDelay(
             sample_rate=self._sample_rate,
@@ -243,6 +245,13 @@ class Chorus(_component.Component):
         self._delay.play(self._source)
         self._output = self._delay
         self._init_macros((rate, depth, mix, delay_ms, tone_hz), patch)
+
+    def reset(self):
+        """A reset is a fresh instance: patch 0's delay lands at once."""
+        self._check_live()
+        self._delay_written = None
+        self._delay.set(delay_slew=0.0)
+        _component.Component.reset(self)
 
     def _value(self, index):
         return _component.macro_value(self._MACRO_RANGES[index],
@@ -261,6 +270,15 @@ class Chorus(_component.Component):
         delay_ms, wow_depth_ms = delay_law(mean_ms, depth)
         self._shape = clock_shape(depth)
         damping = nominal_damping_hz(tone, self._sample_rate)
+        # A Depth or Delay move moves the mean line, and written as it was
+        # the read head jumped by the whole change on the next frame. So
+        # the line walks there over 20 ms (the node's `delay_slew`,
+        # delay-seconds per second, set from the size of this move).
+        last = self._delay_written
+        if last is not None and last != delay_ms:
+            self._delay.set(
+                delay_slew=abs(delay_ms - last) / _component.LEVEL_RAMP_MS)
+        self._delay_written = delay_ms
         self._delay.set(
             delay_ms=delay_ms,
             wow_depth_ms=wow_depth_ms,

@@ -370,11 +370,11 @@ class Vibrato(_component.Component):
             self._delay._reset_buffer = _reset_delay
         bytes_per_block = BLOCK_FRAMES * self._channel_count * 2
         self._mixer = self._own(
-            audiomixer.Mixer(
+            _component.ramp_levels(audiomixer.Mixer(
                 voice_count=1,
                 sample_rate=self._sample_rate,
                 channel_count=self._channel_count,
-                buffer_size=bytes_per_block),
+                buffer_size=bytes_per_block), self._sample_rate),
             reset=self._reset_mixer)
         # Default Level is 0 dB: pull the delay. Mixer is optioned.
         self._output = self._delay
@@ -407,11 +407,25 @@ class Vibrato(_component.Component):
         return abs(self._value(7)) < 0.01
 
     def _route_output(self):
+        port = self._port
         if self._level_is_unity():
+            if (_component.LEVELS_RAMP and _component.PORT is not None
+                    and port is not None and port.source is self._mixer):
+                # The level walks back to unity in the mixer first, and the
+                # port goes straight to the delay once it has landed.
+                port.play(self._delay, after=_component.level_ramp_frames(
+                    self._sample_rate) + _component.BYPASS_MARGIN_FRAMES)
+                return
             self._output = self._delay
             return
         if not self._mixer_armed:
-            self._arm_mixer_voice()
+            # Armed at unity, which is what the delay alone played, so the
+            # level walks down from there instead of landing at once.
+            voice = self._mixer.voice[0]
+            level = voice.level
+            voice.level = 1.0
+            _component.with_ramps(self._arm_mixer_voice)
+            voice.level = level
         self._output = self._mixer
 
     def _arm_mixer_voice(self):

@@ -1,37 +1,40 @@
 # Smoothing control moves
 
-When a control jumps, the effects hand the new value to their nodes at once,
-and the output steps. You hear a click. That happens on a patch change, on a
-MIDI value that leaps, or when a host sets Mix from 0.3 to 1.0 in one call. A
-knob turned by hand sends many small moves, so it sounds smooth already.
+When you jump a level or a Mix, these effects walk the output to the new
+setting over 20 ms instead of stepping there, so the jump doesn't click. That
+covers a patch change's levels, a MIDI value that leaps, and a host setting
+Mix from 0.3 to 1.0 in one call: Bitcrusher, Chorus, CombFilter, Compressor,
+DeEsser, Distortion, DynamicEQ, Exciter, Fuzz, MultibandCompressor, Overdrive,
+Phaser, Saturation, Tremolo and Vibrato, with the exceptions below.
 
-If you need a jump smooth, send it as small steps, one a block: the delays'
-own tests show Mix moved in 127 steps, one a block, steps the output by less
-than one and a half times the steepest step of the tone going through it.
-
-The rest of this page is the policy planned for the effects, so that a jump
-stops clicking by itself. None of it is built in the effects here yet.
-audiodsp's `audiograph` `BIQUAD` node already walks to new coefficients over
-`BIQUAD_RAMP` milliseconds, 20 by default, but these effects drive
-`audiobiquad` directly. It is on the
+A few moves still step. Fuzz coming back from Mix 0 cuts in, Tremolo's Depth
+jumps, a filter corner moves at once, and so does a patch change that rebuilds
+part of a graph. Until those walk too, send such a jump as small steps, one a
+block: the delays' own tests show Mix moved in 127 steps, one a block, steps
+the output by less than one and a half times the steepest step of the tone
+going through it. The rest is on the
 [roadmap](https://github.com/PyDevices/audioeffects/blob/main/ROADMAP.md).
 
-## Which controls will ramp, and for how long
+## Which controls ramp, and for how long
 
-Every control that scales a signal will ramp: Mix, Level and Volume, a wet or dry
-gain, and a modulation depth. A move will ramp in a straight line over 20 ms, the
-time `audioecho.FeedbackDelay` already takes for its wow depth. That is short
-enough to sound like the knob you turned. Whether it is long enough to take
-the click out of every jump is the step property's to say (below), once the
-ramp is built.
+Every control that scales a signal ramps: Mix, Level, Volume, Output and
+Makeup, a band's gain, a wet or dry gain, and a modulation depth. A move
+walks in a straight line over 20 ms, the time `audioecho.FeedbackDelay`
+already takes for its wow depth. That is short enough to sound like the knob
+you turned, and the lifecycle matrix's step property (below) holds it to not
+clicking.
+
+Mix 0 is still your signal, byte for byte. An effect that hands you the
+source itself there walks its graph to the dry first and switches once the
+walk has landed, and walks back in from the dry when Mix leaves 0.
 
 A delay's Time is not ramped here: it already glides, at the rate its Glide
 control sets. A filter corner that jumps steps the output too, more quietly
 than a level does; it comes after the levels, with the node moving its
 coefficients across the same 20 ms.
 
-A switch, or a patch change that rebuilds part of a graph, crossfades from the
-old graph to the new over the same 20 ms instead of cutting.
+A switch, or a patch change that rebuilds part of a graph, will crossfade from
+the old graph to the new over the same 20 ms instead of cutting.
 
 ## Where the ramp lives
 
@@ -42,8 +45,12 @@ only if the host calls something every block. Built into the node, the ramp
 costs a multiply a sample, runs on every interpreter and every board, and
 reaches anyone using the bare nodes too, CircuitPython users included.
 
-Mix comes first, because it is the control most likely to be jumped and the
-loudest when it is.
+The nodes that walk are `audiomixer.Mixer`'s voice levels (its `level_ramp`),
+the Waveshaper's `mix` and `post_gain`, the Biquad's and the AllPass's `mix`,
+the Dynamics node's makeup and the FeedbackDelay's `mix`. An
+`audioroute.Port` told `play(source, after=frames)` keeps playing what it
+plays until a walk has landed, which is how Mix 0 switches to the source
+without a cut.
 
 ## When it is done
 

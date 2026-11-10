@@ -383,8 +383,11 @@ class Compressor(_component.Component):
         # of rewinding it. Tier 1 asks that `reset()` leave the borrowed
         # source untouched, so the walk stops here; the mixer has no state
         # of its own to clear, and the two Dynamics nodes below it do.
-        mixer = self._own(audiomixer.Mixer(voice_count=2, **self._pcm(1024)),
-                          reset=False)
+        mixer = self._own(
+            _component.ramp_levels(
+                audiomixer.Mixer(voice_count=2, **self._pcm(1024)),
+                self._sample_rate),
+            reset=False)
         self._mixer = mixer
         self._wet = mixer.voice[0]
         self._dry = mixer.voice[1]
@@ -406,6 +409,8 @@ class Compressor(_component.Component):
         self._init_macros(tuple(values), patch)
         self._ready = True
         self._refresh_output()
+
+    WALKS_TO_BYPASS = True
 
     def reset(self):
         """Clear every node and restore patch 0, then arm the graph as
@@ -470,7 +475,9 @@ class Compressor(_component.Component):
                                    ((self._fast, self._wet_tap),))
             self._primed = False
         if not self._primed:
-            self._prime()
+            # Off a walked bypass the levels walk in from the dry alone.
+            self._rearm_from(((self._wet, 0.0), (self._dry, 1.0)),
+                             self._prime)
         self._output = self._mixer
 
     # -- the macro surface --------------------------------------------

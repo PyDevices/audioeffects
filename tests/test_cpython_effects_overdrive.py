@@ -473,9 +473,13 @@ class TestOverdrive(unittest.TestCase):
             effect.deinit()
         self.assertEqual(checked, 13)
 
+        # At Mix 0 the class walks the clip branch out and plays the source,
+        # so the circuit's levels there are not what plays: read them only
+        # where the graph does.
         out = kit_faults.fault_reachability(
             Overdrive, NoClipAdd,
-            lambda effect: float(effect._circuit.voice[1].level),
+            lambda effect: (float(effect._circuit.voice[1].level)
+                            if effect._value(3) > 0.0 else float("nan")),
             lambda cls: build(cls, probe=probes.silence(512, 2), frames=512),
             label="Overdrive T5 NoClipAdd")
         self.assertGreater(abs(out["target"] - out["clean"]), 0.5)
@@ -1279,8 +1283,8 @@ class DoubleChargeOverdrive(rebuilt.Overdrive):
     `_rearm` had charged it."""
     NAME = "Overdrive"
 
-    def _rearm(self, level):
-        super()._rearm(level)
+    def _rearm(self):
+        super()._rearm()
         self._dc_key = None
 
 
