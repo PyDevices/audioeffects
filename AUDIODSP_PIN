@@ -470,12 +470,11 @@
 # AirSpace's get_buffer digests are re-read. A sampler voice that sets none
 # of the new keywords renders the bytes it did.
 #
-# Moved to c0e7c61 on 2026-11-10, for the level ramps (audiodsp#400): the
+# Moved to 84b8b45 on 2026-11-10, for the level ramps (audiodsp#400): the
 # Mixer's `level_ramp`, the 20 ms walk of a Mix, post_gain or makeup move in
 # the Waveshaper, the Biquad, the AllPass, the Dynamics node and the
 # FeedbackDelay, and `audioroute.Port.play(after=)`, which the effects use so
-# a jump of Mix or a level walks instead of stepping. Named by the pull
-# request's commit; move it to the merge commit once that lands. The walks
+# a jump of Mix or a level walks instead of stepping. The walks
 # change what a moved control renders and nothing else: a node's first value
 # lands at once, so a fresh instance renders the bytes it did. What else
 # moved beneath the components, by `git log 0c0824e..c0e7c61 -- src`: new
@@ -484,4 +483,4 @@
 # stubs for thirteen modules, and pump and build changes for boards.
 #
 # <ref> <commit>   -- ref is what CI installs (git+https://...@<ref>)
-c0e7c6187df460b0a95c2bbd7b339c3de12675b7 c0e7c6187df460b0a95c2bbd7b339c3de12675b7
+84b8b45f5b838afe3529f53e1468abe7711b6bcc 84b8b45f5b838afe3529f53e1468abe7711b6bcc
