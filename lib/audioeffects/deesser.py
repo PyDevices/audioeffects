@@ -329,7 +329,8 @@ class DeEsser(_component.Component):
         # broadband mode, the high band alone in HF-only. A mixer rather than
         # a re-`play()`, because `play()` on a live graph drops the pending
         # bytes and clicks.
-        pre = audiomixer.Mixer(voice_count=2, **self._pcm(1024))
+        pre = _component.ramp_levels(
+            audiomixer.Mixer(voice_count=2, **self._pcm(1024)), rate)
         # The levels go on before anything is played, and that ordering is
         # load-bearing: `audiomixer.MixerVoice.play()` fetches a chunk from
         # its source there and then, so `out.voice[3].play(duck)` below
@@ -365,7 +366,8 @@ class DeEsser(_component.Component):
         # Voice 0 plays the dry, broadband; 1 the low half, HF-only; 2 the
         # dry high half, HF-only; 3 the ducked stream, both modes. They are
         # handed their sources at the end of construction - see there.
-        out = audiomixer.Mixer(voice_count=4, **self._pcm(1024))
+        out = _component.ramp_levels(
+            audiomixer.Mixer(voice_count=4, **self._pcm(1024)), rate)
 
         # The class does NOT end in a mixer, and that is not decoration.
         # On CircuitPython `audiomixer.Mixer.reset_buffer` *stops* every

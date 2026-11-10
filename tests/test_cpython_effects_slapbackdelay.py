@@ -1974,9 +1974,10 @@ CLAIMS = (
     ("A constructor value outside a knob's span clamps to the nearer stop, a "
      "`tone_hz` of 0 or less is Tone out, and NaN takes the option's "
      "default.", "test_constructor_clamps_and_nan"),
-    ("A control that jumps makes the output step: move it in small steps "
-     "from the host if you need it smooth.",
-     "test_a_jumping_control_steps_the_output"),
+    ("Level walks a jump over 20 ms, but any other control that jumps makes "
+     "the output step: move it in small steps from the host if you need it "
+     "smooth.",
+     "test_level_to_0_and_back_walks"),
     ("When your source ends, the tail rings out as it would on silence.",
      "test_the_tail_rings_out_when_the_source_ends"),
     ("`SlapbackDelay` - one tape repeat after the dry, in mono: the Sun "
@@ -2207,11 +2208,11 @@ class TheClaims(unittest.TestCase):
                 self.assertGreater(differ, 0.99 * 1000 * channels,
                                    (rate, channels))
 
-    def test_a_jumping_control_steps_the_output(self):
-        # The matrix's E5 cell at patch 2 (Level to 0 and back) steps past
-        # its bar; the class declares it (audiocomponents#117).
+    def test_level_to_0_and_back_walks(self):
+        # The matrix's E5 cell at patch 2 (Level to 0 and back): the node
+        # walks the move over 20 ms, so the output stays under its bar.
         res = _cell("E5-mix0", 2)
-        self.assertTrue(res["P5"].startswith("RED"), res)
+        self.assertEqual(res["P5"], "ok", res)
         self.assertEqual(res["P1"], "ok", res)
 
     def test_the_tail_rings_out_when_the_source_ends(self):

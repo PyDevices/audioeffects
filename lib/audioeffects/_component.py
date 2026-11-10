@@ -517,7 +517,7 @@ def _drain(pull, mixer):
     the rest to play first, and the output started half a block late."""
     total = 0
     for _ in range(64):
-        state, data = pull(mixer)
+        state, data = unramped_pull(pull, mixer)
         frames = len(data) // (2 * mixer.channel_count) if data else 0
         if not frames:
             return
@@ -538,7 +538,110 @@ def release(node):
 
 
 # --------------------------------------------------------------------------
+# Level ramps
+
+#: How long a mixer voice's level move takes, in milliseconds: the time a
+#: control's jump is spread over so it does not click
+#: (docs/how-it-works/control-smoothing.md).
+LEVEL_RAMP_MS = 20
+
+
+def ramp_levels(mixer, sample_rate):
+    """Make `mixer`'s level and pan moves ramp over `LEVEL_RAMP_MS`.
+
+    audiodsp's `audiomixer.Mixer` walks a voice from its old level to a new
+    one over `level_ramp` frames. Without it a level move waits for the
+    voice's next zero crossing and lands at once, and two voices crossfading
+    (a dry and a wet path) cross zero at different moments, so a jump of Mix
+    steps the output. A voice's first level still lands at once, so a
+    class's first block is what it was. CircuitPython's own Mixer has no
+    `level_ramp`; there the levels step as before.
+
+    Args:
+        mixer: an `audiomixer.Mixer`.
+        sample_rate: its rate, in Hz.
+
+    Returns:
+        `mixer`, so a constructor can wrap the call.
+    """
+    global LEVELS_RAMP
+    try:
+        mixer.level_ramp = level_ramp_frames(sample_rate)
+        LEVELS_RAMP = True
+    except AttributeError:
+        LEVELS_RAMP = False
+    return mixer
+
+
+#: Whether this interpreter's mixers walk a level move (`ramp_levels`
+#: found `level_ramp`), or None before any class has asked.
+LEVELS_RAMP = None
+
+
+def level_ramp_frames(sample_rate):
+    """`LEVEL_RAMP_MS` in frames at `sample_rate`, rounded to the nearest."""
+    return (int(sample_rate) * LEVEL_RAMP_MS + 500) // 1000
+
+
+#: How far past a level ramp a Mix 0 route-around waits before the port
+#: switches: one block, for a walk that starts a block down the graph.
+BYPASS_MARGIN_FRAMES = 256
+
+
+def _hold(held):
+    """Stand each voice in `held`, a list of (voice, level), at its level;
+    returns what they were set to, for `_let_go`."""
+    wanted = [(voice, voice.level) for voice, _level in held]
+    for voice, level in held:
+        voice.level = level
+    return wanted
+
+
+def _let_go(wanted):
+    """Hand the voices `_hold` held the levels they were set to: the next
+    pull walks to them."""
+    for voice, level in wanted:
+        voice.level = level
+
+
+# --------------------------------------------------------------------------
 # Level gates
+
+
+#: While True, `unramped_pull` leaves a mixer's ramp on: a graph walking
+#: back in from a bypass (`Component._rearm_from`) pulls its silence with
+#: the walk primed where the bypass left it.
+_KEEP_RAMPS = [False]
+
+
+def unramped_pull(pull, node):
+    """`pull(node)` with `node`'s `level_ramp` off for that one pull.
+
+    The pulls a class makes on its own - opening the level gates, handing
+    the lazy silence up - are not the host's audio. Rendered with the ramp
+    on they would prime it, and a level set after them and before the
+    host's first pull would walk instead of landing where a fresh instance
+    built there starts. With the ramp off for them, a voice's next level
+    lands at once, as a fresh mixer's first one does."""
+    ramp = 0 if _KEEP_RAMPS[0] else getattr(node, "level_ramp", 0)
+    if not ramp:
+        return pull(node)
+    node.level_ramp = 0
+    try:
+        return pull(node)
+    finally:
+        node.level_ramp = ramp
+
+
+def with_ramps(call, *args):
+    """`call(*args)` with the pulls it makes leaving the level ramps on (see
+    `unramped_pull`)."""
+    keep = _KEEP_RAMPS[0]
+    _KEEP_RAMPS[0] = True
+    try:
+        return call(*args)
+    finally:
+        _KEEP_RAMPS[0] = keep
 
 
 def open_level_gates(node, voices, silence):
@@ -573,7 +676,7 @@ def open_level_gates(node, voices, silence):
         return False
     for voice in voices:
         voice.play(silence, loop=True)
-    pull(node)
+    unramped_pull(pull, node)
     return True
 
 
@@ -1020,7 +1123,97 @@ class Component:
         """
         if not self._constructing:
             self._stranded = True
+        port = self._port
+        walk = self._bypass_walk()
+        if walk and not self._constructing and port is not None:
+            if port.source is bypass:
+                # A write at Mix 0 after the switch: the bypass stays, and
+                # so does whether the graph walked out to it.
+                self._output = bypass
+                return
+            if self._bypass_pending is bypass and self._walked_out:
+                # Already waiting for the walk to land.
+                return
+            # The graph walks its levels to a wire over `LEVEL_RAMP_MS`, so
+            # the port plays it on until the walk has landed and switches
+            # then, instead of cutting from the wet to the dry.
+            self._bypass_pending = bypass
+            port.play(bypass, after=walk)
+            # A port nothing has pulled switches at once: nothing walked.
+            self._walked_out = port.source is not bypass
+            return
+        self._bypass_pending = None
+        self._walked_out = False
         self._output = bypass
+
+    #: A class sets this when its graph, at Mix 0, walks to the source it
+    #: routes around: its mixer levels to the dry alone, on ramped mixers
+    #: (`ramp_levels`). `_route_around` then lets the port switch once the
+    #: walk has landed rather than at once. Mix 0 is still the source, byte
+    #: for byte, from then on.
+    WALKS_TO_BYPASS = False
+
+    #: The bypass `_route_around` has asked the port to switch to once the
+    #: walk lands, or None.
+    _bypass_pending = None
+    #: Whether the last bypass was reached by a walk the host heard, so
+    #: the way back walks in from it (`_rearm_from`).
+    _walked_out = False
+    #: Set while `_reset_rearmed` re-arms: a reset is a fresh instance,
+    #: and its levels do not walk in.
+    _rearming_reset = False
+    #: Voices `_rearm_from` holds at a bypass's levels until the lazy
+    #: arming has pulled its silence through: (mixer, levels, wanted).
+    _walk_in = ()
+
+    def _bypass_walk(self):
+        """Frames a Mix 0 bypass waits for the graph's walk to the dry
+        before the port switches, or 0 where it switches at once: a class
+        that does not walk, a mixer without `level_ramp`, or no Port."""
+        if not (self.WALKS_TO_BYPASS and LEVELS_RAMP and PORT is not None):
+            return 0
+        # Whole blocks: a switch a block's part past a move on a block
+        # boundary would leave the head holding part of a source buffer,
+        # which the port, playing the source itself, then skips.
+        frames = level_ramp_frames(self._sample_rate) + BYPASS_MARGIN_FRAMES
+        return -(-frames // BYPASS_MARGIN_FRAMES) * BYPASS_MARGIN_FRAMES
+
+    def _land_bypass(self):
+        """Switch the port now to a bypass `_route_around` left waiting: a
+        reset cuts anyway, and starts from the state it leaves, so nothing
+        walks back in from it either."""
+        self._walked_out = False
+        pending = self._bypass_pending
+        if pending is not None:
+            self._bypass_pending = None
+            self._output = pending
+
+    def _rearm_from(self, held, rearm):
+        """Re-arm a graph coming back off a walked bypass so its levels
+        walk in from the bypass's.
+
+        `rearm` (a class's `_rearm`) pulls a block of silence through the
+        mixer to open its level gates, and a lazily armed class pulls it
+        again to hand its primed silence up. On a ramped mixer
+        (`ramp_levels`) a level set before those pulls would walk away on
+        the silence. So each voice in `held`, a list of (voice, level)
+        with the levels that make the mixer the source the bypass played,
+        stands at its level through them, and is handed back the level it
+        was set to after: the first pull of real audio walks from the
+        bypass to it. Where the bypass did not walk this is `rearm()`.
+        """
+        walked, self._walked_out = self._walked_out, False
+        if self._rearming_reset or not walked:
+            # A reset comes back as a fresh instance, at its levels.
+            rearm()
+            return
+        if self._arming_lazily:
+            # The lazy hand-up pulls again, after any later control has set
+            # the levels: it holds them there too (`_hold_levels`).
+            self._walk_in = list(self._walk_in) + [held]
+        wanted = _hold(held)
+        with_ramps(rearm)
+        _let_go(wanted)
 
     def _rejoin(self, keep=()):
         """The graph `_route_around` left is about to be pulled again.
@@ -1039,6 +1232,13 @@ class Component:
         if not self._stranded:
             return False
         self._stranded = False
+        pending = self._bypass_pending
+        self._bypass_pending = None
+        if pending is not None and self._port.source is not pending:
+            # The switch `_route_around` left waiting never came: the graph
+            # played on, and holds nothing stale. The caller's re-point
+            # cancels the switch.
+            return False
         self._clear_nodes(keep)
         return True
 
@@ -1358,6 +1558,7 @@ class Component:
         """Clear every node this class built, tail first, and restore patch
         0. The borrowed source is never named here."""
         self._check_live()
+        self._land_bypass()
         self._clear_nodes()
         # Everything is clear now, so nothing is stranded: patch 0 coming
         # back off a bypass is the reset's own re-arm, not a second clear.
@@ -1490,7 +1691,7 @@ class Component:
         where neither way exists (no `audioroute`)."""
         pull = getattr(audiocore, "get_buffer", None)
         if pull is not None:
-            return pull(node)
+            return unramped_pull(pull, node)
         if PORT is None:
             return False
         scratch = getattr(self, "_puller", None)
@@ -1510,7 +1711,8 @@ class Component:
             scratch = self._puller = (mixer, shim)
         mixer, shim = scratch
         shim.play(node)
-        mixer.voice[0].play(shim)
+        # The same pull as `get_buffer`'s, so the same ramp rule.
+        unramped_pull(lambda _: mixer.voice[0].play(shim), node)
         mixer.voice[0].stop()
         return None
 
@@ -1544,6 +1746,7 @@ class Component:
         # The frames the graph's head has taken are old audio only if a
         # bypass left the graph un-pulled before the reset
         # (`_let_go_of_source`).
+        self._land_bypass()
         read_past = self._stranded
         self._clear_nodes()
         for node in self._nodes:
@@ -1580,11 +1783,13 @@ class Component:
         pull = getattr(audiocore, "get_buffer", None)
         self._arming_lazily = PORT is not None
         self._source_read_past = read_past
+        self._rearming_reset = True
         try:
             rearm()
         finally:
             self._arming_lazily = False
             self._source_read_past = True
+            self._rearming_reset = False
         # Settings that route around the graph leave it as `_build` leaves
         # a graph it routes around: cleared and not played since, so not
         # stranded. A later Mix move then arms it as a fresh instance's
@@ -1593,17 +1798,20 @@ class Component:
         pending = self._lazy_pending
         self._lazy_pending = []
         if pending:
-            # The graph as it stands now: a patch that builds part of it
-            # again has new mixers.
-            for node in list(self._nodes):
-                if getattr(node, "voice", None) is None:
-                    continue
-                if pull is not None:
-                    _drain(pull, node)
-                else:
-                    self._pull_node(node)
+            def drains():
+                # The graph as it stands now: a patch that builds part of
+                # it again has new mixers.
+                for node in list(self._nodes):
+                    if getattr(node, "voice", None) is None:
+                        continue
+                    if pull is not None:
+                        _drain(pull, node)
+                    else:
+                        self._pull_node(node)
+            self._hold_levels(drains)
             for _voice, port, source in pending:
                 port.play(source)
+        self._walk_in = ()
 
     def _hand_up_lazy(self, pull):
         """The constructor's half of the lazy arming: pull each mixer
@@ -1615,26 +1823,42 @@ class Component:
         pending = self._lazy_pending
         self._lazy_pending = []
         if not pending:
+            self._walk_in = ()
             return
-        # The graph as it stands now (a snapshot: `_pull_node` may own its
-        # scratch mixer): a patch that builds part of it again has new
-        # mixers, and released the old voices' stand-ins. Only a mixer with
-        # a voice on the silence: mid-stream, pulling one that plays its
-        # real sources would take a block of them.
-        for node in list(self._nodes):
-            voices = getattr(node, "voice", None)
-            if voices is None:
-                continue
-            if not any(voice is armed for armed, _p, _s in pending
-                       for voice in voices):
-                continue
-            if pull is not None:
-                _drain(pull, node)
-            else:
-                self._pull_node(node)
+
+        def drains():
+            # The graph as it stands now (a snapshot: `_pull_node` may own
+            # its scratch mixer): a patch that builds part of it again has
+            # new mixers, and released the old voices' stand-ins. Only a
+            # mixer with a voice on the silence: mid-stream, pulling one
+            # that plays its real sources would take a block of them.
+            for node in list(self._nodes):
+                voices = getattr(node, "voice", None)
+                if voices is None:
+                    continue
+                if not any(voice is armed for armed, _p, _s in pending
+                           for voice in voices):
+                    continue
+                if pull is not None:
+                    _drain(pull, node)
+                else:
+                    self._pull_node(node)
+        self._hold_levels(drains)
         for _voice, port, source in pending:
             if _named(port, self._nodes):
                 port.play(source)
+
+    def _hold_levels(self, pulls):
+        """`pulls()` - the lazy hand-up's drains - with the voices
+        `_rearm_from` asked for held at the bypass's levels through it."""
+        held, self._walk_in = self._walk_in, ()
+        if not held:
+            pulls()
+            return
+        saved = [_hold(entry) for entry in held]
+        with_ramps(pulls)
+        for wanted in saved:
+            _let_go(wanted)
 
     def deinit(self):
         """Release every node this class built, tail first. Idempotent, and

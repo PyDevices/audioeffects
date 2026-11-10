@@ -5,9 +5,9 @@ way on every interpreter and board.
 
 ## Next
 
-- Control moves that ramp instead of stepping: Mix, levels and depths over
-  20 ms in audiodsp's nodes, then filter corners, then crossfaded patch
-  changes. [The policy](docs/how-it-works/control-smoothing.md).
+- Control moves that ramp instead of stepping where they still step: Fuzz's
+  way back from Mix 0 and Tremolo's Depth, then filter corners, then
+  crossfaded patch changes. [The policy](docs/how-it-works/control-smoothing.md).
 
 ## Later
 

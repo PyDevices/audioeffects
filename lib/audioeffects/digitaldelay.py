@@ -35,9 +35,10 @@ below 1, an input that peaks at or below floor(32767 (1 - Mix)) - 1 cannot
 reach the rail, at any Time or Feedback. Keep the input under -6 dBFS and
 the defaults and patches stay off the rails.
 
-**Limits shared by the family.** A control that jumps makes the output step:
-move it in small steps from the host if you need it smooth. When your source
-ends, the tail rings out as it would on silence.
+**Limits shared by the family.** Mix walks a jump over 20 ms, but any other
+control that jumps makes the output step: move it in small steps from the
+host if you need it smooth. When your source ends, the tail rings out as it
+would on silence.
 
 **Latency, tail, portability.** Latency is zero samples: nothing looks
 ahead. `tail_samples` is an upper bound on how long the output takes to

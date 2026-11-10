@@ -342,10 +342,10 @@ class DynamicEQ(_component.Component):
         # frames, and the move back played them - old audio out of silence
         # (audiocomponents#113). Stereo is byte for byte what it was; mono
         # renders the same samples in blocks half the size.
-        mixer = audiomixer.Mixer(
+        mixer = _component.ramp_levels(audiomixer.Mixer(
             voice_count=3, sample_rate=rate, channel_count=channels,
             bits_per_sample=16, samples_signed=True,
-            buffer_size=1024 * channels)
+            buffer_size=1024 * channels), rate)
 
         # The class does **not** end in the Mixer, and that is not decoration.
         # On upstream CircuitPython `audiomixer.Mixer.reset_buffer` *stops*
@@ -500,8 +500,13 @@ class DynamicEQ(_component.Component):
         if self._rejoin(keep=(self._head, self._mixer)):
             self._primed = False
         if not self._primed:
-            self._play_voices()
+            # Off a walked bypass the mixer walks in from the dry alone.
+            voices = self._mixer.voice
+            self._rearm_from(((voices[0], 1.0), (voices[1], 0.0),
+                              (voices[2], 0.0)), self._play_voices)
         self._output = self._tail
+
+    WALKS_TO_BYPASS = True
 
     def reset(self):
         """Clear every node and restore patch 0, then hand the voices their

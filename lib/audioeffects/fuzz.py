@@ -880,8 +880,11 @@ class Fuzz(_component.Component):
             # are gone - the tilt stage is the last node either way, so the
             # tail's only reason ("never end on a Mixer") went with them.
             self._tone_mix = self._own(
-                audiomixer.Mixer(voice_count=3,
-                                 **self._pcm(MIXER_BUFFER_BYTES * channels)),
+                _component.ramp_levels(
+                    audiomixer.Mixer(
+                        voice_count=3,
+                        **self._pcm(MIXER_BUFFER_BYTES * channels)),
+                    self._sample_rate),
                 reset=self._reset_mixers)
             self._silence = self._own(audiocore.RawSample(
                 array("h", [0] * (2 * channels)),

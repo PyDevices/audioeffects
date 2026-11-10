@@ -174,8 +174,9 @@ class SlapbackDelay(_component.Component):
     `tone_hz` of 0 or less is Tone out, and NaN takes the option's default.
 
     **Limits shared by the family.**
-    A control that jumps makes the output step: move it in small steps from
-    the host if you need it smooth.
+    Level walks a jump over 20 ms, but any other control that jumps makes
+    the output step: move it in small steps from the host if you need it
+    smooth.
     When your source ends, the tail rings out as it would on silence.
     """
 

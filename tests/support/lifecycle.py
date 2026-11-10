@@ -1454,6 +1454,10 @@ def material_for(which, rate, channels):
                                          seed=777)
         elif which == "once":
             _MATERIAL[key] = click_noise(8192, channels)
+        elif which == "long":
+            # PR's: a mono class that walks to its bypass in 1024-frame
+            # mixer blocks reads past 8192 frames before it lands.
+            _MATERIAL[key] = click_noise(16384, channels)
         elif which == "tri":
             _MATERIAL[key] = triangle(8192, channels, rate)
         elif which == "loud":
@@ -1526,9 +1530,13 @@ def p1(cls, ev, rate, channels, patch, options):
     ctx = Ctx(e, patch)
     fsize = 2 * channels
     if _starts(ev.name, ("E5", "E4-m%d=0" % mix)):
-        # The event itself takes Mix to 0: judge the stretch it holds it.
+        # The event itself takes Mix to 0: judge a stretch as long as it
+        # holds it, from where the walk to 0 has landed. Mix stays at 0 for
+        # the run, so a hold shorter than the walk is still judged.
         mixfix = None
         window = None
+        hold = ev.gap
+        ev = Event(ev.name, ev.away, kind=ev.kind, first=ev.first)
     else:
         e.set_macro(mix, 0)
 
@@ -1544,6 +1552,8 @@ def p1(cls, ev, rate, channels, patch, options):
     try:
         at = _schedule_run(e, feed, ctx, ev, out, fsize, total, mixfix)
         lat = e.latency_samples
+        walk = e._bypass_walk() if getattr(e, "WALKS_TO_BYPASS", False) \
+            else 0
     finally:
         e.deinit()
     expect = bytes(values)
@@ -1554,10 +1564,16 @@ def p1(cls, ev, rate, channels, patch, options):
     else:
         if not at:
             return "na"
-        lo = at[0]
-        hi = at[1] if len(at) > 1 else total
         if ev.first:
             return "na"
+        lo = at[0]
+        pull = at[0] // K0
+        # Mix walks to 0 over the ramp (`_component.LEVEL_RAMP_MS`); a
+        # class that routes around its graph there switches to the source
+        # at the first pull after the walk (`WALKS_TO_BYPASS`), judged from
+        # a block after it.
+        lo += walk + BLOCK if walk else _component.level_ramp_frames(rate)
+        hi = min(total, lo + hold * pull)
         # Mix 0's own latency, read while the event holds it there.
         lat = ctx.lats[0]
     shifted = bytes(lat * fsize) + expect
@@ -1662,6 +1678,10 @@ def main_render(cls, ev, rate, channels, patch, options, controls):
             bound = last + BLOCK + lat
         else:
             bound = last + tail + lat + BLOCK
+        if ev.control_move and _component is not None:
+            # A level or a Mix that moves walks there over the ramp
+            # (`_component.LEVEL_RAMP_MS`) before it lands.
+            bound += _component.level_ramp_frames(rate)
         stop = bound + MARGIN
         verdict, crc, s0 = _p4_stream(e, c, out, cout, last, bound, stop,
                                       fsize)
@@ -1854,9 +1874,40 @@ def _p3_body(e, feed, ctx, ev, fsize, wait, out):
         top, first // (fsize // 2))
 
 
+def _landing_step(cls, ev, rate, channels, patch, options, total):
+    """The largest step, from pull K0 on, of an instance given the move's
+    macro settings before its first pull: the class at the setting the
+    move lands on. 0 for a move that is not macros alone, or that moves
+    the wet/dry control, whose landing is the source or the control.
+
+    A level turned up ramps to a louder output, and a louder triangle
+    steps further every frame; held to the old setting's step alone, a
+    20 ms walk up 24 dB would read as a click it is not. A jump still
+    steps by the gap between the two outputs, far past either one's own
+    step on a triangle, so this does not forgive a cut (the `LoudJump`
+    plant)."""
+    mix = mix_index(cls)
+    if not ev.away or any(a[0] != "macro" or a[1] == mix for a in ev.away):
+        return 0
+    feed = Feed(material_for("tri", rate, channels), rate, channels,
+                ev.kind, loop=False)
+    e = _build(cls, feed, rate, patch, options, False)
+    out = bytearray()
+    try:
+        act(e, feed, Ctx(e, patch), ev.away)
+        _pull_to(e, out, total * 2 * channels, 2 * channels)
+    finally:
+        e.deinit()
+    # From where the move happens on: the landing's own start (a block
+    # primed before the move, an envelope settling) is not the setting.
+    return _max_step(_samples(bytes(out[:total * 2 * channels])), channels,
+                     K0 * BLOCK, total)
+
+
 def p5(cls, ev, rate, channels, patch, options, controls):
-    """No step at the move larger than 1.5 x the larger of the material's
-    and the control's own largest step, on a triangle."""
+    """No step at the move larger than 1.5 x the largest of the material's
+    own step, the control's, and the landing's (`_landing_step`), on a
+    triangle."""
     if not ev.control_move or ev.first:
         return "na"
     fsize = 2 * channels
@@ -1879,7 +1930,8 @@ def p5(cls, ev, rate, channels, patch, options, controls):
     ref = _samples(bytes(ctl.upto(total)[:total * fsize]))
     got = _samples(bytes(out[:total * fsize]))
     own = _max_step(values, channels, 0, total)
-    base = max(own, _max_step(ref, channels, 0, total))
+    base = max(own, _max_step(ref, channels, 0, total),
+               _landing_step(cls, ev, rate, channels, patch, options, total))
     limit = base * STEP_NUM // STEP_DEN
     depth = is_depth(cls) and any(
         a[0] == "macro" and a[1] == mix_index(cls) for a in ev.away)
@@ -1986,9 +2038,9 @@ def _locate(material, block, fsize):
     return -1 if i < 0 else i // fsize
 
 
-def _diverge(a, b, frames, fsize):
-    """The first frame where `a` and `b` render differently, pulled in
-    step for `frames`, or -1."""
+def _diverge(a, b, frames, fsize, skip=0):
+    """The first frame from `skip` on where `a` and `b` render
+    differently, pulled in step for `frames`, or -1."""
     abuf = bytearray()
     bbuf = bytearray()
     base = 0
@@ -1999,8 +2051,9 @@ def _diverge(a, b, frames, fsize):
         if not bbuf:
             bbuf = bytearray(_pull_some(b, fsize))
         n = min(len(abuf), len(bbuf), total - base)
-        if abuf[:n] != bbuf[:n]:
-            return (base + _first_diff(abuf, bbuf, 0, n)) // fsize
+        lo = max(0, skip * fsize - base)
+        if lo < n and abuf[lo:n] != bbuf[lo:n]:
+            return (base + _first_diff(abuf, bbuf, lo, n)) // fsize
         abuf = abuf[n:]
         bbuf = bbuf[n:]
         base += n
@@ -2020,12 +2073,23 @@ def _routes_around(cls, ev, rate, channels, patch, options):
         e.deinit()
 
 
+def _walk_in_frames(e):
+    """Frames by which a class's levels have walked in off a walked
+    bypass, 0 where its Mix 0 switches at once: the walk, and the block a
+    stage further down the graph may start its own walk late by, as for
+    the walk out (`_bypass_walk`)."""
+    walk = getattr(e, "_bypass_walk", None)
+    if walk is None:
+        return 0
+    return walk()
+
+
 def pr(cls, ev, rate, channels, patch, options):
     """PR: from the move that lands the class (a reset, a return from Mix
     0) on, it renders byte for byte what a fresh instance built at the
     landing state renders, fed the same source from the same frame."""
     fsize = 2 * channels
-    values = material_for("once", rate, channels)
+    values = material_for("long", rate, channels)
     upto = _land_pull(ev)
     if ev.landing == "config" and not _routes_around(cls, ev, rate, channels,
                                                      patch, options):
@@ -2043,8 +2107,16 @@ def pr(cls, ev, rate, channels, patch, options):
         try:
             _drive(e, feed, Ctx(e, patch), ev, upto, False)
             block = bytes(audiocore.get_buffer(feed.mat)[1])
+            # A walked bypass the move back reaches before the port has
+            # switched: the graph never stopped, so it comes back to its
+            # own state, not a fresh one's.
+            walking = (ev.landing == "config"
+                       and getattr(e, "_bypass_pending", None) is not None
+                       and e._port.source is not e._bypass_pending)
         finally:
             e.deinit()
+        if walking:
+            return "na(Mix came back before the walk to the dry landed)"
         start = _locate(bytes(values), block, fsize)
         if start < 0:
             return "na(source position not found)"
@@ -2053,6 +2125,11 @@ def pr(cls, ev, rate, channels, patch, options):
     f = None
     try:
         _drive(e, feed, Ctx(e, patch), ev, upto, True)
+        # A class whose Mix 0 walks to the dry walks back in from it
+        # (`WALKS_TO_BYPASS`): a fresh instance starts at the levels, so
+        # the two meet once the walk has landed.
+        skip = (_walk_in_frames(e) if ev.landing == "config"
+                and not ev.first else 0)
         ffeed = Feed(values[start * channels:], rate, channels, "256",
                      loop=False)
         try:
@@ -2060,7 +2137,7 @@ def pr(cls, ev, rate, channels, patch, options):
         except TypeError as err:
             return "na(no fresh build: %s)" % (
                 str(err).replace("|", "/")[:60])
-        d = _diverge(e, f, PR_FRAMES, fsize)
+        d = _diverge(e, f, PR_FRAMES + skip, fsize, skip)
     finally:
         e.deinit()
         if f is not None:
@@ -2436,12 +2513,49 @@ class DepthPop(DepthJump):
         return self._factor(), 20000 if pop else 0
 
 
+class LoudJump(Plain):
+    """P5: a linear Waveshaper after the source whose Gain is its drive,
+    from 0.05 up to 2.5, a jump to an output louder than the source: the
+    landing clause does not forgive the cut."""
+    LO = (0.05, 1.0)
+    HI = (2.5, 1.0)
+
+    def _build(self, mix=1.0, gain=0.0, patch=None):
+        import audioshaper
+        self._shaper = self._own(audioshaper.Waveshaper(
+            sample_rate=self._sample_rate, channel_count=self._channel_count,
+            curve=array("h", (-32767, 0, 32767)), oversample=1,
+            pre_gain=self.LO[0], post_gain=self.LO[1], mix=1.0))
+        Plain._build(self, mix, gain, patch)
+
+    def _arm(self):
+        self._shaper.play(self._source, loop=True)
+        self._mixer.voice[0].play(self._shaper, loop=True)
+        self._mixer.voice[1].play(self._dc, loop=True)
+
+    def _apply_macro(self, index, position):
+        if index == 1:
+            lo, hi = self.LO, self.HI
+            self._shaper.set(pre_gain=lo[0] + (hi[0] - lo[0]) * position,
+                             post_gain=lo[1] + (hi[1] - lo[1]) * position)
+
+
+class LoudRamp(LoudJump):
+    """LoudJump with Gain on the shaper's `post_gain`, which walks a move
+    over 20 ms. At 22.05 kHz the walk is past 0.7 of the way when P5's
+    window ends, so the output steps half again as far as the triangle,
+    and only the landing clause holds it green."""
+    LO = (2.5, 0.02)
+    HI = (2.5, 1.0)
+
+
 PLANTS = {"plain": Plain, "routed": Routed, "droponreset": DropOnReset,
           "holddc": HoldDC, "latepatch": LatePatch, "resetleak": ResetLeak,
           "stalemix": StaleMix, "latemove": LateMove,
           "hardswitch": HardSwitch, "busydeinit": BusyDeinit,
           "implplant": ImplPlant, "depthjump": DepthJump,
-          "depthleak": DepthLeak, "depthpop": DepthPop}
+          "depthleak": DepthLeak, "depthpop": DepthPop,
+          "loudramp": LoudRamp, "loudjump": LoudJump}
 
 
 def _cli(argv):

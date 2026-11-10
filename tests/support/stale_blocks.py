@@ -203,7 +203,10 @@ def first_blip(cls, index, rate=48000, channels=2, patch=None, **options):
 
 class StaleRejoin:
     """Planted: the old behaviour. A bypass left behind is taken back
-    untouched, so what the graph held plays."""
+    untouched, so what the graph held plays. Switched at once, as it was
+    then: a walk to the dry and back fades what the graph held."""
+
+    WALKS_TO_BYPASS = False
 
     def _rejoin(self, keep=()):
         self._stranded = False
@@ -212,7 +215,10 @@ class StaleRejoin:
 
 class ClearOnlyRejoin:
     """Planted, a wrong cure: the nodes are cleared, but the class is not
-    told, so it does not re-arm them the way its constructor does."""
+    told, so it does not re-arm them the way its constructor does. Switched
+    at once, as `StaleRejoin` is."""
+
+    WALKS_TO_BYPASS = False
 
     def _rejoin(self, keep=()):
         if self._stranded:

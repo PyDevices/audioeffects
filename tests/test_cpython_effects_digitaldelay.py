@@ -2741,11 +2741,11 @@ class TrialClaims(unittest.TestCase):
         effect.deinit()
         return float(np.max(np.abs(np.diff(y[20479:]))))
 
-    def test_a_jump_steps_and_small_steps_do_not(self):
-        # The family limit (audiocomponents#117): Mix 0 -> 2 in one move
-        # steps the output; the same move in 127 steps from the host, one
-        # a block, stays under the bar.
-        self.assertGreater(self._mix_moves(1), 4.0 * self._bar())
+    def test_a_jump_walks_as_small_steps_do(self):
+        # The node walks a Mix move over 20 ms, so Mix 0 -> 2 in one move
+        # stays under the bar, as the same move in 127 steps from the host,
+        # one a block, does.
+        self.assertLess(self._mix_moves(1), self._bar())
         self.assertLess(self._mix_moves(127), self._bar())
 
     def _tail_across_a_stop(self, stop, loud=False):
@@ -3032,9 +3032,10 @@ CLAIMS = (
      "floor(32767 (1 - Mix)) - 1 cannot reach the rail, at any Time or "
      "Feedback.",
      ("InputCeiling.test_the_any_material_bound",)),
-    ("A control that jumps makes the output step: move it in small steps "
-     "from the host if you need it smooth.",
-     ("TrialClaims.test_a_jump_steps_and_small_steps_do_not",)),
+    ("Mix walks a jump over 20 ms, but any other control that jumps makes "
+     "the output step: move it in small steps from the host if you need it "
+     "smooth.",
+     ("TrialClaims.test_a_jump_walks_as_small_steps_do",)),
     ("When your source ends, the tail rings out as it would on silence.",
      ("TrialClaims.test_the_tail_rings_out_when_the_source_ends",)),
     ("Latency is zero samples: nothing looks ahead.",

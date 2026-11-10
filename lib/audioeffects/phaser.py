@@ -507,9 +507,15 @@ class Phaser(_component.Component):
         # lean patch is AllPass (and the guard) alone. The cascade is
         # re-pointed only when that route changes: a move that keeps it
         # (or a reset) plays nothing again.
-        if self._value(4) <= 0.0 or self._value(7) <= 0.0:
+        if self._value(7) <= 0.0:
             self._shaper.set(mix=0.0, pre_gain=1.0)
             head = self._guard
+        elif self._value(4) <= 0.0:
+            # Mix 0 with Drive up: the shaper stays in the pull and walks
+            # its own mix to 0, at the drive it had, so the drive fades
+            # out with the sweep instead of cutting.
+            self._shaper.set(mix=0.0)
+            head = self._shaper
         else:
             drive = self._value(7)
             self._shaper.set(mix=drive, pre_gain=1.0 + 8.0 * drive)

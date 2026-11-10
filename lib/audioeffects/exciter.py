@@ -636,8 +636,8 @@ class Exciter(_component.Component):
             sample_rate=rate, channel_count=channels, curve=CURVE,
             oversample=factor, mix=1.0, pre_gain=1.0, post_gain=1.0,
             bias=0.0, hysteresis=0.0)
-        blend = audiomixer.Mixer(
-            voice_count=2, **self._pcm(MIXER_BUFFER_BYTES * channels))
+        blend = _component.ramp_levels(audiomixer.Mixer(
+            voice_count=2, **self._pcm(MIXER_BUFFER_BYTES * channels)), rate)
 
         self._hp.play(wet_in)
 
@@ -670,11 +670,18 @@ class Exciter(_component.Component):
         self._ready = True
         self._prime_if_wet()
 
+    WALKS_TO_BYPASS = True
+
     def reset(self):
         """Clear every node and restore patch 0, then arm the graph as
         `_build` does, so a reset is a fresh instance (no block primed
         through the chain before it was cleared plays after it)."""
         self._reset_rearmed(self._prime_if_wet, ("_primed",))
+
+    def _open_gates(self):
+        _component.open_level_gates(
+            self._blend, [self._blend.voice[0], self._blend.voice[1]],
+            self._silence)
 
     def _value(self, index):
         return _component.macro_value(self._MACRO_RANGES[index],
@@ -753,6 +760,10 @@ class Exciter(_component.Component):
         # top of the macro put the wet over the dry (audiocomponents#72).
         out = 10.0 ** (self._value(4) / 20.0)
         if mix <= 0.0 and out >= 1.0:
+            # The blend walks to the dry at unity, which is the source, and
+            # the bypass takes over once it has landed.
+            self._blend.voice[0].level = 1.0
+            self._blend.voice[1].level = 0.0
             self._route_around(self._source)
             return
         if not getattr(self, "_ready", False):
@@ -770,9 +781,9 @@ class Exciter(_component.Component):
             # only then is the port pointed back (audiocomponents#113).
             self._blend.voice[0].level = out
             self._blend.voice[1].level = mix * out
-            _component.open_level_gates(
-                self._blend, [self._blend.voice[0], self._blend.voice[1]],
-                self._silence)
+            # Off a walked bypass the blend walks in from the dry alone.
+            dry, wet = self._blend.voice[0], self._blend.voice[1]
+            self._rearm_from(((dry, 1.0), (wet, 0.0)), self._open_gates)
             self._primed = False
         if not self._primed:
             self._dc.play(self._shaper)
