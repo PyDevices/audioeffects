@@ -8,6 +8,12 @@ together from PyDevices/audiocomponents, and the history from v0.4.2rc1 back
 covers both packages. Releases up to and including audiodsp's v0.1.1 shipped
 both packages from audiodsp, and are recorded in its changelog.
 
+## v0.5.2.dev1 (2026-11-10)
+
+- Effects: a jump of Mix or a level walks over 20 ms in the older classes (#15)
+- AirSpace and ShimmerHall import on MicroPython (#14)
+- Roadmap: control smoothing says what's built in audiodsp (#12)
+
 ## v0.5.2.dev0 (2026-11-09)
 
 - audioeffects: each effect loads the first time it's used (#10)
