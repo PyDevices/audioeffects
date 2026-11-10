@@ -234,6 +234,9 @@ class DeEsser(_component.Component):
     #: coupling state" in docs/reference/component-api.md.
     TAIL_SAMPLES = 256
 
+    #: Range 0 walks the output mixer to the dry before the port switches.
+    WALKS_TO_BYPASS = True
+
     MACRO_LABELS = ("Frequency", "Range", "Sensitivity", "Mode", "Release",
                     "Attack", "Listen")
     MACRO_MODES = {0: "UNIPOLAR", 1: "UNIPOLAR", 2: "UNIPOLAR", 3: "TOGGLE",
@@ -522,10 +525,31 @@ class DeEsser(_component.Component):
         if not self._ready:
             return
         if self._is_wire():
-            self._output = self._adapter
+            # The output mixer walks to the dry alone, and the port switches
+            # to the adapter once the walk has landed.
+            self._route_around(self._adapter)
             return
+        # Back off a bypass the walk reached, the graph still holds what it
+        # had when Range went to 0: the Splitters' rings, the filters' and
+        # the gain cell's memory, the block each voice had queued. Played
+        # on, that was a 256-frame lump on the way back. So the rings let
+        # go of those frames, which the host has read past since, and every
+        # voice is primed afresh, its levels walking in from the dry.
+        if self._rejoin():
+            top, raw, band = self._splitters
+            if self._let_go_of_source(top, self._adapter):
+                raw.clear()
+                band.clear()
+                for node, tap in ((self._lows[0], top.tap(1)),
+                                  (self._highs[0], top.tap(2))):
+                    node.play(tap)
+                self._duck.key(top.tap(0))
+            self._primed = False
         if not self._primed:
-            self._prime()
+            voices = self._out.voice
+            self._rearm_from(((voices[0], 1.0), (voices[1], 0.0),
+                              (voices[2], 0.0), (voices[3], 0.0)),
+                             self._prime)
         self._output = self._tail
 
     # -- reset ---------------------------------------------------------
@@ -579,6 +603,8 @@ class DeEsser(_component.Component):
             self._kept_adapter = None
         self._hand_up_lazy(pull)
         self._stranded = False
+        self._bypass_pending = None
+        self._walked_out = False
         for node, release in reversed(old):
             if release is False:
                 continue

@@ -1170,13 +1170,20 @@ class Component:
         """Frames a Mix 0 bypass waits for the graph's walk to the dry
         before the port switches, or 0 where it switches at once: a class
         that does not walk, a mixer without `level_ramp`, or no Port."""
-        if not (self.WALKS_TO_BYPASS and LEVELS_RAMP and PORT is not None):
+        if not (self.WALKS_TO_BYPASS and self._walks_levels()
+                and PORT is not None):
             return 0
         # Whole blocks: a switch a block's part past a move on a block
         # boundary would leave the head holding part of a source buffer,
         # which the port, playing the source itself, then skips.
         frames = level_ramp_frames(self._sample_rate) + BYPASS_MARGIN_FRAMES
         return -(-frames // BYPASS_MARGIN_FRAMES) * BYPASS_MARGIN_FRAMES
+
+    def _walks_levels(self):
+        """Whether the levels the walk to the dry moves walk: the mixers'
+        on this interpreter (`ramp_levels`). A class that walks on its
+        nodes' own `mix` instead says so here."""
+        return bool(LEVELS_RAMP)
 
     def _land_bypass(self):
         """Switch the port now to a bypass `_route_around` left waiting: a
