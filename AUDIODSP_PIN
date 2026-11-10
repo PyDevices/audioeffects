@@ -470,7 +470,7 @@
 # AirSpace's get_buffer digests are re-read. A sampler voice that sets none
 # of the new keywords renders the bytes it did.
 #
-# Moved to 745e52a on 2026-11-10, for the level ramps (audiodsp#400): the
+# Moved to c0e7c61 on 2026-11-10, for the level ramps (audiodsp#400): the
 # Mixer's `level_ramp`, the 20 ms walk of a Mix, post_gain or makeup move in
 # the Waveshaper, the Biquad, the AllPass, the Dynamics node and the
 # FeedbackDelay, and `audioroute.Port.play(after=)`, which the effects use so
@@ -478,10 +478,10 @@
 # request's commit; move it to the merge commit once that lands. The walks
 # change what a moved control renders and nothing else: a node's first value
 # lands at once, so a fresh instance renders the bytes it did. What else
-# moved beneath the components, by `git log 0c0824e..745e52a -- src`: new
+# moved beneath the components, by `git log 0c0824e..c0e7c61 -- src`: new
 # audiograph nodes and Graph.carry and swap, audiograph's BIQUAD_RAMP,
-# CircuitPython main's widened synthio biquad, MP3 decoding on CPython, and
-# pump and build changes for boards.
+# CircuitPython main's widened synthio biquad, MP3 decoding on CPython, type
+# stubs for thirteen modules, and pump and build changes for boards.
 #
 # <ref> <commit>   -- ref is what CI installs (git+https://...@<ref>)
-745e52a33301e48a44c7039e3c0f5e612df3552f 745e52a33301e48a44c7039e3c0f5e612df3552f
+c0e7c6187df460b0a95c2bbd7b339c3de12675b7 c0e7c6187df460b0a95c2bbd7b339c3de12675b7

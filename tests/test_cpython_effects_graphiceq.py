@@ -476,7 +476,12 @@ class TheDetentIsAWire(unittest.TestCase):
         # cut to boost; 31 Hz, boost to cut). The departure does not: at rc9
         # it is 0.25 of the settled level at 31 Hz and 33 times it with the
         # whole bank boost to cut, and the crossing-free control below holds
-        # it at exactly zero.
+        # it at exactly zero. Since a Biquad's mix walks over 20 ms
+        # (audiodsp#400), a band comes back from the detent fading in from
+        # nothing, and the stale state fades in with it: at 31 Hz the
+        # departure is now 0.17 of the settled level boost to cut and 0.19
+        # cut to boost. Anything above zero is the fault, so the bar is a
+        # tenth of the settled level.
         for label, steps in (
                 ("all bands, boost to cut", _across_the_detent(127, 0)),
                 ("all bands, cut to boost", _across_the_detent(0, 127)),
@@ -490,7 +495,7 @@ class TheDetentIsAWire(unittest.TestCase):
             _sweep(NoWakeGraphicEQ, steps, kept=theirs)
             self.assertEqual(len(ours), len(theirs))
             departure = max(abs(a - b) for a, b in zip(ours, theirs))
-            self.assertGreater(departure, clean[1] * 0.2,
+            self.assertGreater(departure, clean[1] * 0.1,
                                "%s: fault inert, departs %d from a fresh "
                                "start settling at %d"
                                % (label, departure, clean[1]))

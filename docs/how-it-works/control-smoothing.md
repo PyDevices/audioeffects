@@ -5,7 +5,9 @@ setting over 20 ms instead of stepping there, so the jump doesn't click. That
 covers a patch change's levels, a MIDI value that leaps, and a host setting
 Mix from 0.3 to 1.0 in one call: Bitcrusher, Chorus, CombFilter, Compressor,
 DeEsser, Distortion, DynamicEQ, Exciter, Fuzz, MultibandCompressor, Overdrive,
-Phaser, Saturation, Tremolo and Vibrato, with the exceptions below.
+Phaser, Saturation, Tremolo and Vibrato, with the exceptions below. The Mix
+of DigitalDelay and PingPongDelay and SlapbackDelay's Level walk too, since
+their delay node does.
 
 A few moves still step. Fuzz coming back from Mix 0 cuts in, Tremolo's Depth
 jumps, a filter corner moves at once, and so does a patch change that rebuilds
