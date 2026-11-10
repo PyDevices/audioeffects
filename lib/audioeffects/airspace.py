@@ -69,7 +69,7 @@ from . import _component
 from .digitaldelay import CUT_LAP_FACTOR, laps_to_zero, whole_frames
 from .tapedelay import tone_excess
 # The module, not the class, so this module holds one Component class.
-from . import reverb as _reverb
+import audioeffects.reverb as _reverb
 
 try:
     import audioecho
