@@ -609,26 +609,31 @@ class _MixAsLevel:
     walk to the dry and back can hold it the way it holds a voice. A Biquad
     and a Waveshaper walk a `mix` move over 20 ms. The Waveshaper takes its
     `mix` through `set()` and doesn't hand it back, so the last value set is
-    kept here."""
+    kept here. Which one a node is gets asked once: a plain attribute
+    assignment would land on a Python-level node without reaching it."""
 
     def __init__(self, node, level=1.0):
         self._node = node
         self._level = level
+        try:
+            node.mix
+            self._by_set = False
+        except AttributeError:
+            self._by_set = True
 
     @property
     def level(self):
-        try:
-            return self._node.mix
-        except AttributeError:
+        if self._by_set:
             return self._level
+        return self._node.mix
 
     @level.setter
     def level(self, value):
         self._level = value
-        try:
-            self._node.mix = value
-        except AttributeError:
+        if self._by_set:
             self._node.set(mix=value)
+        else:
+            self._node.mix = value
 
 
 class Fuzz(_component.Component):
