@@ -10,7 +10,10 @@ own tests show Mix moved in 127 steps, one a block, steps the output by less
 than one and a half times the steepest step of the tone going through it.
 
 The rest of this page is the policy planned for the effects, so that a jump
-stops clicking by itself. None of it is built. It is also on the
+stops clicking by itself. None of it is built in the effects here yet.
+audiodsp's `audiograph` `BIQUAD` node already walks to new coefficients over
+`BIQUAD_RAMP` milliseconds, 20 by default, but these effects drive
+`audiobiquad` directly. It is on the
 [roadmap](https://github.com/PyDevices/audioeffects/blob/main/ROADMAP.md).
 
 ## Which controls will ramp, and for how long

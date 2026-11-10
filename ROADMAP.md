@@ -7,12 +7,12 @@ way on every interpreter and board.
 
 - Control moves that ramp instead of stepping: Mix, levels and depths over
   20 ms in audiodsp's nodes, then filter corners, then crossfaded patch
-  changes. The policy is in [docs/how-it-works/control-smoothing.md](docs/how-it-works/control-smoothing.md).
+  changes. [The policy](docs/how-it-works/control-smoothing.md).
 
 ## Later
 
 - Every effect compared with its counterpart in hexefx_audiolib, adopting that
-  algorithm where it does measurably better on our tests. Licences are
+  algorithm where it does measurably better on the tests here. Licences are
   respected file by file: GPL-3.0 code informs a design and is never ported.
 - CabinetSim with real cabinet impulse responses, if their licence allows
   shipping them. Until then they serve as a reference for the synthetic one.
