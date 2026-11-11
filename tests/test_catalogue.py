@@ -9,16 +9,26 @@ finds it.
 name, and the metadata validator walks every one. These used to sit beside
 the registry tests that arbitrated between a class under `rebuilt/` and an
 older one; every class has one home now, so only the catalogue's own
-promises are left to hold.
+promises are left to hold, with `catalog.json`, the same names as data in
+every wheel.
 """
 
 import array
+import json
+import os
+import re
+import subprocess
+import sys
 import unittest
 
 import audiocore
 import audioeffects
 from audioeffects import _component
 from tools.validate_metadata import MetadataError, validate_effects
+
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CATALOG = os.path.join(os.path.dirname(audioeffects.__file__), "catalog.json")
 
 
 def source(channels=2, rate=48000):
@@ -83,6 +93,43 @@ class TheMetadataValidatorCoversEveryClass(unittest.TestCase):
             validate_effects(OneShort())
         self.assertIn("were skipped", str(caught.exception))
         self.assertIn("Compressor", str(caught.exception))
+
+
+class TheCatalogJson(unittest.TestCase):
+
+    def load(self):
+        with open(CATALOG, encoding="utf-8") as f:
+            return json.load(f)
+
+    def test_it_is_what_the_classes_say(self):
+        result = subprocess.run(
+            [sys.executable, os.path.join(ROOT, "tools", "make_catalog.py"), "--check"],
+            capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_it_lists_every_effect(self):
+        catalog = self.load()
+        self.assertEqual(catalog["format"], 1)
+        self.assertEqual(catalog["package"], "audioeffects")
+        self.assertEqual([e["name"] for e in catalog["effects"]], list(audioeffects.ALL))
+
+    def test_each_entry_is_its_class(self):
+        for e in self.load()["effects"]:
+            cls = getattr(audioeffects, e["name"])
+            self.assertEqual(e["display_name"], cls.DISPLAY_NAME)
+            self.assertEqual([m["label"] for m in e["macros"]], list(cls.MACRO_LABELS))
+            self.assertEqual([m["mode"] for m in e["macros"]],
+                             [cls.MACRO_MODES[i] for i in range(len(cls.MACRO_LABELS))])
+            self.assertEqual(
+                {p["index"]: (p["name"], tuple(p["values"])) for p in e["patches"]},
+                {i: (p[0], tuple(p[1])) for i, p in cls.PATCHES.items()})
+
+    def test_the_wheel_carries_it(self):
+        with open(os.path.join(ROOT, "lib", "audioeffects", "pyproject.toml"),
+                  encoding="utf-8") as f:
+            text = f.read()
+        section = re.search(r"\[tool\.setuptools\.package-data\]\n(.*?)(\n\[|\Z)", text, re.S)
+        self.assertTrue(section and "catalog.json" in section.group(1))
 
 
 if __name__ == "__main__":

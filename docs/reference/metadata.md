@@ -252,3 +252,24 @@ A consumer must use `NAME` as the stable lookup identity and may use
 note maps when useful. It must not assume optional metadata exists. It may
 also provide a generic UI when macros or patches are empty, although every
 provider still declares those fields explicitly.
+
+## The catalog
+
+Every wheel carries `audioeffects/catalog.json`: each effect's name, display
+name, categories, macros (label and mode) and patches (index, name and
+values), as the classes declare them. A DAW or MIDI host can read it to show
+those names without loading the audio stack:
+
+```python
+import json, os, audioeffects
+
+with open(os.path.join(os.path.dirname(audioeffects.__file__), "catalog.json")) as f:
+    catalog = json.load(f)
+for effect in catalog["effects"]:
+    print(effect["display_name"], [p["name"] for p in effect["patches"]])
+```
+
+The file is `{"format": 1, "package": "audioeffects", "effects": [...]}`, in
+the order of `audioeffects.ALL`. `tools/make_catalog.py` writes it from the
+classes, and its `--check` fails a pull request that changes a class without
+it.

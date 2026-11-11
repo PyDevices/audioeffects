@@ -1,0 +1,1093 @@
+{
+ "format": 1,
+ "package": "audioeffects",
+ "effects": [
+  {
+   "name": "AirSpace",
+   "display_name": "Air Space",
+   "categories": ["Effect Rack", "Reverb"],
+   "macros": [
+    {"label": "Time", "mode": "UNIPOLAR"},
+    {"label": "Feedback", "mode": "UNIPOLAR"},
+    {"label": "Glide", "mode": "UNIPOLAR"},
+    {"label": "Drive", "mode": "UNIPOLAR"},
+    {"label": "Loop Top", "mode": "UNIPOLAR"},
+    {"label": "Loop Bass", "mode": "UNIPOLAR"},
+    {"label": "Top Cut", "mode": "UNIPOLAR"},
+    {"label": "Low Cut", "mode": "UNIPOLAR"},
+    {"label": "Decay", "mode": "UNIPOLAR"},
+    {"label": "Damping", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Chamber Send", "values": [68, 56, 76, 25, 82, 52, 74, 64, 65, 76, 22]},
+    {"index": 1, "name": "Short Send", "values": [43, 45, 76, 25, 82, 52, 82, 64, 50, 76, 22]},
+    {"index": 2, "name": "Long Send", "values": [107, 90, 76, 25, 82, 52, 74, 64, 77, 76, 22]},
+    {"index": 3, "name": "Dark Loop", "values": [68, 127, 76, 25, 32, 75, 74, 64, 65, 76, 22]},
+    {"index": 4, "name": "Bright Chamber", "values": [68, 56, 76, 25, 82, 52, 114, 43, 72, 110, 22]},
+    {"index": 5, "name": "Driven Tape", "values": [68, 75, 76, 102, 64, 52, 74, 64, 65, 76, 22]},
+    {"index": 6, "name": "Plain Chamber", "values": [0, 0, 76, 25, 82, 52, 74, 64, 65, 76, 22]}
+   ]
+  },
+  {
+   "name": "AnalogDelay",
+   "display_name": "Analog Delay",
+   "categories": ["Delay"],
+   "macros": [
+    {"label": "Time", "mode": "UNIPOLAR"},
+    {"label": "Feedback", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Modulation", "mode": "UNIPOLAR"},
+    {"label": "Mod Rate", "mode": "UNIPOLAR"},
+    {"label": "Spread", "mode": "UNIPOLAR"},
+    {"label": "Sync", "mode": "TOGGLE"},
+    {"label": "Division", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Single Line Repeats", "values": [101, 51, 25, 0, 69, 0, 0, 51]},
+    {"index": 1, "name": "Short Bright Repeats", "values": [41, 38, 32, 0, 69, 0, 0, 51]},
+    {"index": 2, "name": "Long Dark Repeats", "values": [124, 71, 25, 0, 69, 0, 0, 51]},
+    {"index": 3, "name": "Modulated Repeats", "values": [107, 58, 29, 76, 75, 0, 0, 51]},
+    {"index": 4, "name": "Wet Vibrato", "values": [26, 0, 127, 51, 115, 0, 0, 51]},
+    {"index": 5, "name": "High Feedback Wash", "values": [116, 109, 22, 25, 52, 64, 0, 51]},
+    {"index": 6, "name": "Dotted Eighth, Synced", "values": [101, 58, 25, 0, 69, 0, 127, 68]}
+   ]
+  },
+  {
+   "name": "AutoPan",
+   "display_name": "Auto Pan",
+   "categories": ["Modulation"],
+   "macros": [
+    {"label": "Rate", "mode": "UNIPOLAR"},
+    {"label": "Depth", "mode": "UNIPOLAR"},
+    {"label": "Shape", "mode": "UNIPOLAR"},
+    {"label": "Law", "mode": "UNIPOLAR"},
+    {"label": "Centre", "mode": "BIPOLAR"},
+    {"label": "Phase", "mode": "BIPOLAR"},
+    {"label": "Sync", "mode": "TOGGLE"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Slow Sweep", "values": [0, 127, 127, 0, 64, 64, 0]},
+    {"index": 1, "name": "Quarter Note", "values": [0, 102, 0, 0, 64, 64, 127]},
+    {"index": 2, "name": "Wide Triangle", "values": [38, 127, 0, 0, 64, 64, 0]},
+    {"index": 3, "name": "Narrow Drift", "values": [0, 44, 127, 0, 64, 64, 0]},
+    {"index": 4, "name": "Mono-Safe Sweep", "values": [38, 127, 127, 127, 64, 64, 0]},
+    {"index": 5, "name": "Offset Left", "values": [0, 64, 127, 0, 38, 64, 0]},
+    {"index": 6, "name": "Fast Flutter", "values": [69, 89, 0, 0, 64, 64, 0]},
+    {"index": 7, "name": "Quarter Offset", "values": [0, 127, 127, 0, 64, 95, 127]}
+   ]
+  },
+  {
+   "name": "BandPass",
+   "display_name": "Band Pass",
+   "categories": ["Filter"],
+   "macros": [
+    {"label": "Frequency", "mode": "UNIPOLAR"},
+    {"label": "Width", "mode": "UNIPOLAR"},
+    {"label": "Slope", "mode": "TOGGLE"},
+    {"label": "Mix", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Wide Mid", "values": [74, 11, 0, 127]},
+    {"index": 1, "name": "Telephone", "values": [81, 27, 127, 127]},
+    {"index": 2, "name": "Snare Crack", "values": [44, 42, 0, 127]},
+    {"index": 3, "name": "Presence Window", "values": [101, 34, 0, 127]},
+    {"index": 4, "name": "Narrow Probe", "values": [74, 118, 0, 127]},
+    {"index": 5, "name": "Sub Window", "values": [21, 55, 127, 127]}
+   ]
+  },
+  {
+   "name": "Bitcrusher",
+   "display_name": "Bitcrusher",
+   "categories": ["Distortion"],
+   "macros": [
+    {"label": "Bits", "mode": "UNIPOLAR"},
+    {"label": "Rate", "mode": "UNIPOLAR"},
+    {"label": "Dither", "mode": "UNIPOLAR"},
+    {"label": "Band Limit", "mode": "TOGGLE"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Output", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Twelve Bit, Twenty-Six", "values": [127, 107, 0, 0, 127, 127]},
+    {"index": 1, "name": "Eight Bit Voice", "values": [76, 101, 0, 0, 127, 127]},
+    {"index": 2, "name": "Six Bit Drum", "values": [51, 104, 0, 0, 127, 127]},
+    {"index": 3, "name": "Telephone Grid", "values": [76, 68, 0, 127, 127, 127]},
+    {"index": 4, "name": "Grit Under The Note", "values": [127, 127, 0, 0, 44, 127]},
+    {"index": 5, "name": "Dithered Twelve", "values": [127, 107, 64, 0, 127, 127]},
+    {"index": 6, "name": "Broken Converter", "values": [25, 59, 0, 0, 127, 127]}
+   ]
+  },
+  {
+   "name": "CabinetSim",
+   "display_name": "Cabinet Sim",
+   "categories": ["Distortion"],
+   "macros": [
+    {"label": "Character", "mode": "TOGGLE"},
+    {"label": "Low Cut", "mode": "UNIPOLAR"},
+    {"label": "Body", "mode": "UNIPOLAR"},
+    {"label": "Break-up", "mode": "UNIPOLAR"},
+    {"label": "Bite", "mode": "UNIPOLAR"},
+    {"label": "Top", "mode": "UNIPOLAR"},
+    {"label": "Air", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Sealed Four By Twelve", "values": [0, 67, 64, 67, 79, 42, 56, 127]},
+    {"index": 1, "name": "Open-Backed Twelve", "values": [127, 33, 95, 87, 79, 52, 71, 127]},
+    {"index": 2, "name": "Off-Axis Close Mic", "values": [0, 67, 64, 67, 16, 12, 56, 127]},
+    {"index": 3, "name": "Cone Centre", "values": [0, 67, 64, 67, 111, 83, 56, 127]},
+    {"index": 4, "name": "Dark Practice Box", "values": [0, 106, 64, 67, 79, 0, 0, 127]},
+    {"index": 5, "name": "Bright Small Box", "values": [0, 127, 64, 67, 95, 42, 127, 127]},
+    {"index": 6, "name": "Bass-Heavy Room", "values": [0, 0, 127, 67, 79, 42, 56, 127]}
+   ]
+  },
+  {
+   "name": "Chorus",
+   "display_name": "Chorus",
+   "categories": ["Modulation"],
+   "macros": [
+    {"label": "Rate", "mode": "UNIPOLAR"},
+    {"label": "Depth", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Delay", "mode": "UNIPOLAR"},
+    {"label": "Tone", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Near-equal blend", "values": [36, 127, 104, 43, 56]},
+    {"index": 1, "name": "Long line, deep", "values": [19, 127, 104, 76, 56]},
+    {"index": 2, "name": "Short line, shallow", "values": [61, 73, 104, 7, 56]},
+    {"index": 3, "name": "Slow swirl", "values": [6, 127, 104, 43, 56]},
+    {"index": 4, "name": "Fast warble", "values": [108, 127, 104, 22, 56]},
+    {"index": 5, "name": "Dark wet", "values": [36, 127, 76, 43, 21]},
+    {"index": 6, "name": "Equal sum", "values": [36, 127, 127, 43, 56]}
+   ]
+  },
+  {
+   "name": "CombFilter",
+   "display_name": "Comb Filter",
+   "categories": ["Filter"],
+   "macros": [
+    {"label": "Frequency", "mode": "UNIPOLAR"},
+    {"label": "Feedback", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Tone", "mode": "UNIPOLAR"},
+    {"label": "Trim", "mode": "BIPOLAR"},
+    {"label": "Glide", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Metallic", "values": [74, 94, 64, 127, 64, 6]},
+    {"index": 1, "name": "Ringing Pitch", "values": [57, 123, 64, 127, 53, 6]},
+    {"index": 2, "name": "Soft Ripple", "values": [41, 40, 32, 127, 64, 6]},
+    {"index": 3, "name": "Dark Resonator", "values": [48, 114, 64, 45, 42, 6]},
+    {"index": 4, "name": "Single Slap", "values": [24, 0, 64, 127, 64, 6]},
+    {"index": 5, "name": "Filter Only", "values": [94, 107, 127, 127, 64, 6]}
+   ]
+  },
+  {
+   "name": "Compressor",
+   "display_name": "Compressor",
+   "categories": ["Dynamics"],
+   "macros": [
+    {"label": "Character", "mode": "UNIPOLAR"},
+    {"label": "Threshold", "mode": "UNIPOLAR"},
+    {"label": "Ratio", "mode": "UNIPOLAR"},
+    {"label": "Attack", "mode": "UNIPOLAR"},
+    {"label": "Release", "mode": "UNIPOLAR"},
+    {"label": "Release Slow", "mode": "UNIPOLAR"},
+    {"label": "Memory", "mode": "UNIPOLAR"},
+    {"label": "Knee", "mode": "UNIPOLAR"},
+    {"label": "Detector", "mode": "TOGGLE"},
+    {"label": "RMS Window", "mode": "UNIPOLAR"},
+    {"label": "Emphasis", "mode": "UNIPOLAR"},
+    {"label": "Emphasis Freq", "mode": "UNIPOLAR"},
+    {"label": "Makeup", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Level Ride", "values": [42, 85, 20, 45, 102, 56, 79, 28, 0, 64, 0, 36, 42, 127]},
+    {"index": 1, "name": "Fast Peak Catch", "values": [0, 89, 46, 122, 95, 58, 0, 11, 0, 64, 0, 36, 53, 127]},
+    {"index": 2, "name": "Everything At Once", "values": [0, 55, 55, 127, 127, 58, 0, 0, 0, 64, 0, 36, 71, 127]},
+    {"index": 3, "name": "Bus Glue", "values": [85, 80, 25, 75, 105, 58, 0, 0, 127, 64, 0, 36, 56, 127]},
+    {"index": 4, "name": "Voice Ride", "values": [42, 68, 38, 45, 102, 56, 79, 28, 0, 64, 102, 112, 56, 127]},
+    {"index": 5, "name": "Let The Stick Through", "values": [0, 89, 38, 36, 102, 58, 0, 11, 0, 64, 0, 36, 56, 127]},
+    {"index": 6, "name": "Parallel Squash", "values": [0, 55, 55, 127, 127, 58, 0, 0, 0, 64, 0, 36, 71, 51]},
+    {"index": 7, "name": "Wide Knee Glue", "values": [85, 85, 13, 75, 74, 58, 0, 85, 127, 64, 0, 36, 49, 127]},
+    {"index": 8, "name": "Vari-Mu TC1", "values": [127, 76, 55, 97, 65, 42, 0, 106, 0, 64, 0, 36, 42, 127]},
+    {"index": 9, "name": "Vari-Mu TC2", "values": [127, 76, 55, 97, 42, 42, 0, 106, 0, 64, 0, 36, 42, 127]},
+    {"index": 10, "name": "Vari-Mu TC3", "values": [127, 76, 55, 87, 21, 42, 0, 106, 0, 64, 0, 36, 42, 127]},
+    {"index": 11, "name": "Vari-Mu TC4", "values": [127, 76, 55, 87, 0, 42, 0, 106, 0, 64, 0, 36, 42, 127]},
+    {"index": 12, "name": "Vari-Mu TC5", "values": [127, 76, 55, 87, 21, 26, 95, 106, 0, 64, 0, 36, 42, 127]},
+    {"index": 13, "name": "Vari-Mu TC6", "values": [127, 76, 55, 97, 65, 26, 95, 106, 0, 64, 0, 36, 42, 127]},
+    {"index": 14, "name": "Compressor - lean", "values": [0, 89, 46, 122, 95, 58, 0, 11, 0, 64, 0, 36, 53, 127]}
+   ]
+  },
+  {
+   "name": "ConvolutionReverb",
+   "display_name": "Convolution Reverb",
+   "categories": ["Reverb"],
+   "macros": [
+    {"label": "Decay", "mode": "UNIPOLAR"},
+    {"label": "Damping", "mode": "UNIPOLAR"},
+    {"label": "Predelay", "mode": "UNIPOLAR"},
+    {"label": "Diffusion", "mode": "UNIPOLAR"},
+    {"label": "Room", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Full Room", "values": [127, 117, 0, 64, 0, 38]},
+    {"index": 1, "name": "Short Room", "values": [38, 98, 13, 64, 4, 44]},
+    {"index": 2, "name": "Late Room", "values": [127, 124, 76, 64, 12, 51]},
+    {"index": 3, "name": "Dark Room", "values": [102, 52, 25, 64, 20, 44]},
+    {"index": 4, "name": "Bright Room", "values": [102, 127, 0, 32, 8, 51]},
+    {"index": 5, "name": "Soft Onset", "values": [127, 108, 38, 127, 24, 63]},
+    {"index": 6, "name": "Tight Room", "values": [0, 124, 25, 0, 2, 76]},
+    {"index": 7, "name": "Wet Only", "values": [127, 117, 0, 64, 0, 127]}
+   ]
+  },
+  {
+   "name": "DeEsser",
+   "display_name": "De-Esser",
+   "categories": ["Dynamics"],
+   "macros": [
+    {"label": "Frequency", "mode": "UNIPOLAR"},
+    {"label": "Range", "mode": "UNIPOLAR"},
+    {"label": "Sensitivity", "mode": "UNIPOLAR"},
+    {"label": "Mode", "mode": "TOGGLE"},
+    {"label": "Release", "mode": "UNIPOLAR"},
+    {"label": "Attack", "mode": "UNIPOLAR"},
+    {"label": "Listen", "mode": "TOGGLE"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Vocal", "values": [63, 76, 79, 0, 30, 83, 0]},
+    {"index": 1, "name": "Bright Vocal", "values": [89, 102, 90, 0, 30, 83, 0]},
+    {"index": 2, "name": "Whispered Verse", "values": [63, 51, 58, 0, 39, 94, 0]},
+    {"index": 3, "name": "Guitar Pick Noise", "values": [101, 76, 79, 127, 17, 64, 0]},
+    {"index": 4, "name": "Cymbal Edge", "values": [111, 102, 90, 127, 33, 75, 0]},
+    {"index": 5, "name": "Hard De-Ess", "values": [63, 127, 64, 0, 30, 64, 0]}
+   ]
+  },
+  {
+   "name": "DigitalDelay",
+   "display_name": "Digital Delay",
+   "categories": ["Delay"],
+   "macros": [
+    {"label": "Time", "mode": "UNIPOLAR"},
+    {"label": "Feedback", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Glide", "mode": "UNIPOLAR"},
+    {"label": "Sync", "mode": "TOGGLE"},
+    {"label": "Division", "mode": "UNIPOLAR"},
+    {"label": "Repeat Tone", "mode": "UNIPOLAR"},
+    {"label": "Repeat Cut", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Clean Repeats", "values": [102, 45, 19, 89, 0, 51, 127, 0]},
+    {"index": 1, "name": "Eighth Notes", "values": [102, 51, 19, 89, 127, 51, 127, 0]},
+    {"index": 2, "name": "Dotted Eighths", "values": [102, 58, 19, 89, 127, 68, 127, 0]},
+    {"index": 3, "name": "Short Doubling", "values": [45, 0, 32, 89, 0, 51, 127, 0]},
+    {"index": 4, "name": "Long Ambient", "values": [125, 90, 16, 89, 0, 51, 127, 0]},
+    {"index": 5, "name": "Band Limited Repeats", "values": [102, 77, 19, 89, 0, 51, 92, 29]}
+   ]
+  },
+  {
+   "name": "Distortion",
+   "display_name": "Distortion",
+   "categories": ["Drive"],
+   "macros": [
+    {"label": "Distortion", "mode": "UNIPOLAR"},
+    {"label": "Filter", "mode": "UNIPOLAR"},
+    {"label": "Tone", "mode": "BIPOLAR"},
+    {"label": "Volume", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Character", "mode": "TOGGLE"},
+    {"label": "Ceiling", "mode": "UNIPOLAR"},
+    {"label": "Boost", "mode": "UNIPOLAR"},
+    {"label": "Asymmetry", "mode": "UNIPOLAR"},
+    {"label": "Body", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Filter Half Mid Gain", "values": [64, 64, 64, 100, 127, 0, 42, 0, 0, 0]},
+    {"index": 1, "name": "Filter Open Low Gain", "values": [24, 0, 64, 110, 127, 0, 42, 0, 0, 0]},
+    {"index": 2, "name": "Filter Closed Full Gain", "values": [127, 127, 64, 84, 127, 0, 42, 0, 0, 0]},
+    {"index": 3, "name": "High Ceiling Full Gain", "values": [127, 48, 64, 72, 127, 0, 108, 0, 0, 0]},
+    {"index": 4, "name": "Low Ceiling Mid Gain", "values": [64, 56, 64, 110, 127, 0, 24, 0, 0, 0]},
+    {"index": 5, "name": "Flat Legs Mid Gain", "values": [72, 40, 64, 100, 127, 0, 42, 0, 0, 127]},
+    {"index": 6, "name": "Scoop Centre Full Boost", "values": [100, 0, 64, 100, 127, 127, 42, 127, 96, 0]},
+    {"index": 7, "name": "Scoop Bright Mid Gain", "values": [64, 0, 112, 100, 127, 127, 42, 127, 96, 0]},
+    {"index": 8, "name": "Scoop Bass Low Gain", "values": [24, 0, 16, 110, 127, 127, 42, 127, 96, 0]},
+    {"index": 9, "name": "Scoop Low Boost Even", "values": [80, 0, 64, 100, 127, 127, 42, 62, 127, 0]},
+    {"index": 10, "name": "Clean Edge", "values": [0, 0, 64, 127, 127, 0, 42, 0, 0, 0]}
+   ]
+  },
+  {
+   "name": "DynamicEQ",
+   "display_name": "Dynamic EQ",
+   "categories": ["EQ"],
+   "macros": [
+    {"label": "Frequency", "mode": "UNIPOLAR"},
+    {"label": "Width", "mode": "UNIPOLAR"},
+    {"label": "Threshold", "mode": "UNIPOLAR"},
+    {"label": "Ratio", "mode": "UNIPOLAR"},
+    {"label": "Attack", "mode": "UNIPOLAR"},
+    {"label": "Release", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Listen", "mode": "TOGGLE"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Wide Band", "values": [93, 55, 64, 59, 55, 66, 127, 0]},
+    {"index": 1, "name": "Boxiness Control", "values": [52, 64, 76, 47, 85, 82, 127, 0]},
+    {"index": 2, "name": "Harshness Control", "values": [94, 72, 68, 59, 42, 60, 127, 0]},
+    {"index": 3, "name": "Low End Tamer", "values": [20, 35, 85, 59, 97, 94, 127, 0]},
+    {"index": 4, "name": "Sibilance", "values": [110, 83, 64, 88, 13, 50, 127, 0]},
+    {"index": 5, "name": "Half Measure", "values": [93, 28, 55, 76, 72, 88, 64, 0]}
+   ]
+  },
+  {
+   "name": "Exciter",
+   "display_name": "Exciter",
+   "categories": ["Distortion"],
+   "macros": [
+    {"label": "Tune", "mode": "UNIPOLAR"},
+    {"label": "Harmonics", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Character", "mode": "TOGGLE"},
+    {"label": "Output", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Voice Air", "values": [105, 32, 54, 0, 127]},
+    {"index": 1, "name": "Percussive Edge", "values": [89, 102, 82, 127, 127]},
+    {"index": 2, "name": "Mix Sheen", "values": [127, 25, 36, 0, 127]},
+    {"index": 3, "name": "Mid Presence", "values": [16, 64, 64, 0, 127]},
+    {"index": 4, "name": "Transient Bite", "values": [89, 102, 82, 127, 127]},
+    {"index": 5, "name": "Transient Soft", "values": [89, 51, 64, 127, 127]},
+    {"index": 6, "name": "Wet Sidechain", "values": [105, 32, 127, 0, 127]}
+   ]
+  },
+  {
+   "name": "Expander",
+   "display_name": "Expander",
+   "categories": ["Dynamics"],
+   "macros": [
+    {"label": "Threshold", "mode": "UNIPOLAR"},
+    {"label": "Ratio", "mode": "UNIPOLAR"},
+    {"label": "Depth", "mode": "UNIPOLAR"},
+    {"label": "Attack", "mode": "UNIPOLAR"},
+    {"label": "Release", "mode": "UNIPOLAR"},
+    {"label": "Key Low", "mode": "UNIPOLAR"},
+    {"label": "Key High", "mode": "UNIPOLAR"},
+    {"label": "Key Listen", "mode": "TOGGLE"},
+    {"label": "Detector", "mode": "TOGGLE"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Gentle Lift", "values": [70, 25, 32, 69, 77, 0, 127, 0, 127]},
+    {"index": 1, "name": "Noise Floor Trim", "values": [40, 56, 48, 58, 84, 0, 127, 0, 127]},
+    {"index": 2, "name": "Snare Tighten", "values": [87, 109, 40, 43, 62, 45, 89, 0, 127]},
+    {"index": 3, "name": "Guitar Amp Hum", "values": [56, 85, 64, 69, 81, 62, 71, 0, 127]},
+    {"index": 4, "name": "Room Reduction", "values": [71, 67, 24, 78, 100, 0, 127, 0, 127]},
+    {"index": 5, "name": "Hard Downward", "values": [79, 127, 95, 51, 68, 0, 127, 0, 0]},
+    {"index": 6, "name": "Expander - lean", "values": [70, 25, 32, 69, 77, 0, 127, 0, 0]}
+   ]
+  },
+  {
+   "name": "Flanger",
+   "display_name": "Flanger",
+   "categories": ["Modulation"],
+   "macros": [
+    {"label": "Rate", "mode": "UNIPOLAR"},
+    {"label": "Range", "mode": "UNIPOLAR"},
+    {"label": "Manual", "mode": "UNIPOLAR"},
+    {"label": "Color", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Polarity", "mode": "TOGGLE"},
+    {"label": "Sync", "mode": "TOGGLE"},
+    {"label": "Division", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Slow jet", "values": [39, 76, 59, 94, 127, 0, 0, 42]},
+    {"index": 1, "name": "Fast metallic", "values": [105, 19, 29, 114, 127, 0, 0, 42]},
+    {"index": 2, "name": "Held comb", "values": [39, 0, 88, 80, 127, 0, 0, 42]},
+    {"index": 3, "name": "Negative jet", "values": [33, 76, 59, 94, 127, 127, 0, 42]},
+    {"index": 4, "name": "Gentle", "values": [55, 38, 88, 0, 64, 0, 0, 42]},
+    {"index": 5, "name": "Synced one bar", "values": [39, 76, 59, 80, 127, 0, 127, 42]}
+   ]
+  },
+  {
+   "name": "Fuzz",
+   "display_name": "Fuzz",
+   "categories": ["Distortion"],
+   "macros": [
+    {"label": "Fuzz", "mode": "UNIPOLAR"},
+    {"label": "Level", "mode": "UNIPOLAR"},
+    {"label": "Tone", "mode": "UNIPOLAR"},
+    {"label": "Bias", "mode": "BIPOLAR"},
+    {"label": "Load", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Output Tilt", "mode": "BIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Bias centred, fuzz half", "values": [64, 127, 64, 64, 0, 127, 64]},
+    {"index": 1, "name": "Full fuzz, volume back", "values": [127, 51, 64, 64, 0, 127, 64]},
+    {"index": 2, "name": "Starved bias, gated", "values": [85, 127, 64, 10, 0, 127, 64]},
+    {"index": 3, "name": "Cleaned up, load engaged", "values": [21, 127, 64, 64, 127, 127, 64]},
+    {"index": 4, "name": "Cascade scoop centred", "values": [106, 127, 64, 64, 0, 127, 64]},
+    {"index": 5, "name": "Cascade sustain maximum", "values": [127, 102, 64, 64, 0, 127, 64]},
+    {"index": 6, "name": "Cascade treble end", "values": [106, 127, 127, 64, 0, 127, 64]},
+    {"index": 7, "name": "Full fuzz, mix back", "values": [127, 127, 64, 64, 0, 44, 64]},
+    {"index": 8, "name": "Fuzz - lean", "values": [64, 127, 64, 64, 0, 127, 64]}
+   ]
+  },
+  {
+   "name": "GraphicEQ",
+   "display_name": "Graphic EQ",
+   "categories": ["EQ"],
+   "macros": [
+    {"label": "31", "mode": "BIPOLAR"},
+    {"label": "63", "mode": "BIPOLAR"},
+    {"label": "125", "mode": "BIPOLAR"},
+    {"label": "250", "mode": "BIPOLAR"},
+    {"label": "500", "mode": "BIPOLAR"},
+    {"label": "1k", "mode": "BIPOLAR"},
+    {"label": "2k", "mode": "BIPOLAR"},
+    {"label": "4k", "mode": "BIPOLAR"},
+    {"label": "8k", "mode": "BIPOLAR"},
+    {"label": "16k Shelf", "mode": "BIPOLAR"},
+    {"label": "Gain", "mode": "BIPOLAR"},
+    {"label": "Volume", "mode": "BIPOLAR"},
+    {"label": "Band Q", "mode": "UNIPOLAR"},
+    {"label": "Constant Q", "mode": "TOGGLE"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Flat", "values": [64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 92, 0]},
+    {"index": 1, "name": "Scooped Mids", "values": [95, 95, 79, 48, 32, 32, 48, 79, 95, 95, 64, 32, 92, 0]},
+    {"index": 2, "name": "Pushed Mids", "values": [48, 48, 64, 79, 95, 95, 95, 79, 64, 48, 64, 40, 92, 0]},
+    {"index": 3, "name": "Trimmed Bottom", "values": [16, 32, 48, 64, 64, 64, 64, 64, 64, 64, 64, 64, 92, 0]},
+    {"index": 4, "name": "Rolled Top", "values": [64, 64, 64, 64, 64, 64, 64, 48, 32, 16, 64, 64, 92, 0]},
+    {"index": 5, "name": "Full Boost", "values": [95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 64, 24, 92, 0]}
+   ]
+  },
+  {
+   "name": "Harmonizer",
+   "display_name": "Harmonizer",
+   "categories": ["Pitch Shift"],
+   "macros": [
+    {"label": "Pitch", "mode": "BIPOLAR"},
+    {"label": "Voice 1", "mode": "BIPOLAR"},
+    {"label": "Voice 2", "mode": "BIPOLAR"},
+    {"label": "Voice 3", "mode": "BIPOLAR"},
+    {"label": "Level 1", "mode": "UNIPOLAR"},
+    {"label": "Level 2", "mode": "UNIPOLAR"},
+    {"label": "Level 3", "mode": "UNIPOLAR"},
+    {"label": "Detune", "mode": "UNIPOLAR"},
+    {"label": "Spread", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Third and fifth above, octave below", "values": [64, 85, 101, 0, 108, 108, 99, 0, 0, 64]},
+    {"index": 1, "name": "Octave below, doubled", "values": [64, 0, 0, 64, 118, 118, 0, 71, 64, 64]},
+    {"index": 2, "name": "Wide unison", "values": [64, 64, 64, 64, 108, 108, 0, 71, 127, 64]},
+    {"index": 3, "name": "Fourths and fifths", "values": [64, 90, 101, 127, 99, 99, 89, 0, 64, 64]},
+    {"index": 4, "name": "Octave up and down", "values": [64, 127, 0, 64, 108, 108, 0, 0, 64, 64]},
+    {"index": 5, "name": "Minor triad, voices alone", "values": [64, 80, 101, 64, 108, 108, 108, 0, 64, 127]},
+    {"index": 6, "name": "Third and fifth - lean", "values": [64, 85, 101, 0, 108, 108, 0, 0, 0, 64]}
+   ]
+  },
+  {
+   "name": "HighPass",
+   "display_name": "High Pass",
+   "categories": ["Filter", "EQ"],
+   "macros": [
+    {"label": "Frequency", "mode": "UNIPOLAR"},
+    {"label": "Resonance", "mode": "UNIPOLAR"},
+    {"label": "Slope", "mode": "TOGGLE"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Trim", "mode": "BIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Flat", "values": [0, 13, 0, 127, 64]},
+    {"index": 1, "name": "Rumble Cut", "values": [18, 13, 127, 127, 64]},
+    {"index": 2, "name": "Stage Low-Cut", "values": [35, 13, 0, 127, 64]},
+    {"index": 3, "name": "Thin It Out", "values": [57, 13, 0, 127, 64]},
+    {"index": 4, "name": "Radio", "values": [71, 40, 127, 127, 48]},
+    {"index": 5, "name": "Whistle", "values": [89, 110, 0, 127, 16]}
+   ]
+  },
+  {
+   "name": "LadderFilter",
+   "display_name": "Ladder Filter",
+   "categories": ["Filter"],
+   "macros": [
+    {"label": "Cutoff", "mode": "UNIPOLAR"},
+    {"label": "Resonance", "mode": "UNIPOLAR"},
+    {"label": "Drive", "mode": "UNIPOLAR"},
+    {"label": "Passband Comp", "mode": "UNIPOLAR"},
+    {"label": "Poles", "mode": "UNIPOLAR"},
+    {"label": "Oversample", "mode": "TOGGLE"},
+    {"label": "Mix", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Wide Open", "values": [119, 18, 0, 0, 127, 127, 127]},
+    {"index": 1, "name": "Squelch At The Knee", "values": [66, 109, 32, 0, 127, 127, 127]},
+    {"index": 2, "name": "Sustained Sine At Cutoff", "values": [73, 127, 0, 0, 127, 127, 127]},
+    {"index": 3, "name": "Dark", "values": [51, 45, 0, 0, 127, 127, 127]},
+    {"index": 4, "name": "Growl With Drive", "values": [71, 118, 95, 0, 127, 127, 127]},
+    {"index": 5, "name": "Two Pole Soft", "values": [90, 30, 0, 0, 42, 127, 127]},
+    {"index": 6, "name": "Ladder - lean", "values": [119, 18, 0, 0, 127, 0, 127]}
+   ]
+  },
+  {
+   "name": "Limiter",
+   "display_name": "Limiter",
+   "categories": ["Dynamics"],
+   "macros": [
+    {"label": "Ceiling", "mode": "UNIPOLAR"},
+    {"label": "Gain", "mode": "UNIPOLAR"},
+    {"label": "Lookahead", "mode": "UNIPOLAR"},
+    {"label": "Release", "mode": "UNIPOLAR"},
+    {"label": "True Peak", "mode": "TOGGLE"},
+    {"label": "Knee", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Safety Ceiling", "values": [122, 0, 0, 72, 0, 0]},
+    {"index": 1, "name": "Catch The Peaks", "values": [122, 0, 19, 53, 127, 0]},
+    {"index": 2, "name": "Loud", "values": [125, 64, 0, 72, 0, 0]},
+    {"index": 3, "name": "Soft Ceiling", "values": [116, 0, 0, 78, 0, 95]},
+    {"index": 4, "name": "Delivery Ceiling", "values": [122, 0, 25, 72, 127, 0]},
+    {"index": 5, "name": "Loud (True Peak)", "values": [125, 64, 38, 38, 127, 0]},
+    {"index": 6, "name": "Delivery Ceiling - lean", "values": [106, 0, 25, 72, 0, 0]}
+   ]
+  },
+  {
+   "name": "LowPass",
+   "display_name": "Low Pass",
+   "categories": ["Filter", "EQ"],
+   "macros": [
+    {"label": "Frequency", "mode": "UNIPOLAR"},
+    {"label": "Resonance", "mode": "UNIPOLAR"},
+    {"label": "Slope", "mode": "TOGGLE"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Trim", "mode": "BIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Open", "values": [127, 13, 0, 127, 64]},
+    {"index": 1, "name": "Soft Roll", "values": [105, 13, 0, 127, 64]},
+    {"index": 2, "name": "Steep Cut", "values": [92, 13, 127, 127, 64]},
+    {"index": 3, "name": "Resonant Peak", "values": [75, 91, 0, 127, 32]},
+    {"index": 4, "name": "Squelch", "values": [59, 116, 127, 127, 16]},
+    {"index": 5, "name": "Sub Only", "values": [33, 13, 127, 127, 64]}
+   ]
+  },
+  {
+   "name": "MultiTapDelay",
+   "display_name": "Multi-Tap Delay",
+   "categories": ["Delay"],
+   "macros": [
+    {"label": "Time", "mode": "UNIPOLAR"},
+    {"label": "Pattern", "mode": "UNIPOLAR"},
+    {"label": "Heads", "mode": "UNIPOLAR"},
+    {"label": "Feedback", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Tilt", "mode": "BIPOLAR"},
+    {"label": "Repeat Tone", "mode": "UNIPOLAR"},
+    {"label": "Sync", "mode": "TOGGLE"},
+    {"label": "Division", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Three Heads, Even", "values": [85, 69, 0, 60, 22, 64, 68, 0, 25]},
+    {"index": 1, "name": "Three Heads, Even - lean", "values": [85, 69, 0, 60, 22, 64, 127, 0, 25]},
+    {"index": 2, "name": "Two Heads, Near Loudest", "values": [93, 35, 25, 67, 22, 32, 68, 0, 25]},
+    {"index": 3, "name": "Four Heads, Far Loudest", "values": [55, 127, 25, 67, 22, 96, 78, 0, 25]},
+    {"index": 4, "name": "Eight Heads, Dense", "values": [29, 127, 127, 74, 19, 64, 56, 0, 25]},
+    {"index": 5, "name": "One Head, Long Repeats", "values": [76, 23, 0, 94, 22, 64, 48, 0, 25]},
+    {"index": 6, "name": "Triplet Grid, Synced", "values": [85, 69, 0, 60, 22, 64, 68, 127, 34]}
+   ]
+  },
+  {
+   "name": "MultibandCompressor",
+   "display_name": "Multiband Compressor",
+   "categories": ["Dynamics"],
+   "macros": [
+    {"label": "Crossover Low", "mode": "UNIPOLAR"},
+    {"label": "Crossover High", "mode": "UNIPOLAR"},
+    {"label": "Low Threshold", "mode": "UNIPOLAR"},
+    {"label": "Mid Threshold", "mode": "UNIPOLAR"},
+    {"label": "High Threshold", "mode": "UNIPOLAR"},
+    {"label": "Low Ratio", "mode": "UNIPOLAR"},
+    {"label": "Mid Ratio", "mode": "UNIPOLAR"},
+    {"label": "High Ratio", "mode": "UNIPOLAR"},
+    {"label": "Low Gain", "mode": "BIPOLAR"},
+    {"label": "Mid Gain", "mode": "BIPOLAR"},
+    {"label": "High Gain", "mode": "BIPOLAR"},
+    {"label": "Attack", "mode": "UNIPOLAR"},
+    {"label": "Release", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Master Glue", "values": [68, 51, 89, 89, 89, 47, 47, 47, 64, 64, 64, 85, 82, 127]},
+    {"index": 1, "name": "Bass Control", "values": [47, 51, 76, 127, 127, 59, 0, 0, 64, 64, 64, 97, 88, 127]},
+    {"index": 2, "name": "Vocal Bus", "values": [78, 73, 85, 93, 89, 39, 39, 39, 64, 64, 64, 92, 76, 127]},
+    {"index": 3, "name": "De-Boom", "values": [34, 51, 64, 127, 127, 76, 0, 0, 64, 64, 64, 72, 94, 127]},
+    {"index": 4, "name": "Loudness", "values": [68, 51, 76, 76, 76, 29, 29, 29, 79, 71, 79, 85, 88, 76]}
+   ]
+  },
+  {
+   "name": "NoiseGate",
+   "display_name": "Noise Gate",
+   "categories": ["Dynamics"],
+   "macros": [
+    {"label": "Threshold", "mode": "UNIPOLAR"},
+    {"label": "Attack", "mode": "UNIPOLAR"},
+    {"label": "Hold", "mode": "UNIPOLAR"},
+    {"label": "Release", "mode": "UNIPOLAR"},
+    {"label": "Range", "mode": "UNIPOLAR"},
+    {"label": "Key Low", "mode": "UNIPOLAR"},
+    {"label": "Key High", "mode": "UNIPOLAR"},
+    {"label": "Key Listen", "mode": "TOGGLE"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Default", "values": [64, 51, 59, 77, 127, 0, 113, 0]},
+    {"index": 1, "name": "Tom Tighten", "values": [79, 43, 63, 68, 64, 29, 71, 0]},
+    {"index": 2, "name": "Gated Reverb", "values": [87, 33, 97, 38, 127, 0, 113, 0]},
+    {"index": 3, "name": "Vocal Breath Trim", "values": [56, 63, 75, 84, 19, 22, 99, 0]},
+    {"index": 4, "name": "Amp Hiss", "values": [48, 58, 72, 89, 127, 110, 89, 0]},
+    {"index": 5, "name": "Drum Bleed", "values": [76, 43, 50, 62, 79, 35, 36, 0]}
+   ]
+  },
+  {
+   "name": "Notch",
+   "display_name": "Notch",
+   "categories": ["Filter", "EQ"],
+   "macros": [
+    {"label": "Frequency", "mode": "UNIPOLAR"},
+    {"label": "Width", "mode": "UNIPOLAR"},
+    {"label": "Harmonics", "mode": "TOGGLE"},
+    {"label": "Depth", "mode": "UNIPOLAR"},
+    {"label": "Trim", "mode": "BIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Wide Notch", "values": [74, 11, 0, 127, 64]},
+    {"index": 1, "name": "Hum 50", "values": [17, 97, 127, 127, 64]},
+    {"index": 2, "name": "Hum 60", "values": [21, 97, 127, 127, 64]},
+    {"index": 3, "name": "Feedback Tamer", "values": [92, 118, 0, 127, 64]},
+    {"index": 4, "name": "Mud Scoop", "values": [51, 27, 0, 76, 64]},
+    {"index": 5, "name": "Whistle Kill", "values": [114, 125, 0, 127, 64]}
+   ]
+  },
+  {
+   "name": "Octaver",
+   "display_name": "Octaver",
+   "categories": ["Pitch Shift"],
+   "macros": [
+    {"label": "Direct", "mode": "UNIPOLAR"},
+    {"label": "Octave 1", "mode": "UNIPOLAR"},
+    {"label": "Octave 2", "mode": "UNIPOLAR"},
+    {"label": "Tracking", "mode": "UNIPOLAR"},
+    {"label": "Tone 1", "mode": "UNIPOLAR"},
+    {"label": "Tone 2", "mode": "UNIPOLAR"},
+    {"label": "Sensitivity", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Octave down under the dry", "values": [127, 89, 0, 45, 50, 24, 25]},
+    {"index": 1, "name": "Both octaves", "values": [102, 89, 89, 45, 50, 24, 25]},
+    {"index": 2, "name": "Octaves alone, no dry", "values": [0, 127, 76, 45, 50, 24, 25]},
+    {"index": 3, "name": "Bass guitar", "values": [127, 102, 0, 12, 39, 24, 25]},
+    {"index": 4, "name": "High on the neck", "values": [127, 89, 0, 89, 82, 24, 25]},
+    {"index": 5, "name": "Two octaves down alone", "values": [0, 0, 127, 45, 50, 24, 25]},
+    {"index": 6, "name": "Both octaves - lean", "values": [127, 111, 111, 45, 50, 24, 25]}
+   ]
+  },
+  {
+   "name": "Overdrive",
+   "display_name": "Overdrive",
+   "categories": ["Distortion"],
+   "macros": [
+    {"label": "Drive", "mode": "UNIPOLAR"},
+    {"label": "Tone", "mode": "UNIPOLAR"},
+    {"label": "Level", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Body", "mode": "UNIPOLAR"},
+    {"label": "Ceiling", "mode": "UNIPOLAR"},
+    {"label": "Symmetry", "mode": "BIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Mid Drive Flat", "values": [64, 64, 100, 127, 64, 127, 64]},
+    {"index": 1, "name": "Low Drive Bright", "values": [16, 110, 100, 127, 64, 127, 64]},
+    {"index": 2, "name": "Full Drive Dark", "values": [127, 20, 90, 127, 64, 127, 64]},
+    {"index": 3, "name": "Full Drive Bright", "values": [127, 118, 84, 127, 64, 127, 64]},
+    {"index": 4, "name": "Thick Body Mid Drive", "values": [72, 60, 100, 127, 12, 127, 64]},
+    {"index": 5, "name": "Tight Body High Drive", "values": [100, 80, 96, 127, 118, 127, 64]},
+    {"index": 6, "name": "Asymmetric Mid Drive", "values": [64, 64, 100, 127, 64, 127, 108]},
+    {"index": 7, "name": "Edge Boost", "values": [0, 96, 127, 127, 64, 127, 64]}
+   ]
+  },
+  {
+   "name": "ParametricEQ",
+   "display_name": "Parametric EQ",
+   "categories": ["EQ"],
+   "macros": [
+    {"label": "Low Freq", "mode": "UNIPOLAR"},
+    {"label": "Low Boost", "mode": "UNIPOLAR"},
+    {"label": "Low Atten", "mode": "UNIPOLAR"},
+    {"label": "Bell 1 Freq", "mode": "UNIPOLAR"},
+    {"label": "Bell 1 Gain", "mode": "BIPOLAR"},
+    {"label": "Bell 2 Freq", "mode": "UNIPOLAR"},
+    {"label": "Bell 2 Gain", "mode": "BIPOLAR"},
+    {"label": "Bell 3 Freq", "mode": "UNIPOLAR"},
+    {"label": "Bell 3 Gain", "mode": "BIPOLAR"},
+    {"label": "Bandwidth", "mode": "UNIPOLAR"},
+    {"label": "High Freq", "mode": "UNIPOLAR"},
+    {"label": "High Boost", "mode": "UNIPOLAR"},
+    {"label": "Atten Freq", "mode": "UNIPOLAR"},
+    {"label": "High Atten", "mode": "UNIPOLAR"},
+    {"label": "Q Law", "mode": "TOGGLE"},
+    {"label": "Output", "mode": "BIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Flat", "values": [61, 0, 0, 46, 64, 72, 64, 97, 64, 64, 91, 0, 64, 0, 0, 64]},
+    {"index": 1, "name": "Low Lift And Clear", "values": [61, 32, 32, 46, 64, 72, 64, 97, 64, 64, 91, 0, 64, 0, 0, 64]},
+    {"index": 2, "name": "Air Above Ten", "values": [61, 0, 0, 46, 64, 72, 64, 97, 64, 64, 91, 76, 64, 0, 0, 64]},
+    {"index": 3, "name": "Broad Warm Tilt", "values": [61, 51, 0, 46, 64, 72, 64, 97, 64, 0, 91, 38, 64, 38, 0, 64]},
+    {"index": 4, "name": "Sharp Presence Bell", "values": [61, 0, 0, 46, 64, 92, 95, 97, 64, 127, 91, 0, 64, 0, 0, 64]},
+    {"index": 5, "name": "Rumble Trim And Top Trim", "values": [38, 0, 64, 46, 64, 72, 64, 97, 64, 64, 91, 0, 64, 64, 0, 64]},
+    {"index": 6, "name": "Wide Gentle Smile", "values": [61, 38, 0, 46, 64, 68, 48, 97, 64, 25, 91, 51, 64, 0, 0, 64]}
+   ]
+  },
+  {
+   "name": "Phaser",
+   "display_name": "Phaser",
+   "categories": ["Modulation"],
+   "macros": [
+    {"label": "Rate", "mode": "UNIPOLAR"},
+    {"label": "Depth", "mode": "UNIPOLAR"},
+    {"label": "Centre", "mode": "UNIPOLAR"},
+    {"label": "Feedback", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Stages", "mode": "UNIPOLAR"},
+    {"label": "Shape", "mode": "UNIPOLAR"},
+    {"label": "Drive", "mode": "UNIPOLAR"},
+    {"label": "Sync", "mode": "TOGGLE"},
+    {"label": "Division", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Four stage, no feedback", "values": [5, 89, 69, 0, 64, 0, 64, 38, 0, 42]},
+    {"index": 1, "name": "Four stage with resonance", "values": [5, 89, 69, 71, 64, 0, 64, 38, 0, 42]},
+    {"index": 2, "name": "Slow wide sweep", "values": [1, 127, 69, 0, 64, 0, 64, 25, 0, 42]},
+    {"index": 3, "name": "Fast tight sweep", "values": [51, 44, 77, 28, 64, 0, 64, 25, 0, 42]},
+    {"index": 4, "name": "Six stage deep", "values": [4, 102, 64, 49, 64, 32, 64, 38, 0, 42]},
+    {"index": 5, "name": "Held notch pair", "values": [0, 0, 69, 0, 64, 0, 64, 0, 0, 42]},
+    {"index": 6, "name": "Bass-safe shallow", "values": [4, 51, 15, 0, 64, 0, 64, 19, 0, 42]},
+    {"index": 7, "name": "Synced half bar", "values": [5, 89, 69, 0, 64, 0, 64, 38, 127, 64]},
+    {"index": 8, "name": "Phaser - lean", "values": [5, 89, 69, 0, 64, 0, 64, 0, 0, 42]}
+   ]
+  },
+  {
+   "name": "PingPongDelay",
+   "display_name": "Ping-Pong Delay",
+   "categories": ["Delay"],
+   "macros": [
+    {"label": "Time", "mode": "UNIPOLAR"},
+    {"label": "Feedback", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Spread", "mode": "UNIPOLAR"},
+    {"label": "First Side", "mode": "TOGGLE"},
+    {"label": "Sync", "mode": "TOGGLE"},
+    {"label": "Division", "mode": "UNIPOLAR"},
+    {"label": "Repeat Tone", "mode": "UNIPOLAR"},
+    {"label": "Repeat Cut", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Wide Bounce", "values": [86, 58, 19, 127, 0, 0, 51, 127, 0]},
+    {"index": 1, "name": "Eighth Note Bounce", "values": [86, 64, 19, 127, 0, 127, 51, 127, 0]},
+    {"index": 2, "name": "Quarter Note Bounce", "values": [86, 51, 19, 127, 0, 127, 76, 127, 0]},
+    {"index": 3, "name": "Narrow Bounce", "values": [86, 58, 19, 64, 0, 0, 51, 127, 0]},
+    {"index": 4, "name": "Two Delays", "values": [86, 58, 19, 0, 0, 0, 51, 127, 0]},
+    {"index": 5, "name": "Dark Bounce", "values": [99, 83, 19, 127, 0, 0, 51, 48, 0]},
+    {"index": 6, "name": "Right First", "values": [86, 58, 19, 127, 127, 0, 51, 127, 0]}
+   ]
+  },
+  {
+   "name": "PitchShifter",
+   "display_name": "Pitch Shifter",
+   "categories": ["Pitch Shift"],
+   "macros": [
+    {"label": "Pitch", "mode": "BIPOLAR"},
+    {"label": "Fine", "mode": "BIPOLAR"},
+    {"label": "Mix", "mode": "BIPOLAR"},
+    {"label": "Delay", "mode": "UNIPOLAR"},
+    {"label": "Feedback", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Fifth Above", "values": [101, 64, 64, 0, 0]},
+    {"index": 1, "name": "Octave Up", "values": [127, 64, 64, 0, 0]},
+    {"index": 2, "name": "Octave Down", "values": [0, 64, 64, 0, 0]},
+    {"index": 3, "name": "Doubler", "values": [64, 75, 64, 17, 0]},
+    {"index": 4, "name": "Rising Fifths", "values": [101, 64, 64, 102, 74]},
+    {"index": 5, "name": "Falling Fourths", "values": [37, 64, 64, 113, 74]},
+    {"index": 6, "name": "Shifted Only", "values": [101, 64, 127, 0, 0]}
+   ]
+  },
+  {
+   "name": "Rack",
+   "display_name": "Effect Rack",
+   "categories": ["Effect Rack"],
+   "macros": [],
+   "patches": [
+    {"index": 0, "name": "Default", "values": []}
+   ]
+  },
+  {
+   "name": "Reverb",
+   "display_name": "Reverb",
+   "categories": ["Reverb"],
+   "macros": [
+    {"label": "Character", "mode": "UNIPOLAR"},
+    {"label": "Decay", "mode": "UNIPOLAR"},
+    {"label": "Size", "mode": "UNIPOLAR"},
+    {"label": "Predelay", "mode": "UNIPOLAR"},
+    {"label": "Diffusion", "mode": "UNIPOLAR"},
+    {"label": "Damping", "mode": "UNIPOLAR"},
+    {"label": "Bandwidth", "mode": "UNIPOLAR"},
+    {"label": "Low Cut", "mode": "UNIPOLAR"},
+    {"label": "Mod Depth", "mode": "UNIPOLAR"},
+    {"label": "Mod Rate", "mode": "UNIPOLAR"},
+    {"label": "Width", "mode": "UNIPOLAR"},
+    {"label": "Tone", "mode": "BIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Steel Plate", "values": [0, 75, 64, 0, 106, 25, 109, 27, 17, 75, 127, 64, 22]},
+    {"index": 1, "name": "Short Plate", "values": [0, 50, 64, 0, 106, 40, 115, 43, 13, 81, 114, 74, 19]},
+    {"index": 2, "name": "Damped Plate", "values": [0, 44, 95, 0, 106, 12, 95, 55, 13, 75, 102, 48, 19]},
+    {"index": 3, "name": "Bass-Free Plate", "values": [0, 65, 64, 0, 106, 25, 103, 114, 17, 75, 102, 74, 25]},
+    {"index": 4, "name": "Small Room", "values": [42, 15, 25, 1, 85, 91, 103, 43, 13, 68, 102, 64, 16]},
+    {"index": 5, "name": "Live Room", "values": [42, 44, 95, 3, 85, 102, 109, 36, 19, 63, 114, 74, 19]},
+    {"index": 6, "name": "Concert Hall", "values": [127, 86, 95, 16, 99, 84, 100, 32, 32, 58, 127, 64, 22]},
+    {"index": 7, "name": "Dark Chamber", "values": [85, 65, 64, 5, 99, 59, 86, 49, 19, 71, 102, 43, 20]},
+    {"index": 8, "name": "Bright Chamber", "values": [85, 61, 64, 5, 99, 116, 119, 59, 19, 71, 102, 85, 20]},
+    {"index": 9, "name": "Slow Bloom", "values": [127, 98, 127, 25, 113, 76, 95, 32, 64, 45, 127, 64, 29]}
+   ]
+  },
+  {
+   "name": "RingMod",
+   "display_name": "Ring Modulator",
+   "categories": ["Modulation"],
+   "macros": [
+    {"label": "Frequency", "mode": "UNIPOLAR"},
+    {"label": "Depth", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Shape", "mode": "UNIPOLAR"},
+    {"label": "Balance", "mode": "BIPOLAR"},
+    {"label": "Program Bal", "mode": "BIPOLAR"},
+    {"label": "Squelch", "mode": "TOGGLE"},
+    {"label": "Threshold", "mode": "UNIPOLAR"},
+    {"label": "Release", "mode": "UNIPOLAR"},
+    {"label": "Carrier Low", "mode": "UNIPOLAR"},
+    {"label": "Stereo Phase", "mode": "BIPOLAR"},
+    {"label": "Character", "mode": "TOGGLE"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Clean Ring", "values": [87, 127, 127, 0, 64, 64, 127, 21, 64, 25, 64, 0]},
+    {"index": 1, "name": "Textbook AM", "values": [46, 64, 127, 0, 64, 64, 127, 21, 64, 25, 64, 0]},
+    {"index": 2, "name": "Clangour", "values": [108, 127, 127, 0, 64, 64, 127, 21, 64, 25, 64, 0]},
+    {"index": 3, "name": "Bell Strike", "values": [117, 127, 89, 0, 64, 64, 127, 21, 64, 25, 64, 0]},
+    {"index": 4, "name": "Chopper", "values": [108, 127, 127, 114, 64, 64, 127, 21, 64, 25, 64, 127]},
+    {"index": 5, "name": "Soft Chopper", "values": [93, 127, 102, 44, 64, 64, 127, 21, 64, 25, 64, 127]},
+    {"index": 6, "name": "Detuned Ring", "values": [87, 127, 127, 0, 73, 64, 0, 21, 64, 25, 64, 0]},
+    {"index": 7, "name": "Wide Ring", "values": [77, 127, 127, 0, 64, 64, 127, 21, 64, 25, 95, 0]},
+    {"index": 8, "name": "Growl", "values": [58, 76, 127, 0, 64, 64, 127, 21, 64, 25, 64, 0]}
+   ]
+  },
+  {
+   "name": "Saturation",
+   "display_name": "Saturation",
+   "categories": ["Distortion"],
+   "macros": [
+    {"label": "Drive", "mode": "UNIPOLAR"},
+    {"label": "Output", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Headroom", "mode": "UNIPOLAR"},
+    {"label": "Bias", "mode": "BIPOLAR"},
+    {"label": "Speed", "mode": "UNIPOLAR"},
+    {"label": "Tilt", "mode": "BIPOLAR"},
+    {"label": "Hysteresis", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Gentle thickening", "values": [56, 85, 127, 64, 64, 85, 64, 0]},
+    {"index": 1, "name": "Hot into the curve", "values": [127, 64, 127, 64, 64, 85, 64, 0]},
+    {"index": 2, "name": "Tape at fifteen", "values": [85, 85, 127, 64, 64, 85, 64, 0]},
+    {"index": 3, "name": "Tape at seven and a half", "values": [85, 85, 127, 64, 64, 42, 64, 0]},
+    {"index": 4, "name": "Under-biased and bright", "values": [85, 85, 127, 64, 16, 85, 96, 0]},
+    {"index": 5, "name": "Iron, low end working", "values": [56, 85, 127, 32, 64, 85, 64, 0]},
+    {"index": 6, "name": "Offset, even harmonics", "values": [85, 85, 127, 64, 112, 85, 64, 0]},
+    {"index": 7, "name": "Mix back", "values": [85, 85, 44, 64, 64, 85, 64, 0]},
+    {"index": 8, "name": "Saturation - lean", "values": [56, 85, 127, 64, 64, 85, 64, 0]}
+   ]
+  },
+  {
+   "name": "ShimmerHall",
+   "display_name": "Shimmer Hall",
+   "categories": ["Effect Rack", "Reverb"],
+   "macros": [
+    {"label": "Character", "mode": "TOGGLE"},
+    {"label": "Shimmer", "mode": "UNIPOLAR"},
+    {"label": "Rise", "mode": "UNIPOLAR"},
+    {"label": "Bloom", "mode": "UNIPOLAR"},
+    {"label": "Interval", "mode": "UNIPOLAR"},
+    {"label": "Decay", "mode": "UNIPOLAR"},
+    {"label": "Size", "mode": "UNIPOLAR"},
+    {"label": "Damping", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Octave Rise", "values": [127, 89, 0, 90, 96, 94, 64, 91, 32]},
+    {"index": 1, "name": "Short Stagger", "values": [0, 76, 85, 38, 96, 77, 38, 102, 25]},
+    {"index": 2, "name": "Fifth Halo", "values": [0, 102, 85, 103, 64, 108, 89, 84, 38]},
+    {"index": 3, "name": "Slow Rise", "values": [127, 89, 85, 103, 96, 108, 89, 86, 38]},
+    {"index": 4, "name": "Rise Damped", "values": [127, 102, 113, 87, 96, 94, 64, 51, 32]},
+    {"index": 5, "name": "Falling Octaves", "values": [127, 89, 85, 93, 0, 102, 64, 76, 32]},
+    {"index": 6, "name": "Octave Bloom", "values": [0, 89, 85, 90, 96, 94, 64, 91, 32]}
+   ]
+  },
+  {
+   "name": "SlapbackDelay",
+   "display_name": "Slapback Delay",
+   "categories": ["Delay"],
+   "macros": [
+    {"label": "Time", "mode": "UNIPOLAR"},
+    {"label": "Level", "mode": "UNIPOLAR"},
+    {"label": "Saturation", "mode": "UNIPOLAR"},
+    {"label": "Tone", "mode": "UNIPOLAR"},
+    {"label": "Wow", "mode": "UNIPOLAR"},
+    {"label": "Repeats", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Single Slap", "values": [84, 22, 19, 127, 36, 0]},
+    {"index": 1, "name": "Short Slap", "values": [52, 22, 19, 127, 36, 0]},
+    {"index": 2, "name": "Doubling", "values": [0, 32, 19, 127, 73, 0]},
+    {"index": 3, "name": "Hot Return", "values": [84, 22, 89, 127, 36, 0]},
+    {"index": 4, "name": "Two Repeats", "values": [84, 22, 19, 127, 36, 74]},
+    {"index": 5, "name": "Dark Slap", "values": [84, 22, 19, 51, 36, 0]}
+   ]
+  },
+  {
+   "name": "StereoWidener",
+   "display_name": "Stereo Widener",
+   "categories": ["Spatial"],
+   "macros": [
+    {"label": "Width", "mode": "BIPOLAR"},
+    {"label": "Delay", "mode": "UNIPOLAR"},
+    {"label": "Character", "mode": "TOGGLE"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Haas 14 ms", "values": [64, 91, 0]},
+    {"index": 1, "name": "Haas Tight", "values": [64, 62, 0]},
+    {"index": 2, "name": "Haas Wide", "values": [64, 111, 0]},
+    {"index": 3, "name": "Haas Recentred", "values": [96, 91, 0]},
+    {"index": 4, "name": "Mid/Side Wide", "values": [96, 91, 127]},
+    {"index": 5, "name": "Mid/Side Narrow", "values": [32, 91, 127]},
+    {"index": 6, "name": "Mono", "values": [0, 91, 127]}
+   ]
+  },
+  {
+   "name": "TapeDelay",
+   "display_name": "Tape Delay",
+   "categories": ["Delay"],
+   "macros": [
+    {"label": "Time", "mode": "UNIPOLAR"},
+    {"label": "Feedback", "mode": "UNIPOLAR"},
+    {"label": "Mix", "mode": "UNIPOLAR"},
+    {"label": "Glide", "mode": "UNIPOLAR"},
+    {"label": "Wow", "mode": "UNIPOLAR"},
+    {"label": "Flutter", "mode": "UNIPOLAR"},
+    {"label": "Record Level", "mode": "UNIPOLAR"},
+    {"label": "Spacing", "mode": "UNIPOLAR"},
+    {"label": "Spread", "mode": "UNIPOLAR"},
+    {"label": "Sync", "mode": "TOGGLE"},
+    {"label": "Division", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Warm Repeats", "values": [89, 58, 22, 89, 32, 32, 25, 51, 0, 0, 51]},
+    {"index": 1, "name": "Long Repeats, Slow Glide", "values": [114, 71, 22, 127, 32, 32, 25, 51, 0, 0, 51]},
+    {"index": 2, "name": "Short Slap", "values": [47, 19, 32, 89, 16, 16, 25, 51, 0, 0, 51]},
+    {"index": 3, "name": "Dark Repeats, Heavy Wow", "values": [97, 71, 22, 89, 95, 64, 25, 111, 0, 0, 51]},
+    {"index": 4, "name": "High Intensity", "values": [93, 115, 25, 89, 32, 32, 76, 51, 0, 0, 51]},
+    {"index": 5, "name": "Worn Heads", "values": [89, 58, 22, 89, 64, 95, 64, 127, 0, 0, 51]},
+    {"index": 6, "name": "Clean Transport", "values": [89, 58, 22, 89, 0, 0, 0, 0, 0, 0, 51]},
+    {"index": 7, "name": "Dotted Eighth, Synced", "values": [89, 58, 22, 89, 32, 32, 25, 51, 0, 127, 68]},
+    {"index": 8, "name": "Tape Delay - lean", "values": [89, 58, 22, 89, 32, 32, 0, 51, 0, 0, 51]}
+   ]
+  },
+  {
+   "name": "TransientShaper",
+   "display_name": "Transient Shaper",
+   "categories": ["Dynamics"],
+   "macros": [
+    {"label": "Attack", "mode": "BIPOLAR"},
+    {"label": "Sustain", "mode": "BIPOLAR"},
+    {"label": "Output", "mode": "BIPOLAR"},
+    {"label": "Attack Speed", "mode": "UNIPOLAR"},
+    {"label": "Sustain Hold", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Flat", "values": [64, 64, 100, 64, 38]},
+    {"index": 1, "name": "Snap", "values": [102, 64, 100, 64, 38]},
+    {"index": 2, "name": "Room Off", "values": [64, 32, 109, 64, 64]},
+    {"index": 3, "name": "Room On", "values": [64, 87, 91, 64, 76]},
+    {"index": 4, "name": "Soften Pick", "values": [30, 64, 109, 36, 38]},
+    {"index": 5, "name": "Kick Punch", "values": [114, 53, 100, 91, 30]},
+    {"index": 6, "name": "Ambient Swell", "values": [13, 95, 82, 27, 102]}
+   ]
+  },
+  {
+   "name": "Tremolo",
+   "display_name": "Tremolo",
+   "categories": ["Modulation"],
+   "macros": [
+    {"label": "Character", "mode": "UNIPOLAR"},
+    {"label": "Rate", "mode": "UNIPOLAR"},
+    {"label": "Depth", "mode": "UNIPOLAR"},
+    {"label": "Shape", "mode": "UNIPOLAR"},
+    {"label": "Lag", "mode": "UNIPOLAR"},
+    {"label": "Bias", "mode": "UNIPOLAR"},
+    {"label": "Speed Link", "mode": "TOGGLE"},
+    {"label": "Stereo Phase", "mode": "BIPOLAR"},
+    {"label": "Sync", "mode": "TOGGLE"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Bias Wobble", "values": [0, 86, 64, 64, 40, 64, 127, 64, 0]},
+    {"index": 1, "name": "Bias Deep Slow", "values": [0, 73, 114, 64, 40, 0, 127, 64, 0]},
+    {"index": 2, "name": "Bias Warm Fast", "values": [0, 104, 51, 64, 40, 127, 127, 64, 0]},
+    {"index": 3, "name": "Opto Chop", "values": [127, 93, 114, 89, 20, 64, 127, 64, 0]},
+    {"index": 4, "name": "Opto Soft", "values": [127, 78, 64, 25, 114, 64, 127, 64, 0]},
+    {"index": 5, "name": "Opposed Pair", "values": [127, 86, 102, 64, 40, 64, 127, 127, 0]},
+    {"index": 6, "name": "Helicopter", "values": [127, 119, 127, 76, 0, 64, 0, 64, 0]},
+    {"index": 7, "name": "Slow Swell", "values": [0, 40, 89, 64, 40, 64, 0, 64, 0]},
+    {"index": 8, "name": "Eighth Note Chop", "values": [127, 78, 114, 89, 40, 64, 127, 64, 127]}
+   ]
+  },
+  {
+   "name": "Vibrato",
+   "display_name": "Vibrato",
+   "categories": ["Modulation"],
+   "macros": [
+    {"label": "Rate", "mode": "UNIPOLAR"},
+    {"label": "Depth", "mode": "UNIPOLAR"},
+    {"label": "Rise", "mode": "UNIPOLAR"},
+    {"label": "Engage", "mode": "TOGGLE"},
+    {"label": "Delay", "mode": "UNIPOLAR"},
+    {"label": "Tone", "mode": "UNIPOLAR"},
+    {"label": "Body", "mode": "UNIPOLAR"},
+    {"label": "Level", "mode": "UNIPOLAR"}
+   ],
+   "patches": [
+    {"index": 0, "name": "Published defaults", "values": [58, 64, 69, 127, 35, 124, 38, 127]},
+    {"index": 1, "name": "Ramp in slow", "values": [58, 64, 108, 127, 35, 124, 38, 127]},
+    {"index": 2, "name": "Instant on", "values": [69, 76, 0, 127, 35, 124, 38, 127]},
+    {"index": 3, "name": "Shallow fast", "values": [113, 32, 69, 127, 35, 124, 38, 127]},
+    {"index": 4, "name": "Deep slow", "values": [14, 127, 69, 127, 35, 124, 38, 127]},
+    {"index": 5, "name": "Short line bright", "values": [58, 64, 69, 127, 12, 127, 38, 127]},
+    {"index": 6, "name": "Long line", "values": [58, 64, 69, 127, 104, 80, 38, 127]}
+   ]
+  }
+ ]
+}

@@ -41,5 +41,10 @@ packages = ["audioeffects"]
 [tool.setuptools.package-dir]
 audioeffects = "."
 
+# catalog.json names every effect's patches and macros for a DAW or MIDI host;
+# tools/make_catalog.py writes it from the classes.
+[tool.setuptools.package-data]
+audioeffects = ["catalog.json"]
+
 [tool.setuptools.dynamic]
 version = {file = "VERSION"}

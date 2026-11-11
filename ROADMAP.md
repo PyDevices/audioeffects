@@ -26,9 +26,6 @@ way on every interpreter and board.
   instead of keeping their ratios (RingMod multiplies; this shifts).
 - AmpSim, an amp and DI model after the Tech 21 SansAmp GT2, built from
   measurements of a hardware unit rather than a component trace alone.
-- A catalog shipped with each release: every effect's patches and macro names
-  as JSON, MIDNAM and Cakewalk `.ins` files, so a DAW or MIDI host can show
-  the names without loading the audio stack.
 
 Bugs, and things you need that don't work yet, go to
 [issues](https://github.com/PyDevices/audioeffects/issues).
