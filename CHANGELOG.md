@@ -8,6 +8,12 @@ together from PyDevices/audiocomponents, and the history from v0.4.2rc1 back
 covers both packages. Releases up to and including audiodsp's v0.1.1 shipped
 both packages from audiodsp, and are recorded in its changelog.
 
+## v0.5.2.dev2 (2026-11-11)
+
+- audioeffects: catalog.json names every effect's patches and macros (#19)
+- Fuzz, DeEsser and Tremolo: Mix 0, Range 0 and Depth 0 walk there and back (#18)
+- Roadmap: DeEsser's Range joins the controls still to ramp (#17)
+
 ## v0.5.2.dev1 (2026-11-10)
 
 - Effects: a jump of Mix or a level walks over 20 ms in the older classes (#15)
