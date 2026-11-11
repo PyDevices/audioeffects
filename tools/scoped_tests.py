@@ -246,6 +246,9 @@ CI_SHARED = (
 #: The roster tests that name every effect class, run when one class moves.
 _ROSTERS = ("test_metadata_contract", "test_cpython_effects_library")
 
+#: catalog.json and the tool that writes it, which test_catalogue checks.
+_CATALOG = ("lib/audioeffects/catalog.json", "tools/make_catalog.py")
+
 #: Paths no test reads, besides the ones the workflow already ignores.
 _CI_SILENT = ("docs/", "LICENSE", "VERSION")
 
@@ -272,6 +275,9 @@ def choose_ci(changed, modules):
             return None, ["%s is shared, so the whole suite runs" % path]
         if path.startswith(_CI_SILENT) or (
                 path.endswith(".md") and not path.startswith("lib/")):
+            continue
+        if path in _CATALOG:
+            # Only the catalogue tests read these, and every change runs them.
             continue
         name = os.path.basename(path)
         if path.startswith("tests/") and "/" not in path[6:] and \
