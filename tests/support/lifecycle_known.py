@@ -38,6 +38,10 @@ R_STATE = (
     "state that outlives tail_samples: a detector re-attacking after a"
     " reset or a rejoin, or a filter's or coupling pole's residue a few"
     " LSB past the declared tail (audiocomponents#155)")
+R_FUZZ_WALK_IN = (
+    "Fuzz walks back from Mix 0 on its nodes' own mix, so its output pole"
+    " hears the walk: it meets a fresh instance as that pole settles, from"
+    " a few hundred LSB just after the walk to under 20 within 100 ms")
 R_FUZZ_LEAN = (
     "the lean shaper follows the patch, so macros moved back after a move"
     " to or from Fuzz - lean stay at that patch's oversampling; with the"
@@ -112,7 +116,8 @@ KNOWN_RED = {
     ('Compressor', 'E6-', 'P4'): (150, 'fa3d35a7', None, None, R_STATE),
     ('Compressor', 'E6-', 'P5'): (162, '8c2759f9', None, None, R_JUMP),
     ('Compressor', 'E9-', 'P4'): (156, '02b3f3c5', None, None, R_STATE),
-    ('DeEsser', 'E4-', 'P5'): (10, 'c323d9b3', None, None, R_JUMP),
+    ('DeEsser', 'E4-', 'P5'): (8, '7cf53fdf', None, None, R_JUMP),
+    ('DeEsser', 'E5-mix0', 'PR'): (6, 'a56b79fd', None, None, R_STATE),
     ('DeEsser', 'E5-mix0', 'P4'): (2, '8051e9a5', None, None, R_STATE),
     ('DeEsser', 'E9-', 'P4'): (8, '2156c340', None, None, R_STATE),
     ('DeEsser', 'E9-src256', 'P4'): (2, 'a589814f', None, None, R_STATE),
@@ -163,13 +168,12 @@ KNOWN_RED = {
     ('Fuzz', 'E4-', 'P5'): (4, 'eb979d08', None, None, R_JUMP),
     ('Fuzz', 'E5-mix0', 'P3'): (4, '785ac763', None, None, R_FUZZ_WANDER),
     ('Fuzz', 'E5-mix0', 'P4'): (36, '70f1f6b6', None, None, R_STATE),
-    ('Fuzz', 'E5-mix0', 'P5'): (10, '0df66d65', None, None, R_JUMP),
+    ('Fuzz', 'E5-mix0', 'PR'): (36, '70ed1de8', None, None, R_FUZZ_WALK_IN),
     ('Fuzz', 'E6-', 'P3'): (8, 'f027b35d', None, None, R_FUZZ_WANDER),
     ('Fuzz', 'E6-', 'P4'): (89, '6d78d82a', None, None, R_FUZZ_LEAN),
     ('Fuzz', 'E6-', 'P5'): (24, 'abac2451', None, None, R_JUMP),
     ('Fuzz', 'E9-', 'P3'): (16, 'a4652cfe', None, None, R_FUZZ_WANDER),
     ('Fuzz', 'E9-', 'P4'): (192, '1cf6be45', None, None, R_STATE),
-    ('Fuzz', 'E9-', 'P5'): (26, '95969050', None, None, R_JUMP),
     ('GraphicEQ', 'E11-', 'P5'): (4, '1805e152', None, None, R_JUMP),
     ('GraphicEQ', 'E2-reset_buffer', 'P4'): (12, '17431038', None, None, R_STATE),
     ('GraphicEQ', 'E4-', 'P5'): (54, 'f206751b', None, None, R_JUMP),
@@ -255,11 +259,9 @@ KNOWN_RED = {
     ('RingMod', 'E11-', 'P4'): (16, 'fb67e9fc', None, None, R_PHASE),
     ('RingMod', 'E11-', 'P5'): (8, '739846f9', None, None, R_JUMP),
     ('RingMod', 'E4-', 'P4'): (8, '97e3e000', None, None, R_PHASE),
-    ('RingMod', 'E4-', 'P5'): (30, '289d459f', None, None, R_JUMP),
-    ('RingMod', 'E5-mix0', 'P5'): (28, 'c504653d', None, None, R_JUMP),
+    ('RingMod', 'E4-', 'P5'): (22, '60c2ddf8', None, None, R_JUMP),
     ('RingMod', 'E6-', 'P4'): (96, '862d0a32', None, None, R_PHASE),
     ('RingMod', 'E6-', 'P5'): (44, 'aefba1ae', None, None, R_JUMP),
-    ('RingMod', 'E9-', 'P5'): (140, 'f09d9cee', None, None, R_JUMP),
     ('Saturation', 'E11-', 'P5'): (8, 'd037b49c', None, None, R_JUMP),
     ('Saturation', 'E4-', 'P5'): (28, 'b87df81b', None, None, R_JUMP),
     ('Saturation', 'E6-', 'P5'): (94, 'c9c25f1c', None, None, R_JUMP),

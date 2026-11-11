@@ -5,9 +5,9 @@ way on every interpreter and board.
 
 ## Next
 
-- Control moves that ramp where they still step: Fuzz back from Mix 0,
-  Tremolo's Depth, DeEsser's Range at 22.05 kHz, then filter corners, then
-  crossfaded patch changes. [The policy](docs/how-it-works/control-smoothing.md).
+- Control moves that ramp where they still step: filter corners, an effect
+  built at Mix 0 coming in the first time, then crossfaded patch changes.
+  [The policy](docs/how-it-works/control-smoothing.md).
 
 ## Later
 

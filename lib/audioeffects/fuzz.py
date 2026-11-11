@@ -604,6 +604,38 @@ def _group_delay_samples(oversample):
     return int(round(delay))
 
 
+class _MixAsLevel:
+    """A node's `mix` under the name a mixer voice gives its level, so the
+    walk to the dry and back can hold it the way it holds a voice. A Biquad
+    and a Waveshaper walk a `mix` move over 20 ms. The Waveshaper takes its
+    `mix` through `set()` and doesn't hand it back, so the last value set is
+    kept here. Which one a node is gets asked once: a plain attribute
+    assignment would land on a Python-level node without reaching it."""
+
+    def __init__(self, node, level=1.0):
+        self._node = node
+        self._level = level
+        try:
+            node.mix
+            self._by_set = False
+        except AttributeError:
+            self._by_set = True
+
+    @property
+    def level(self):
+        if self._by_set:
+            return self._level
+        return self._node.mix
+
+    @level.setter
+    def level(self, value):
+        self._level = value
+        if self._by_set:
+            self._node.set(mix=value)
+        else:
+            self._node.mix = value
+
+
 class Fuzz(_component.Component):
     """Fuzz Face germanium, or a Ram's Head 1973 Big Muff as `cascade`.
 
@@ -738,6 +770,7 @@ class Fuzz(_component.Component):
         self._wet_delay = _group_delay_samples(oversample)
         self._latency = self._wet_delay if mix > 0.0 else 0
         self._routed_lean = False
+        self._wet_mix = 1.0
         self._ready = False
 
         # The class keeps a reference to the table it loaded. `Waveshaper`
@@ -1040,6 +1073,7 @@ class Fuzz(_component.Component):
             for shaper in self._shapers:
                 shaper.set(pre_gain=fuzz_gain, bias=bias, mix=wet_mix,
                            post_gain=post)
+            self._wet_mix = wet_mix
             if self._ready and bias != self._charged_bias:
                 self._charge_output(rewire=True)
         else:
@@ -1062,10 +1096,18 @@ class Fuzz(_component.Component):
         construction rather than by luck - which is what the `MidSide` tail
         stopped being when the pin moved to audiodsp `3388df4` (seven samples
         of 16384 off by one LSB).
+
+        The way there and back walks. At Mix 0 the graph walks to the
+        source over 20 ms (`_at_dry`), and the port switches to the source
+        itself once the walk has landed; back off Mix 0 the graph comes back
+        as it was built and walks in from the source.
         """
         if not self._ready:
             return
         if self._value(5) <= 0.0:
+            if not self._constructing:
+                for stage, at in self._at_dry():
+                    stage.level = at
             self._route_around(self._source)
             self._latency = 0
         else:
@@ -1075,9 +1117,109 @@ class Fuzz(_component.Component):
                 # the host has since read past.
                 self._let_go_of_source(self._head, self._source,
                                        self._head_consumers)
-                self._rearm()
+                self._walk_back_in()
+            else:
+                self._wet_again()
             self._output = self._tilt
             self._latency = self._wet_delay
+
+    WALKS_TO_BYPASS = True
+
+    def _at_dry(self):
+        """What makes the graph the source itself, as (stage, level) pairs.
+
+        On `germanium` the chain is in series, so every node in it passes
+        its input on: both coupling sections, the shapers and the tilt shelf
+        at `mix` 0. On `cascade` the dry voice alone, at unity, and the tilt
+        shelf at `mix` 0."""
+        if self._tone_mix is None:
+            stages = [_MixAsLevel(self._hps[0])]
+            stages += [_MixAsLevel(shaper, self._wet_mix)
+                       for shaper in self._shapers]
+            stages += [_MixAsLevel(self._hps[1]), _MixAsLevel(self._tilt)]
+            return [(stage, 0.0) for stage in stages]
+        voices = self._tone_mix.voice
+        return [(voices[0], 0.0), (voices[1], 0.0), (voices[2], 1.0),
+                (_MixAsLevel(self._tilt), 0.0)]
+
+    def _walks_levels(self):
+        # `germanium` walks on its nodes' own `mix`, which audiodsp's
+        # Biquad and Waveshaper walk on every interpreter.
+        if self._tone_mix is None:
+            return True
+        return _component.Component._walks_levels(self)
+
+    def _wet_again(self):
+        """Put back what `_at_dry` took away, where the graph played on: a
+        Mix 0 that comes back before its walk landed walks back from where
+        it stands. `_refresh` has set the shapers and the voices."""
+        self._tilt.mix = 1.0
+        if self._tone_mix is None:
+            self._hps[0].mix = 1.0
+            self._hps[1].mix = 1.0
+
+    def _walk_back_in(self):
+        """Arm the graph as `_build` does and walk it in from the source.
+
+        Off a bypass that walked out, every stage `_at_dry` names starts the
+        first block at its dry level and walks to where the controls stand,
+        so the output leaves the source without a step. A bypass reached
+        without a walk (a reset, or a Mix 0 the host never heard), and a
+        germanium graph at an off-centre Bias, come back as a fresh instance
+        does, at once."""
+        walked, self._walked_out = self._walked_out, False
+        # Off-centre Bias the shapers answer silence with a constant that
+        # only the charged output pole holds back. Walking the pole's mix
+        # in would let a quarter of it through on the way, 6847 LSB out of
+        # silence at patch 2, so there the graph comes back at once.
+        offset = self._tone_mix is None and self._value(3) != 0.0
+        if self._rearming_reset or not walked or offset:
+            self._wet_again()
+            self._rearm()
+            return
+        if self._tone_mix is not None:
+            self._wet_again()
+            held = self._at_dry()
+            wanted = [(stage, stage.level) for stage, _at in held]
+            for stage, at in held:
+                stage.level = at
+            self._prime_on_quiet(self._tilt, self._tone_mix)
+            _component.with_ramps(self._rearm)
+            for stage, level in wanted:
+                stage.level = level
+            return
+        # germanium. The output pole is charged on the offset the shapers
+        # give at the controls' own mix, with the pole itself held at the
+        # dry; then the shapers are cleared and primed at the dry, and the
+        # first coupling section and the tilt shelf, cleared since the
+        # bypass, prime at the dry on silence too.
+        hp_a, hp_b = self._hps
+        hp_b.mix = 0.0
+        self._charge_output()
+        for shaper in self._shapers:
+            audiocore.reset_buffer(shaper)
+            shaper.set(mix=0.0)
+            self._pull_node(shaper)
+        for node, source in self._charge_wiring:
+            node.play(source)
+        hp_a.mix = 0.0
+        self._prime_on_quiet(hp_a, self._source)
+        self._prime_on_quiet(self._tilt, hp_b)
+        hp_a.mix = 1.0
+        for shaper in self._shapers:
+            shaper.set(mix=self._wet_mix)
+        hp_b.mix = 1.0
+        self._tilt.mix = 1.0
+
+    def _prime_on_quiet(self, node, source):
+        """Pull one block of silence through `node` alone, so its `mix`
+        stands where it is set now, and point it back at `source`."""
+        held = node.mix
+        node.mix = 0.0
+        node.play(self._quiet)
+        self._pull_node(node)
+        node.play(source)
+        node.mix = held
 
     def _rearm(self):
         """Arm a graph Mix 0 left un-pulled, the way `_build` arms it.

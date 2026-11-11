@@ -482,5 +482,13 @@
 # CircuitPython main's widened synthio biquad, MP3 decoding on CPython, type
 # stubs for thirteen modules, and pump and build changes for boards.
 #
+# Moved to ec82463 on 2026-11-10, for audiomath.Multiply's 20 ms walk of a
+# `mix` move (audiodsp#411), which takes Tremolo's Depth to 0 and back
+# without a step. What else moved beneath the components, by
+# `git log 84b8b45..ec82463 -- src`: type stubs for the remaining modules,
+# CircuitPython's -Werror=float-equal on the level ramps, a pump that can
+# render from an interrupt, and `__version__`/`__revision__` on audiocore,
+# audiomp3, audiopump and synthio.
+#
 # <ref> <commit>   -- ref is what CI installs (git+https://...@<ref>)
-84b8b45f5b838afe3529f53e1468abe7711b6bcc 84b8b45f5b838afe3529f53e1468abe7711b6bcc
+ec824639bb6bec929740272e500e97c1f423a990 ec824639bb6bec929740272e500e97c1f423a990
