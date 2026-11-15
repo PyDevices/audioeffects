@@ -140,6 +140,14 @@ def burst(rate, channels, f0, offset, frames):
     return out
 
 
+def walk_in(rate):
+    """Frames, in whole blocks, until a 20 ms level walk has landed: a
+    patch's levels, or a return from Mix 0 coming in from the source's."""
+    frames = (_component.level_ramp_frames(rate)
+              + _component.BYPASS_MARGIN_FRAMES)
+    return -(-frames // BLOCK) * BLOCK
+
+
 def render(cls, values, rate, channels, frames, moves=None, **options):
     """`frames` frames of a fresh instance fed `values` in 256-frame blocks
     and then silence; `moves` maps a pull index to a callable."""
@@ -1098,7 +1106,8 @@ class TheSurface(TestCase):
 
     def test_a_character_move_recuts_the_wet_chain(self):
         # After a Character move, the wet path renders as a fresh
-        # instance's in that character, and the dry carries on.
+        # instance's in that character, and the dry carries on, once the
+        # patch's levels have walked there.
         values = t6_material(48000, 2, 2)
         for start, end in (("bloom", 3), ("rise", 6)):
             fresh_wet = render(ShimmerHall, values[2 * 9728:], 48000, 2,
@@ -1111,7 +1120,8 @@ class TheSurface(TestCase):
                 out = kc.samples(kc.render(e, 19200))
             finally:
                 e.deinit()
-            self.assertEqual(list(out), list(fresh_wet), start)
+            walk = 2 * walk_in(48000)
+            self.assertEqual(list(out[walk:]), list(fresh_wet[walk:]), start)
 
     def test_the_hall_follows_decay_size_and_damping(self):
         e = ShimmerHall(_port())
@@ -1143,17 +1153,18 @@ class TheSurface(TestCase):
             self.assertGreater(max(abs(x) for x in ringing), 20, character)
             self.assertEqual(max(abs(x) for x in after), 0, character)
 
-    # -- the dry's level from frame 0: a reset, a return from Mix 0, a
+    # -- the dry's level from frame 0: a reset, a
     # Mix move before the first pull ------------------------------------
 
     def _dc(self, rate, channels, blocks):
         return array("h", [6000] * (blocks * BLOCK * channels))
 
     def _same_as_fresh(self, build, moves, fresh_from, fresh_options,
-                       blocks=14, name=""):
+                       blocks=14, name="", walks_in=False):
         """Render `build` with `moves`, and a fresh instance built with
         `fresh_options` fed the DC from block `fresh_from` on; the two must
-        agree byte for byte from there."""
+        agree byte for byte from there, or with `walks_in` from where the
+        walk in from the source's levels has landed, and not before it."""
         for rate, channels in ((48000, 2), (22050, 1)):
             values = self._dc(rate, channels, blocks)
             feed = kc.feed(values, rate, channels)
@@ -1169,6 +1180,11 @@ class TheSurface(TestCase):
             differ = [n for n in range(len(want) // channels)
                       if got[n * channels:(n + 1) * channels]
                       != want[n * channels:(n + 1) * channels]]
+            if walks_in:
+                walk = walk_in(rate)
+                self.assertTrue(differ, (name, rate, channels))
+                self.assertLess(max(differ), walk, (name, rate, channels))
+                continue
             self.assertEqual(differ[:3], [], (name, rate, channels,
                                               len(differ)))
 
@@ -1182,12 +1198,15 @@ class TheSurface(TestCase):
             lambda port: _bloom(port, mix=2.0),
             {0: lambda e: e.reset()}, 0, {}, name="reset before a pull")
 
-    def test_a_return_from_mix_0_plays_the_dry_from_frame_0(self):
+    def test_a_return_from_mix_0_walks_in_from_the_dry(self):
+        # A fresh Mix 2 instance has no dry from frame 0; the return comes
+        # in at the source's levels and walks there over 20 ms instead.
         self._same_as_fresh(
             _bloom,
             {2: lambda e: e.set_macro(MIX_I, 0),
              6: lambda e: e.set_macro(MIX_I, 127)}, 6,
-            dict(mix=2.0, character="bloom"), name="Mix 0 then 127")
+            dict(mix=2.0, character="bloom"), name="Mix 0 then 127",
+            walks_in=True)
 
     def test_a_mix_move_before_the_first_pull_plays_the_dry_from_frame_0(
             self):

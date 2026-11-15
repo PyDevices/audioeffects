@@ -939,6 +939,14 @@ class TheSurface(TestCase):
                 self.assertEqual(plain, hidden, (what, channels))
 
 
+def walk_in(rate):
+    """Frames, in whole blocks, until a return from Mix 0 has walked in from
+    the source's levels to Mix's and plays what a fresh instance does."""
+    frames = (_component.level_ramp_frames(rate)
+              + _component.BYPASS_MARGIN_FRAMES)
+    return -(-frames // BLOCK) * BLOCK
+
+
 def played(values, rate, channels, blocks, moves, **options):
     """`blocks` pulls of an instance built with `options` and fed `values`,
     `moves` mapping a pull index to a callable."""
@@ -980,9 +988,10 @@ class TheRestart(TestCase):
             self.assertEqual(touched, plain, (rate, channels))
 
     def test_a_return_from_mix_0_is_a_fresh_instance_at_that_mix(self):
-        # The voices' new levels hold from the first frame: a dry that
-        # waited for its next zero crossing would play at unity on a DC
-        # input, where a fresh Mix 2 instance plays nothing yet.
+        # The return comes in at the source's levels and walks to Mix's, so
+        # leaving Mix 0 never steps; once the walk has landed it plays what
+        # a fresh instance at that Mix does. On a DC input a fresh Mix 2
+        # instance plays nothing yet, so the walk is what tells them apart.
         for rate, channels in ((48000, 2), (22050, 1)):
             rng = Lcg(29)
             noisy = array("h", [rng.next() % 40001 - 20000
@@ -994,8 +1003,11 @@ class TheRestart(TestCase):
                 got = played(values, rate, channels, 40, moves)
                 fresh = render(PitchShifter, values[18 * BLOCK * channels:],
                                rate, channels, 22 * BLOCK, mix=2.0)
-                self.assertEqual(got[18 * BLOCK * channels:], fresh,
-                                 (rate, channels, name))
+                walk = walk_in(rate) * channels
+                self.assertEqual(got[18 * BLOCK * channels + walk:],
+                                 fresh[walk:], (rate, channels, name))
+                self.assertNotEqual(got[18 * BLOCK * channels:][:walk],
+                                    fresh[:walk], (rate, channels, name))
 
     def test_a_level_set_before_the_first_pull_plays_from_the_first_frame(
             self):
@@ -1046,7 +1058,9 @@ class TheRestart(TestCase):
             got = played(values, rate, channels, 40, {12: both})
             fresh = render(PitchShifter, values[12 * BLOCK * channels:],
                            rate, channels, 28 * BLOCK, patch=6)
-            self.assertEqual(got[12 * BLOCK * channels:], fresh,
+            # The patch takes Mix off 0 again, so it walks in first.
+            walk = walk_in(rate) * channels
+            self.assertEqual(got[12 * BLOCK * channels + walk:], fresh[walk:],
                              (rate, channels))
 
     def test_a_mix_sweep_after_a_reset_does_not_empty_the_repeats(self):
@@ -1114,12 +1128,11 @@ class TheRestart(TestCase):
             self.assertTrue(differ, (rate, channels))
             self.assertLess(max(differ), BLOCK, (rate, channels))
 
-    def test_a_patch_right_after_a_return_from_mix_0_plays_the_old_level(
-            self):
-        # The return from Mix 0 re-arms the graph at the Mix it comes back
-        # to (test_a_return_from_mix_0_is_a_fresh_instance_at_that_mix); a
-        # patch loaded after it, once the output has been taken, is an
-        # ordinary move and plays its first block at the old level.
+    def test_a_patch_with_a_return_from_mix_0_walks_in_to_it(self):
+        # The return from Mix 0 re-arms the graph and walks in from the
+        # source's levels (test_a_return_from_mix_0_is_a_fresh_instance_at_
+        # that_mix); a patch loaded with it walks to the patch's levels the
+        # same way, and plays what a fresh instance does once it lands.
         for rate, channels in ((48000, 2), (22050, 1)):
             blocks = 30
             dc = array("h", [6000] * (blocks * BLOCK * channels))
@@ -1136,7 +1149,7 @@ class TheRestart(TestCase):
                       if got[n * channels:(n + 1) * channels]
                       != fresh[n * channels:(n + 1) * channels]]
             self.assertTrue(differ, (rate, channels))
-            self.assertLess(max(differ), BLOCK, (rate, channels))
+            self.assertLess(max(differ), walk_in(rate), (rate, channels))
 
     def test_only_a_move_that_changes_a_voice_level_re_arms(self):
         # Before the output is first taken, Pitch, Fine, Delay, Feedback and
@@ -1401,7 +1414,6 @@ CLAIMS = (
      "48 kHz, play at the old level.",
      ("test_an_output_taken_before_a_patch_plays_the_old_level_at_first",
       "test_a_patch_right_after_a_reset_plays_the_old_level_at_first",
-      "test_a_patch_right_after_a_return_from_mix_0_plays_the_old_level",
       "test_a_mix_sweep_after_a_reset_does_not_empty_the_repeats")),
     ("A one-channel source gets a one-channel shifter with the same window.",
      "test_a_mono_source_is_one_channel_of_a_stereo_one"),
