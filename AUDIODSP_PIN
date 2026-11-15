@@ -511,8 +511,10 @@
 # audiobiquad's Q walk: when Q drops, the band mix walks as a share of k and
 # the band memory shrinks with it, so a notch or band-pass walked to a low Q
 # no longer swells past its input. LowPass, BandPass and Notch hear it; a
-# corner move at a fixed Q walks as before. As above, move the pin to the
-# merge commit once it lands.
+# corner move at a fixed Q walks as before.
+#
+# Moved to b1f8dbf the same day, the merge of audiodsp#415 on main. Its source
+# is the same as 0ab3d30 (`git diff 0ab3d30 b1f8dbf -- src` is empty).
 #
 # <ref> <commit>   -- ref is what CI installs (git+https://...@<ref>)
-0ab3d30b06564f1f4e6dbb22b4fd539edf5842ed 0ab3d30b06564f1f4e6dbb22b4fd539edf5842ed
+b1f8dbf207ef43325c33e57c032c6fcc1ec4edcf b1f8dbf207ef43325c33e57c032c6fcc1ec4edcf
