@@ -629,6 +629,23 @@ class AirSpace(_component.Component):
 
     # -- the contract's reads ------------------------------------------
 
+    def reset(self):
+        """Empty the tape and the chamber, restore patch 0, and play from
+        there as a new instance does: the graph is wired again the way the
+        constructor wires it, so its levels land at once rather than walking
+        from the ones the knobs had left."""
+        self._check_live()
+        taken = self._taken
+        if self._wired:
+            # Wiring pulls silence, so the input goes back to it first.
+            self._in.play(self._hush)
+            self._wired = False
+        self._taken = False
+        try:
+            _component.Component.reset(self)
+        finally:
+            self._taken = taken
+
     @property
     def output(self):
         """The node the host plays. Asking for it is the host's first step
