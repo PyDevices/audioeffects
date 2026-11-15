@@ -490,12 +490,12 @@
 # render from an interrupt, and `__version__`/`__revision__` on audiocore,
 # audiomp3, audiopump and synthio.
 #
-# Moved to 32ab83c on 2026-11-15, for audioladder's `ramp_ms` (audiodsp#414),
+# Moved to 9b0a07d on 2026-11-15, for audioladder's `ramp_ms` (audiodsp#414),
 # which LadderFilter sets to 20 ms so a jump of Cutoff, Resonance, Drive,
 # Passband Comp or Mix walks rather than stepping. Its default is 0, which
 # renders what it did. The commit is that pull request's head, not yet on
 # audiodsp's main: move the pin to the merge commit once it lands. Nothing
-# else moved beneath the components (`git log ec82463..32ab83c -- src`).
+# else moved beneath the components (`git log ec82463..9b0a07d -- src`).
 #
 # <ref> <commit>   -- ref is what CI installs (git+https://...@<ref>)
-32ab83c61167a9c548b3e1457e711b0d59fad122 32ab83c61167a9c548b3e1457e711b0d59fad122
+9b0a07def773d326369066703eaeaeb6dd2b3900 9b0a07def773d326369066703eaeaeb6dd2b3900
