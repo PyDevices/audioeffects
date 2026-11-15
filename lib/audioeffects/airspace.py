@@ -292,6 +292,9 @@ class AirSpace(_component.Component):
         self._ready = False
         #: True once the voices have been played (`_wire`).
         self._wired = False
+        #: Whether the host has asked for the output yet: until then
+        #: nothing has played, and Mix's first move off 0 lands at once.
+        self._taken = False
         #: What the nodes were last handed, by name.
         self._handed = {}
         self._frames = 1
@@ -329,6 +332,9 @@ class AirSpace(_component.Component):
             voice_count=2, buffer_size=BLOCK * channels * 4,
             channel_count=channels, bits_per_sample=16, samples_signed=True,
             sample_rate=rate)
+        # A Mix move walks its levels over 20 ms (`ramp_levels`); wiring
+        # turns the walk off for the silence it pulls (`_wiring_pull`).
+        _component.ramp_levels(self._mixer, rate)
         # The output: a width-1 MidSide over the mixer, byte for byte, whose
         # reset forwards nothing. A host's reset of the output (a mixer
         # voice's `play()` does one) would otherwise reach the Mixer, and
@@ -520,14 +526,23 @@ class AirSpace(_component.Component):
         if self._value(MIX_I) <= 0.0:
             self._route_around(self._adapter)
             return
-        self._levels()
         if not self._wired:
-            self._wire()
+            if self._taken:
+                self._come_in()
+            else:
+                self._levels()
+                self._wire()
+        elif self._taken and self._rejoin():
+            # Wiring again pulls silence, so the input goes back to it
+            # first; `_wire` hands it the adapter once it has.
+            self._in.play(self._hush)
+            self._come_in()
         else:
+            self._levels()
             self._rejoin()
         self._output = self._tail
 
-    def _wire(self):
+    def _wire(self, primed=False):
         """Play the voices, the first time Mix is above 0.
 
         A voice's `play()` primes a block from its source. With the
@@ -542,13 +557,36 @@ class AirSpace(_component.Component):
         voices = self._mixer.voice
         for voice in voices:
             voice.play(self._silence, loop=True)
-        self._pull()
+        self._wiring_pull()
         voices[0].play(self._split.tap(0))
         voices[1].play(self._wet_source())
-        self._pull()
+        if primed:
+            # The first pull landed the levels at once; a pull
+            # with the walk on then primes it there, so the next
+            # move walks from them (`_component.with_ramps`).
+            _component.with_ramps(self._pull)
+        else:
+            self._wiring_pull()
         self._in.play(self._adapter)
         self._clear_nodes()
         self._wired = True
+
+    def _come_in(self):
+        """Wire the graph as Mix leaves 0 on a played instance. The host
+        has been hearing the source itself, so the graph comes in at the
+        source's levels and walks to Mix's over 20 ms, as any later move
+        does, instead of cutting from the source to the mix."""
+        voices = self._mixer.voice
+        voices[0].level = 1.0
+        voices[1].level = 0.0
+        self._wire(primed=True)
+        self._levels()
+
+    def _wiring_pull(self):
+        """`_pull` with the mixer's level walk off: wiring plays silence,
+        and the levels set before it land at once, as a fresh mixer's
+        first ones do (`_component.unramped_pull`)."""
+        _component.unramped_pull(lambda _mixer: self._pull(), self._mixer)
 
     def _pull(self):
         """Pull one block from the mixer and drop it.
@@ -590,6 +628,31 @@ class AirSpace(_component.Component):
                 self._push_chamber(ours)
 
     # -- the contract's reads ------------------------------------------
+
+    def reset(self):
+        """Empty the tape and the chamber, restore patch 0, and play from
+        there as a new instance does: the graph is wired again the way the
+        constructor wires it, so its levels land at once rather than walking
+        from the ones the knobs had left."""
+        self._check_live()
+        taken = self._taken
+        if self._wired:
+            # Wiring pulls silence, so the input goes back to it first.
+            self._in.play(self._hush)
+            self._wired = False
+        self._taken = False
+        try:
+            _component.Component.reset(self)
+        finally:
+            self._taken = taken
+
+    @property
+    def output(self):
+        """The node the host plays. Asking for it is the host's first step
+        to pulling, so from here Mix's first move off 0 walks in."""
+        self._check_live()
+        self._taken = True
+        return self._output
 
     @property
     def tail_samples(self):

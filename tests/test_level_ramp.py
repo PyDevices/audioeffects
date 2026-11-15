@@ -4,7 +4,7 @@
 
 """A level that jumps walks over 20 ms in the mixer that carries it.
 
-Eleven classes carry Mix, or another level, on `audiomixer.Mixer` voices.
+Fourteen classes carry Mix, or another level, on `audiomixer.Mixer` voices.
 Each sets the mixer's `level_ramp` to 20 ms (`_component.ramp_levels`), so
 a jump of that control walks there instead of landing at the voice's next
 zero crossing. CircuitPython's Mixer has no `level_ramp`; there the levels
@@ -12,8 +12,10 @@ step as before, and `ramp_levels` says nothing.
 
 | what it checks | bar |
 |---|---|
-| every mixer in the eleven ramps | `level_ramp` is `sample_rate * 20 / 1000` on each `audiomixer.Mixer` a class builds, at 48 and 22.05 kHz |
+| every mixer in the fourteen ramps | `level_ramp` is `sample_rate * 20 / 1000` on each `audiomixer.Mixer` a class builds, at 48 and 22.05 kHz |
 | a Mix jump does not step | DynamicEQ's Mix moved 127 to 38 in one call on a 200 Hz tone: the largest step within two blocks of the move is under 1.5 times the larger of the tone's own before and after (it was 1.70 times with the level landing at once) |
+| Mix leaving 0 the first time | AirSpace, PitchShifter and ShimmerHall built at Mix 0 and played for 12 blocks, then Mix moved to 127 in one call: the largest step within two blocks of the move is under 1.5 times the tone's own (the graph used to come in at once, cutting from the source to the wet alone: 4900 on a triangle whose step is 100) |
+| Mix leaving 0 again | the same three built at Mix 127, moved to 0 and, six blocks later, back to 127: the same bar (the return cut the same way, 4700) |
 | a mixer without the ramp | `ramp_levels` on an object that refuses `level_ramp` hands it back untouched |
 
     python -m unittest tests.test_level_ramp
@@ -35,9 +37,12 @@ import audiomixer                                         # noqa: E402
 import audioeffects                                       # noqa: E402
 from audioeffects import _component                       # noqa: E402
 
-CLASSES = ("Bitcrusher", "Compressor", "DeEsser", "Distortion", "DynamicEQ",
-           "Exciter", "Fuzz", "MultibandCompressor", "Overdrive",
-           "Saturation", "Vibrato")
+CLASSES = ("AirSpace", "Bitcrusher", "Compressor", "DeEsser", "Distortion",
+           "DynamicEQ", "Exciter", "Fuzz", "MultibandCompressor", "Overdrive",
+           "PitchShifter", "Saturation", "ShimmerHall", "Vibrato")
+#: Built at Mix 0, these play the source itself and build their graph the
+#: first time Mix leaves 0.
+LAZY = ("AirSpace", "PitchShifter", "ShimmerHall")
 #: Fuzz's germanium circuit, its default, sums on no mixer.
 OPTIONS = {"Fuzz": {"character": "cascade"}}
 BLOCK = 256
@@ -112,6 +117,46 @@ class LevelRamp(unittest.TestCase):
         own = max(max(steps[at // 2:at - 2 * BLOCK]),
                   max(steps[at + 4800:at + 14400]))
         self.assertLess(near / own, 1.5)
+
+    def test_mix_leaving_0_the_first_time_walks_in(self):
+        rate = 48000
+        for name in LAZY:
+            with self.subTest(name=name):
+                effect = audioeffects.create(name, tone(rate), rate, mix=0.0)
+                index = list(type(effect).MACRO_LABELS).index("Mix")
+                head = pull(effect, 12 * BLOCK)
+                effect.set_macro(index, 127)
+                tail = pull(effect, 4 * BLOCK)
+                effect.deinit()
+                trace = head + tail
+                at = len(head)
+                steps = [abs(trace[i] - trace[i - 1])
+                         for i in range(1, len(trace))]
+                near = max(steps[at - 1:at + 2 * BLOCK])
+                own = max(steps[BLOCK:at - 1])
+                self.assertLess(near / own, 1.5)
+
+    def test_mix_leaving_0_again_walks_in(self):
+        rate = 48000
+        for name in LAZY:
+            with self.subTest(name=name):
+                effect = audioeffects.create(name, tone(rate), rate)
+                index = list(type(effect).MACRO_LABELS).index("Mix")
+                effect.set_macro(index, 127)
+                head = pull(effect, 12 * BLOCK)
+                effect.set_macro(index, 0)
+                head += pull(effect, 6 * BLOCK)
+                effect.set_macro(index, 127)
+                tail = pull(effect, 4 * BLOCK)
+                effect.deinit()
+                trace = head + tail
+                at = len(head)
+                steps = [abs(trace[i] - trace[i - 1])
+                         for i in range(1, len(trace))]
+                near = max(steps[at - 1:at + 2 * BLOCK])
+                # At Mix 0 the output is the tone itself.
+                own = max(steps[at - 4 * BLOCK:at - 1])
+                self.assertLess(near / own, 1.5)
 
 
 class NoRamp(unittest.TestCase):
