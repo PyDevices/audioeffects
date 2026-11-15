@@ -106,6 +106,9 @@ except ImportError:                     # pragma: no cover - a stock board
 #: Frames per pull: the palette's block.
 BLOCK = 256
 
+#: The voices' levels (dry, wet) that make the mixer the source alone.
+_SOURCE_ALONE = (1.0, 0.0)
+
 (CHARACTER_I, SHIMMER_I, RISE_I, BLOOM_I, INTERVAL_I, DECAY_I, SIZE_I,
  DAMPING_I, MIX_I) = range(9)
 
@@ -393,6 +396,9 @@ class ShimmerHall(_component.Component):
             voice_count=2, buffer_size=BLOCK * width * 2,
             channel_count=channels, bits_per_sample=16,
             samples_signed=True, sample_rate=rate), reset=False)
+        # A Mix move walks its levels over 20 ms (`ramp_levels`); wiring
+        # turns the walk off for the silence it pulls (`_wiring_pull`).
+        _component.ramp_levels(self._mixer, rate)
         # The output: a width-1 MidSide over the mixer, byte for byte, whose
         # reset forwards nothing. A host's reset of the output would
         # otherwise reach the Mixer, and CircuitPython's own Mixer handles
@@ -576,9 +582,16 @@ class ShimmerHall(_component.Component):
             self._route_around(self._head)
             return
         if not self._wired:
-            self._wire()
+            if self._taken:
+                self._come_in()
+            else:
+                self._wire()
         elif self._rejoin():
-            self._rearm()
+            if self._taken:
+                self._in.play(self._hush)
+                self._come_in()
+            else:
+                self._rearm()
         elif not self._taken and self._level_pair() != self._applied:
             # Not pulled yet: a level moved now would wait for its voice's
             # next zero crossing, a block of the old level, where an
@@ -622,8 +635,9 @@ class ShimmerHall(_component.Component):
         self._in.play(self._hush)
         self._wire()
 
-    def _wire(self):
-        """Play the voices, the first time the output reaches the mixer.
+    def _wire(self, levels=None, primed=False):
+        """Play the voices, the first time the output reaches the mixer,
+        at `levels` (dry, wet) or else at Mix's.
 
         A voice's `play()`, like the shifter's, primes a block from its
         source. With the Splitter on `_hush` that block is zeros, and one
@@ -633,19 +647,43 @@ class ShimmerHall(_component.Component):
         play. The level gates are opened first, as
         `_component.open_level_gates` opens them."""
         voices = self._mixer.voice
-        self._levels()
+        if levels is None:
+            self._levels()
+        else:
+            voices[0].level, voices[1].level = levels
+            self._applied = levels
         for voice in voices:
             voice.play(self._silence, loop=True)
-        self._pull()
+        self._wiring_pull()
         voices[0].play(self._dry_source())
         voices[1].play(self._hall.output)
-        self._pull()
+        if primed:
+            # The first pull landed the levels at once; a pull
+            # with the walk on then primes it there, so the next
+            # move walks from them (`_component.with_ramps`).
+            _component.with_ramps(self._pull)
+        else:
+            self._wiring_pull()
         self._in.play(self._head)
         self._clear_nodes(only=(self._shift, self._fd, self._hall))
         self._wired = True
         # A control touched at Mix 0 before the first wiring marked the
         # graph stranded; wiring is what that mark waits for.
         self._stranded = False
+
+    def _come_in(self):
+        """Wire the graph as Mix leaves 0 on a played instance. The host
+        has been hearing the source itself, so the graph comes in at the
+        source's levels and walks to Mix's over 20 ms, as any later move
+        does, instead of cutting from the source to the mix."""
+        self._wire(_SOURCE_ALONE, primed=True)
+        self._levels()
+
+    def _wiring_pull(self):
+        """`_pull` with the mixer's level walk off: wiring plays silence,
+        and the levels set before it land at once, as a fresh mixer's
+        first ones do (`_component.unramped_pull`)."""
+        _component.unramped_pull(lambda _mixer: self._pull(), self._mixer)
 
     def _pull(self):
         """Pull one block from the mixer and drop it. `_tail` forwards no
