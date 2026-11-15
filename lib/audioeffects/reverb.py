@@ -59,8 +59,9 @@ at 48 kHz, and 146 914 B for the hall at Size 1.5, the most it takes.
 
 **Limits shared by the family**
 
-A control that jumps makes the output step: move it in small steps from
-the host if you need it smooth.
+A jump of Mix walks there over 20 ms rather than stepping the output. A
+jump of another control steps it: move that in small steps from the host
+if you need it smooth.
 
 When your source ends, the tail rings out as it would on silence.
 

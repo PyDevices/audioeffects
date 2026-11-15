@@ -138,8 +138,9 @@ class Flanger(_component.Component):
     Sync sets the sweep's period, not its phase: the sweep starts at Manual
     when the class is built or reset, not on a bar line, and a synced sweep
     faster than 20 Hz runs at 20 Hz.
-    A control that jumps makes the output step: move it in small steps from
-    the host if you need it smooth.
+    A jump of Mix walks there over 20 ms rather than stepping the output.
+    A jump of another control steps it: move that in small steps from the
+    host if you need it smooth.
     At 22.05 kHz the sweep's top is 9.977 ms, half a frame under 10 ms.
     Mix's first step above 0 is still a wire; the copy comes in at the
     second step, about 36 dB down.
@@ -241,6 +242,15 @@ class Flanger(_component.Component):
             channel_count=self._channel_count, bits_per_sample=16,
             samples_signed=True,
             buffer_size=BLOCK * 2 * self._channel_count))
+        # A Mix move walks over 20 ms in the node, as the effects' levels do
+        # (`_component.LEVEL_RAMP_MS`). The node's first block plays the mix
+        # as it stands, so a new or reset node has nothing to walk from.
+        # CircuitPython's Flanger has no mix_ramp, and there Mix steps.
+        try:
+            self._node.mix_ramp = _component.level_ramp_frames(
+                self._sample_rate)
+        except AttributeError:
+            pass
         self._node.play(self._source)
         self._output = self._node
 

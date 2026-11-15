@@ -7,7 +7,7 @@ Mix from 0.3 to 1.0 in one call: Bitcrusher, Chorus, CombFilter, Compressor,
 DeEsser, Distortion, DynamicEQ, Exciter, Fuzz, MultibandCompressor, Overdrive,
 Phaser, Saturation, Tremolo and Vibrato, with the exceptions below. The Mix
 of DigitalDelay and PingPongDelay and SlapbackDelay's Level walk too, since
-their delay node does.
+their delay node does, and so do the Mix of Flanger and Reverb.
 
 A few moves still step. Some filter corners move at once, and so do a switch
 and a patch change that rebuilds part of a graph. LadderFilter's Cutoff,
@@ -56,8 +56,9 @@ reaches anyone using the bare nodes too, CircuitPython users included.
 
 The nodes that walk are `audiomixer.Mixer`'s voice levels (its `level_ramp`),
 the Waveshaper's `mix` and `post_gain`, the Biquad's and the AllPass's `mix`,
-the Dynamics node's makeup, the FeedbackDelay's `mix` and
-`audiomath.Multiply`'s `mix`. An
+the Dynamics node's makeup, the FeedbackDelay's and `audioverb.Tank`'s
+`mix`, `audiodelays.Flanger`'s `mix` (its `mix_ramp`, which is 0 unless a
+class sets it) and `audiomath.Multiply`'s `mix`. An
 `audioroute.Port` told `play(source, after=frames)` keeps playing what it
 plays until a walk has landed, which is how Mix 0 switches to the source
 without a cut.

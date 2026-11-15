@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
-"""A level that jumps walks over 20 ms in the mixer that carries it.
+"""A level that jumps walks over 20 ms in the node that carries it.
 
 Fourteen classes carry Mix, or another level, on `audiomixer.Mixer` voices.
 Each sets the mixer's `level_ramp` to 20 ms (`_component.ramp_levels`), so
@@ -14,6 +14,7 @@ step as before, and `ramp_levels` says nothing.
 |---|---|
 | every mixer in the fourteen ramps | `level_ramp` is `sample_rate * 20 / 1000` on each `audiomixer.Mixer` a class builds, at 48 and 22.05 kHz |
 | a Mix jump does not step | DynamicEQ's Mix moved 127 to 38 in one call on a 200 Hz tone: the largest step within two blocks of the move is under 1.5 times the larger of the tone's own before and after (it was 1.70 times with the level landing at once) |
+| a node's Mix jump does not step | Flanger and Reverb, whose Mix is the node's own `mix`, moved 0 to 127 and 127 to 0 in one call on a 200 Hz tone: the largest step within two blocks of the move is under 1.5 times the tone's own before and after (on a 100 Hz triangle whose step is 100 to 140, it was 4400 and 3400 with the mix landing at once) |
 | Mix leaving 0 the first time | AirSpace, PitchShifter and ShimmerHall built at Mix 0 and played for 12 blocks, then Mix moved to 127 in one call: the largest step within two blocks of the move is under 1.5 times the tone's own (the graph used to come in at once, cutting from the source to the wet alone: 4900 on a triangle whose step is 100) |
 | Mix leaving 0 again | the same three built at Mix 127, moved to 0 and, six blocks later, back to 127: the same bar (the return cut the same way, 4700) |
 | a mixer without the ramp | `ramp_levels` on an object that refuses `level_ramp` hands it back untouched |
@@ -43,6 +44,8 @@ CLASSES = ("AirSpace", "Bitcrusher", "Compressor", "DeEsser", "Distortion",
 #: Built at Mix 0, these play the source itself and build their graph the
 #: first time Mix leaves 0.
 LAZY = ("AirSpace", "PitchShifter", "ShimmerHall")
+#: Their Mix is a node's own mix, which walks in the node.
+NODE_MIX = ("Flanger", "Reverb")
 #: Fuzz's germanium circuit, its default, sums on no mixer.
 OPTIONS = {"Fuzz": {"character": "cascade"}}
 BLOCK = 256
@@ -117,6 +120,27 @@ class LevelRamp(unittest.TestCase):
         own = max(max(steps[at // 2:at - 2 * BLOCK]),
                   max(steps[at + 4800:at + 14400]))
         self.assertLess(near / own, 1.5)
+
+    def test_a_node_mix_jump_does_not_step(self):
+        rate = 48000
+        for name in NODE_MIX:
+            for start, end in ((0, 127), (127, 0)):
+                with self.subTest(name=name, start=start, end=end):
+                    effect = audioeffects.create(name, tone(rate), rate)
+                    index = list(type(effect).MACRO_LABELS).index("Mix")
+                    effect.set_macro(index, start)
+                    head = pull(effect, 40 * BLOCK)
+                    effect.set_macro(index, end)
+                    tail = pull(effect, 12 * BLOCK)
+                    effect.deinit()
+                    trace = head + tail
+                    at = len(head)
+                    steps = [abs(trace[i] - trace[i - 1])
+                             for i in range(1, len(trace))]
+                    near = max(steps[at - 1:at + 2 * BLOCK])
+                    own = max(max(steps[at - 8 * BLOCK:at - 1]),
+                              max(steps[at + 6 * BLOCK:]))
+                    self.assertLess(near / own, 1.5)
 
     def test_mix_leaving_0_the_first_time_walks_in(self):
         rate = 48000
