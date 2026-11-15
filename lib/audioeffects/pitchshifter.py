@@ -277,7 +277,23 @@ class PitchShifter(_component.Component):
             semitones=step_centre_semitones(STEPS), mix=1.0,
             window=self._window * width, overlap=self._overlap * width,
             **self._pcm(BLOCK * width)))
-        self._shift.play(self._split.tap(1))
+        # The shifter's input, faded in over 20 ms each time Mix leaves 0
+        # (`_wire`). The shifter starts from an empty line, so its voice
+        # arrives a window after the move; without the fade it arrives at
+        # full level, stepping the output then. At level 1 the voice is
+        # its source.
+        self._fade = self._own(audiomixer.Mixer(
+            voice_count=1, buffer_size=BLOCK * width * 2,
+            channel_count=channels, bits_per_sample=16,
+            samples_signed=True, sample_rate=rate), reset=False)
+        _component.ramp_levels(self._fade, rate)
+        # The fade's voice plays the tap through a port, so `_shut` can
+        # point it at silence and pull the fade alone without reading the
+        # Splitter out of step.
+        self._fade_in = self._own(audioroute.Port(self._split.tap(1)),
+                                  reset=False)
+        self._fade.voice[0].play(self._fade_in)
+        self._shift.play(self._fade)
         self._line = self._own(audioecho.FeedbackDelay(
             sample_rate=rate, channel_count=channels, max_delay_ms=LINE_MS,
             delay_frames=1, feedback=0.0, mix=2.0, damping_hz=0.0,
@@ -344,12 +360,32 @@ class PitchShifter(_component.Component):
             _component.with_ramps(self._pull)
         else:
             self._wiring_pull()
+        # Coming in from Mix 0, the shifter's input starts shut and opens
+        # as the source flows, so the shifted voice, which arrives a window
+        # late, arrives faded in; otherwise it is open.
+        self._shut(0.0 if primed else 1.0)
         self._in.play(self._head)
+        if primed:
+            self._fade.voice[0].level = 1.0
         self._clear_nodes(only=(self._shift, self._line, self._loop))
         self._wired = True
         # A control touched at Mix 0 before the first wiring marked the
         # graph stranded; wiring is what that mark waits for.
         self._stranded = False
+
+    def _shut(self, level):
+        """Land the shifter's input at `level` now, with the fade's walk
+        primed there, so a move from it walks. Two pulls of the fade alone,
+        on silence: the first with the walk off lands the level, the second
+        with it on primes it (`_component.unramped_pull`)."""
+        fade = self._fade.voice[0]
+        if fade.level == level:
+            return
+        fade.level = level
+        self._fade_in.play(self._hush)
+        _component.unramped_pull(self._pull_node, self._fade)
+        _component.with_ramps(self._pull_node, self._fade)
+        self._fade_in.play(self._split.tap(1))
 
     def _rearm(self):
         """Wire the graph again as the constructor does, once it has been
@@ -376,16 +412,21 @@ class PitchShifter(_component.Component):
         _component.unramped_pull(lambda _mixer: self._pull(), self._mixer)
 
     def _pull(self):
-        """Pull one block from the mixer and drop it.
+        """Pull one block from the mixer and drop it (`_pull_node`)."""
+        self._pull_node(self._mixer)
+
+    def _pull_node(self, node):
+        """Pull one block from `node`, the mixer or the fade, and drop it.
 
         Where `audiocore.get_buffer` is compiled out (CircuitPython's
         default board builds), a voice of a one-voice mixer of our own
         plays `_tail` and stops: its `play()` primes one block, which pulls
         the mixer once. `_tail` forwards no reset, so the play rewinds
-        nothing behind it."""
+        nothing behind it. The fade is played itself: it is pulled only
+        while its port plays silence, so the rewind reaches nothing else."""
         pull = getattr(audiocore, "get_buffer", None)
         if pull is not None:
-            pull(self._mixer)
+            pull(node)
             return
         if self._puller is None:
             # Nothing ever pulls this mixer, so its own buffers are the
@@ -396,7 +437,7 @@ class PitchShifter(_component.Component):
                 samples_signed=True, sample_rate=self._sample_rate),
                 reset=False)
         voice = self._puller.voice[0]
-        voice.play(self._tail)
+        voice.play(self._tail if node is self._mixer else node)
         voice.stop()
 
     def _clear_line(self):

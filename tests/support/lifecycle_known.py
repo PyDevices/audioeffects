@@ -19,6 +19,12 @@ R_JUMP = (
     " since audiodsp#414; another filter corner, a"
     " switch, a depth, and a patch change's controls other than its levels"
     " still jump, until the later stages there land (audiocomponents#153)")
+R_SWEEP = (
+    "a patch change on a Biquad filter walks its corner, Q and shape over"
+    " 20 ms (Q since audiodsp#415), so a narrow or resonant setting sweeps"
+    " across the input the way a fast turn of the knob would: the output"
+    " moves smoothly, without swinging past either setting, but further"
+    " in a frame than the input does")
 R_STATE_RAMP = (
     "state that outlives tail_samples, as R_STATE (audiocomponents#155);"
     " and since audiodsp v0.6.6rc9 a filter corner move walks over 20 ms"
@@ -69,11 +75,10 @@ KNOWN_RED = {
     ('AutoPan', 'E4-', 'P5'): (12, 'c576f01c', None, None, R_JUMP),
     ('AutoPan', 'E6-', 'P4'): (18, 'ab6136b8', None, None, R_PHASE),
     ('AutoPan', 'E6-', 'P5'): (40, '4a1ecd5f', None, None, R_JUMP),
-    ('BandPass', 'E11-', 'P5'): (4, '29718af4', None, None, R_JUMP),
     ('BandPass', 'E2-reset_buffer', 'P4'): (4, '26674fe7', None, None, R_STATE),
     ('BandPass', 'E5-mix0', 'P4'): (4, '3db4de60', None, None, R_STATE),
-    ('BandPass', 'E6-', 'P4'): (17, 'c97cd2b1', None, None, R_STATE_RAMP),
-    ('BandPass', 'E6-', 'P5'): (12, 'aba60ae5', None, None, R_JUMP),
+    ('BandPass', 'E6-', 'P4'): (16, '6d456dbb', None, None, R_STATE_RAMP),
+    ('BandPass', 'E6-', 'P5'): (6, '52ef2898', None, None, R_SWEEP),
     ('BandPass', 'E9-', 'P4'): (20, '7c7d321c', None, None, R_STATE),
     ('Bitcrusher', 'E1-reset@block', 'P4'): (16, '0c568ee1', None, None, R_PHASE),
     ('Bitcrusher', 'E1-reset@part', 'P4'): (16, 'efb72d5f', None, None, R_PHASE),
@@ -183,14 +188,14 @@ KNOWN_RED = {
     ('GraphicEQ', 'E6-', 'P5'): (60, 'fc0f3765', None, None, R_JUMP),
     ('HighPass', 'E1-reset@block', 'P4'): (21, 'd9891c63', None, None, R_STATE),
     ('HighPass', 'E1-reset@part', 'P4'): (21, 'af7690b3', None, None, R_STATE),
-    ('HighPass', 'E11-', 'P4'): (15, '1113f5a1', None, None, R_STATE),
+    ('HighPass', 'E11-', 'P4'): (16, '4fcdffe4', None, None, R_STATE),
     ('HighPass', 'E11-', 'P5'): (12, '4a25493b', None, None, R_JUMP),
     ('HighPass', 'E2-reset_buffer', 'P4'): (8, 'd1d172ed', None, None, R_STATE),
-    ('HighPass', 'E4-', 'P4'): (16, 'd39c8c68', None, None, R_STATE),
+    ('HighPass', 'E4-', 'P4'): (15, '9de0dac3', None, None, R_STATE),
     ('HighPass', 'E4-', 'P5'): (4, '8fe22ac6', None, None, R_JUMP),
     ('HighPass', 'E5-mix0', 'P4'): (11, '227acce3', None, None, R_STATE),
-    ('HighPass', 'E6-', 'P4'): (53, 'e040235e', None, None, R_STATE_RAMP),
-    ('HighPass', 'E6-', 'P5'): (24, '65a9c1f9', None, None, R_JUMP),
+    ('HighPass', 'E6-', 'P4'): (55, '7722e692', None, None, R_STATE_RAMP),
+    ('HighPass', 'E6-', 'P5'): (26, 'c5cc6567', None, None, R_JUMP),
     ('HighPass', 'E9-', 'P4'): (55, '95a58d3e', None, None, R_STATE),
     ('LadderFilter', 'E10-mix0', 'P3'): (4, 'b6574e03', None, None, R_LADDER_OSC),
     ('LadderFilter', 'E2-reset_buffer', 'P4'): (2, 'f71d78d2', None, None, R_STATE),
@@ -210,7 +215,7 @@ KNOWN_RED = {
     ('LowPass', 'E5-mix0', 'P4'): (12, 'deb21c7a', None, None, R_STATE),
     ('LowPass', 'E5-mix0', 'P5'): (2, '98a49ec8', None, None, R_JUMP),
     ('LowPass', 'E6-', 'P4'): (20, '48ecf86c', None, None, R_STATE_RAMP),
-    ('LowPass', 'E6-', 'P5'): (16, 'aa06899d', None, None, R_JUMP),
+    ('LowPass', 'E6-', 'P5'): (14, 'a0963dd2', None, None, R_SWEEP),
     ('LowPass', 'E9-', 'P4'): (60, '7c0a5b65', None, None, R_STATE),
     ('LowPass', 'E9-', 'P5'): (10, '2d3f6552', None, None, R_JUMP),
     ('MultibandCompressor', 'E1-reset@block', 'P4'): (18, '2ff6f235', None, None, R_STATE),
@@ -227,11 +232,9 @@ KNOWN_RED = {
     ('NoiseGate', 'E1-reset@part', 'P4'): (14, 'b8240548', None, None, R_STATE),
     ('NoiseGate', 'E2-reset_buffer', 'P4'): (10, '5e5004a0', None, None, R_STATE),
     ('NoiseGate', 'E4-', 'P5'): (4, '00a5daae', None, None, R_JUMP),
-    ('Notch', 'E11-', 'P5'): (4, '795303da', None, None, R_JUMP),
-    ('Notch', 'E4-', 'P5'): (4, '19e73042', None, None, R_JUMP),
     ('Notch', 'E5-mix0', 'P4'): (8, '0822c04f', None, None, R_STATE),
     ('Notch', 'E6-', 'P4'): (24, '6d9aa0d4', None, None, R_STATE_RAMP),
-    ('Notch', 'E6-', 'P5'): (44, 'ec221fd4', None, None, R_JUMP),
+    ('Notch', 'E6-', 'P5'): (16, 'c51d9cd4', None, None, R_SWEEP),
     ('Notch', 'E9-', 'P4'): (40, '1b5d55d5', None, None, R_STATE),
     ('Overdrive', 'E1-reset@block', 'P4'): (34, 'aaf11cd2', None, None, R_STATE),
     ('Overdrive', 'E1-reset@part', 'P4'): (34, '75164359', None, None, R_STATE),
@@ -246,7 +249,7 @@ KNOWN_RED = {
     ('Overdrive', 'E6-', 'P5'): (9, '59322590', None, None, R_JUMP),
     ('Overdrive', 'E9-', 'P4'): (90, 'e2899302', None, None, R_STATE),
     ('ParametricEQ', 'E11-', 'P5'): (2, '1a3d01df', None, None, R_JUMP),
-    ('ParametricEQ', 'E6-', 'P4'): (15, '05c0db34', None, None, R_STATE_RAMP),
+    ('ParametricEQ', 'E6-', 'P4'): (15, 'a154f03f', None, None, R_STATE_RAMP),
     ('ParametricEQ', 'E6-', 'P5'): (10, '19891537', None, None, R_JUMP),
     ('Phaser', 'E1-reset@block', 'P4'): (40, 'eca258f1', None, None, R_PHASE),
     ('Phaser', 'E1-reset@part', 'P4'): (40, '54e5b3be', None, None, R_PHASE),

@@ -1052,6 +1052,26 @@ class TheSurface(TestCase):
         for _, d in readings:
             self.assertAlmostEqual(d, 96.0, delta=0.01)
 
+    def test_a_jump_of_mix_walks_rather_than_steps(self):
+        # the family sentence: Mix 0 to 127 in one move over a steady tone
+        # walks the output there over 20 ms, so no frame steps further than
+        # the tone and the settled comb do; before the walk it stepped
+        # from the dry to the comb at the block the move landed on
+        rate, frames, at = 48000, 16384, 32
+        x = array("h", (int(round(8000 * math.sin(2 * math.pi * 200.0 * n
+                                                  / rate)))
+                        for n in range(frames)))
+        y = render(Flanger, x, rate, options=held(48, rate, mix=0.0),
+                   actions={at: lambda e: e.set_macro(MIX, 127)})
+
+        def steepest(v, start, stop):
+            return max(abs(v[n + 1] - v[n]) for n in range(start, stop))
+
+        own = max(steepest(x, 0, 2048), steepest(y, frames - 2048,
+                                                 frames - 1))
+        step = steepest(y, at * BLOCK - 2, at * BLOCK + 2048)
+        self.assertLess(step, 1.5 * own, (step, own))
+
     def test_polarity_and_sync(self):
         e = self._fresh(polarity="negative", sync=True)
         self.assertEqual(e.get_macro(POLARITY), 127.0)
@@ -1283,8 +1303,11 @@ CLAIMS = (
      "synced sweep faster than 20 Hz runs at 20 Hz.",
      ("T4Sweep.test_the_sweep_starts_at_manual_and_again_after_a_reset",
       "T5Sync.test_rate_is_ignored_and_20_hz_is_the_stop")),
-    ("A control that jumps makes the output step: move it in small steps "
-     "from the host if you need it smooth.",
+    ("A jump of Mix walks to its new setting over 20 ms rather than "
+     "stepping the output.",
+     "TheSurface.test_a_jump_of_mix_walks_rather_than_steps"),
+    ("A jump of another control steps it: move that in small steps from "
+     "the host if you need it smooth.",
      "DECLARED:Flanger,E4-,P5"),
     ("At 22.05 kHz the sweep's top is 9.977 ms, half a frame under 10 ms.",
      "T4Sweep.test_the_top_at_22050_is_half_a_frame_under_10_ms"),

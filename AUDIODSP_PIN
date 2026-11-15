@@ -499,5 +499,22 @@
 # Moved to 717f91a the same day, the merge of audiodsp#414 on main. Its source
 # is the same as 9b0a07d (`git diff 9b0a07d 717f91a -- src` is empty).
 #
+# Moved to 122f23a the same day, for audioverb.Tank's mix walk and
+# audiodelays.Flanger's opt-in `mix_ramp` (audiodsp#415), which Flanger sets to
+# 20 ms so a jump of Mix walks rather than stepping. Tank's walk is always on;
+# Flanger's default is 0, which renders what it did. The commit is that pull
+# request's head, not yet on audiodsp's main: move the pin to the merge commit
+# once it lands. Nothing else moved beneath the components
+# (`git log 717f91a..122f23a -- src`).
+#
+# Moved to 0ab3d30 the same day, the new head of audiodsp#415, which adds
+# audiobiquad's Q walk: when Q drops, the band mix walks as a share of k and
+# the band memory shrinks with it, so a notch or band-pass walked to a low Q
+# no longer swells past its input. LowPass, BandPass and Notch hear it; a
+# corner move at a fixed Q walks as before.
+#
+# Moved to b1f8dbf the same day, the merge of audiodsp#415 on main. Its source
+# is the same as 0ab3d30 (`git diff 0ab3d30 b1f8dbf -- src` is empty).
+#
 # <ref> <commit>   -- ref is what CI installs (git+https://...@<ref>)
-717f91a96aca4c87f7b551b3fbd8d844ba9ff4e9 717f91a96aca4c87f7b551b3fbd8d844ba9ff4e9
+b1f8dbf207ef43325c33e57c032c6fcc1ec4edcf b1f8dbf207ef43325c33e57c032c6fcc1ec4edcf

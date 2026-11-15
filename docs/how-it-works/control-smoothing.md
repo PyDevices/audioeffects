@@ -7,15 +7,14 @@ Mix from 0.3 to 1.0 in one call: Bitcrusher, Chorus, CombFilter, Compressor,
 DeEsser, Distortion, DynamicEQ, Exciter, Fuzz, MultibandCompressor, Overdrive,
 Phaser, Saturation, Tremolo and Vibrato, with the exceptions below. The Mix
 of DigitalDelay and PingPongDelay and SlapbackDelay's Level walk too, since
-their delay node does.
+their delay node does, and so do the Mix of Flanger and Reverb.
 
 A few moves still step. Some filter corners move at once, and so do a switch
 and a patch change that rebuilds part of a graph. LadderFilter's Cutoff,
-Resonance, Drive and Passband Comp walk over the same 20 ms as its Mix. PitchShifter's shifted voice
-starts from an empty line each time Mix leaves 0, so it arrives about 20 ms
-after the move with a step of its own. Until those walk too, send such a jump
-as small steps, one a block: the delays' own tests show Mix moved in 127 steps, one a block, steps
-the output by less than one and a half times the steepest step of the tone
+Resonance, Drive and Passband Comp walk over the same 20 ms as its Mix.
+Until the rest walk too, send such a jump as small steps, one a block: the
+delays' own tests show Mix moved in 127 steps, one a block, steps the output
+by less than one and a half times the steepest step of the tone
 going through it. The rest is on the
 [roadmap](https://github.com/PyDevices/audioeffects/blob/main/ROADMAP.md).
 
@@ -35,12 +34,19 @@ PitchShifter and ShimmerHall build their graph only when Mix first leaves 0,
 and empty it on each return; either way the graph comes in at the source's
 levels and walks to Mix's from there. DeEsser's
 Range 0 works the same way, and Tremolo's Depth 0 walks there and back too.
+PitchShifter's shifted voice starts from an empty line, so it arrives a
+window, about 20 ms, after Mix leaves 0; its input fades in over 20 ms, so
+the voice arrives faded in.
 
 A delay's Time is not ramped here: it already glides, at the rate its Glide
 control sets. A filter corner that jumps steps the output too, more quietly
 than a level does. LadderFilter's node walks its cutoff, in octaves, and its
 other settings across the same 20 ms; the corners that still jump come next,
-the same way.
+the same way. LowPass, BandPass and Notch sit on `audiobiquad.Biquad`, which
+walks its corner, Q and shape over 20 ms. When Q drops, a notch or a
+band-pass keeps its level through the walk rather than swelling past its
+input. On a narrow or resonant setting the walk still sweeps the filter
+across what you play, the way a fast turn of the knob would.
 
 A switch, or a patch change that rebuilds part of a graph, will crossfade from
 the old graph to the new over the same 20 ms instead of cutting.
@@ -56,8 +62,9 @@ reaches anyone using the bare nodes too, CircuitPython users included.
 
 The nodes that walk are `audiomixer.Mixer`'s voice levels (its `level_ramp`),
 the Waveshaper's `mix` and `post_gain`, the Biquad's and the AllPass's `mix`,
-the Dynamics node's makeup, the FeedbackDelay's `mix` and
-`audiomath.Multiply`'s `mix`. An
+the Dynamics node's makeup, the FeedbackDelay's and `audioverb.Tank`'s
+`mix`, `audiodelays.Flanger`'s `mix` (its `mix_ramp`, which is 0 unless a
+class sets it) and `audiomath.Multiply`'s `mix`. An
 `audioroute.Port` told `play(source, after=frames)` keeps playing what it
 plays until a walk has landed, which is how Mix 0 switches to the source
 without a cut.

@@ -48,6 +48,7 @@ except (ImportError, AttributeError, NameError):   # no os.path natively
 import kit_common as kc                                     # noqa: E402
 from audioeffects import _component                         # noqa: E402
 import audioeffects                                         # noqa: E402
+from audioeffects import pitchshifter as ps                  # noqa: E402
 
 VENDOR = "PyDevices"
 
@@ -941,8 +942,11 @@ class TheSurface(TestCase):
 
 def walk_in(rate):
     """Frames, in whole blocks, until a return from Mix 0 has walked in from
-    the source's levels to Mix's and plays what a fresh instance does."""
+    the source's levels to Mix's and plays what a fresh instance does. The
+    shifted voice fades in over the same 20 ms from the move and arrives up
+    to a window late, so the fade's last frame plays a window after it."""
     frames = (_component.level_ramp_frames(rate)
+              + ps.window_frames(ps.WINDOW_MS, rate)
               + _component.BYPASS_MARGIN_FRAMES)
     return -(-frames // BLOCK) * BLOCK
 
