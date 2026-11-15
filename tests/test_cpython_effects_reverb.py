@@ -1145,19 +1145,23 @@ class Tier1(unittest.TestCase):
             self.assertEqual(not np.any(y[2 * RATE:]), silent, level)
             self.assertTrue(np.any(y[RATE // 10:]), level)
 
-    def test_a_control_that_jumps_steps_the_output(self):
-        # the family limit: Mix 0 to 2 in one move over a steady tone steps
-        # the output at the block the move lands on
+    def test_a_jump_of_mix_walks_rather_than_steps(self):
+        # the family sentence: Mix 0 to 2 in one move over a steady tone
+        # walks the output there over 20 ms, so no frame steps further than
+        # the tone and the settled mix do; before the walk the move stepped
+        # the output more than 3 times as far as the tone at one frame
         frames = 16384
         x = np.round(8000 * np.sin(2 * np.pi * 200.0 * np.arange(frames)
                                    / RATE)).astype(np.int16)
         effect = make(Reverb, mono=x, frames=frames, mix=0.0)
         head = render(effect, 8192)
         effect.set_macro(rv.MIX_I, 127)
-        y = np.concatenate([head, render(effect, 256)])[:, 0]
-        step = int(np.max(np.abs(np.diff(y[8190:8200]))))
-        own = int(np.max(np.abs(np.diff(x.astype(np.int32)))))
-        self.assertGreater(step, 3 * own, (step, own))
+        y = np.concatenate([head, render(effect, 8192)])[:, 0]
+        steps = np.abs(np.diff(y.astype(np.int32)))
+        step = int(np.max(steps[8190:8192 + 2048]))
+        own = max(int(np.max(np.abs(np.diff(x.astype(np.int32))))),
+                  int(np.max(steps[-4096:])))
+        self.assertLess(step, 1.5 * own, (step, own))
 
     def test_the_tail_rings_out_when_the_source_ends(self):
         # The family sentence: a source that ends, part-way through the
@@ -1926,9 +1930,9 @@ CLAIMS = (
      "for Steel Plate at 48 kHz, and 146 914 B for the hall at Size 1.5, the "
      "most it takes.",
      ("TheCut.test_ram",)),
-    ("A control that jumps makes the output step: move it in small steps "
-     "from the host if you need it smooth.",
-     ("Tier1.test_a_control_that_jumps_steps_the_output",)),
+    ("A jump of Mix walks to its new setting over 20 ms rather than "
+     "stepping the output.",
+     ("Tier1.test_a_jump_of_mix_walks_rather_than_steps",)),
     ("When your source ends, the tail rings out as it would on silence.",
      ("Tier1.test_the_tail_rings_out_when_the_source_ends",)),
     ("Asking for `character=\"spring\"` says it is parked: the tank has no "
@@ -2008,11 +2012,14 @@ class Claims(unittest.TestCase):
             self.assertIn(_words(sentence), text)
 
 
-#: The two family sentences, as ruled on 2026-09-28; the second restated
-#: at audiodsp eb2d20d, whose nodes ring out when a source ends.
+#: The family sentences, as ruled on 2026-09-28; the tail restated at
+#: audiodsp eb2d20d, whose nodes ring out when a source ends, and the
+#: control sentence when Mix began to walk.
 FAMILY = (
-    "A control that jumps makes the output step: move it in small steps "
-    "from the host if you need it smooth.",
+    "A jump of Mix walks to its new setting over 20 ms rather than "
+    "stepping the output.",
+    "A jump of another control steps it: move that in small steps from "
+    "the host if you need it smooth.",
     "When your source ends, the tail rings out as it would on silence.",
 )
 
