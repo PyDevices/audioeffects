@@ -42,7 +42,11 @@ A delay's Time is not ramped here: it already glides, at the rate its Glide
 control sets. A filter corner that jumps steps the output too, more quietly
 than a level does. LadderFilter's node walks its cutoff, in octaves, and its
 other settings across the same 20 ms; the corners that still jump come next,
-the same way.
+the same way. LowPass, BandPass and Notch sit on `audiobiquad.Biquad`, which
+walks its corner, Q and shape over 20 ms. When Q drops, a notch or a
+band-pass keeps its level through the walk rather than swelling past its
+input. On a narrow or resonant setting the walk still sweeps the filter
+across what you play, the way a fast turn of the knob would.
 
 A switch, or a patch change that rebuilds part of a graph, will crossfade from
 the old graph to the new over the same 20 ms instead of cutting.
