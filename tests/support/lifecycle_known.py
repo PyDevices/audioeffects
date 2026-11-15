@@ -15,13 +15,15 @@ issue that tracks it, or the docstring sentence that states it.
 R_JUMP = (
     "a control that jumps hands its node the new value at once, so the"
     " output steps; disclosed in docs/how-it-works/control-smoothing.md."
-    " Mix and the levels walk since audiodsp#400; a filter corner, a"
+    " Mix and the levels walk since audiodsp#400, LadderFilter's controls"
+    " since audiodsp#414; another filter corner, a"
     " switch, a depth, and a patch change's controls other than its levels"
     " still jump, until the later stages there land (audiocomponents#153)")
 R_STATE_RAMP = (
     "state that outlives tail_samples, as R_STATE (audiocomponents#155);"
     " and since audiodsp v0.6.6rc9 a filter corner move walks over 20 ms"
-    " (#162's fix), so a move and back meets the uninterrupted control up"
+    " (#162's fix), LadderFilter's since audiodsp#414, so a move and back"
+    " meets the uninterrupted control up"
     " to 20 ms past the bound, where it used to step")
 R_FUZZ_CHARGE = (
     "Fuzz charges its output pole through its shapers when it is built, so"
@@ -192,13 +194,13 @@ KNOWN_RED = {
     ('HighPass', 'E9-', 'P4'): (55, '95a58d3e', None, None, R_STATE),
     ('LadderFilter', 'E10-mix0', 'P3'): (4, 'b6574e03', None, None, R_LADDER_OSC),
     ('LadderFilter', 'E2-reset_buffer', 'P4'): (2, 'f71d78d2', None, None, R_STATE),
-    ('LadderFilter', 'E4-', 'P5'): (22, '62ce6690', None, None, R_JUMP),
+    ('LadderFilter', 'E4-', 'P5'): (2, '89de4fc4', None, None, R_JUMP),
     ('LadderFilter', 'E5-mix0', 'P3'): (4, '5df6ec0e', None, None, R_LADDER_OSC),
-    ('LadderFilter', 'E5-mix0', 'P5'): (30, '87c00d0a', None, None, R_JUMP),
-    ('LadderFilter', 'E6-', 'P4'): (4, 'b99eecc4', None, None, R_STATE),
-    ('LadderFilter', 'E6-', 'P5'): (58, 'f6d58cc2', None, None, R_JUMP),
+    ('LadderFilter', 'E5-mix0', 'P4'): (1, '35b3e948', None, None, R_STATE_RAMP),
+    ('LadderFilter', 'E6-', 'P4'): (6, '40549f6c', None, None, R_STATE_RAMP),
+    ('LadderFilter', 'E6-', 'P5'): (10, 'f17e7c9e', None, None, R_JUMP),
     ('LadderFilter', 'E9-', 'P3'): (16, '4978cfa6', None, None, R_LADDER_OSC),
-    ('LadderFilter', 'E9-', 'P5'): (150, '638865df', None, None, R_JUMP),
+    ('LadderFilter', 'E9-', 'P4'): (5, 'd12f1a25', None, None, R_STATE_RAMP),
     ('Limiter', 'E11-', 'P5'): (4, '3b25af0f', None, None, R_JUMP),
     ('Limiter', 'E4-', 'P5'): (12, 'c136df4f', None, None, R_JUMP),
     ('Limiter', 'E6-', 'P4'): (6, '6dd682df', None, None, R_STATE),

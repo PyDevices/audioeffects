@@ -9,8 +9,9 @@ Phaser, Saturation, Tremolo and Vibrato, with the exceptions below. The Mix
 of DigitalDelay and PingPongDelay and SlapbackDelay's Level walk too, since
 their delay node does.
 
-A few moves still step. A filter corner moves at once, and so do a switch and
-a patch change that rebuilds part of a graph. PitchShifter's shifted voice
+A few moves still step. Some filter corners move at once, and so do a switch
+and a patch change that rebuilds part of a graph. LadderFilter's Cutoff,
+Resonance, Drive and Passband Comp walk over the same 20 ms as its Mix. PitchShifter's shifted voice
 starts from an empty line each time Mix leaves 0, so it arrives about 20 ms
 after the move with a step of its own. Until those walk too, send such a jump
 as small steps, one a block: the delays' own tests show Mix moved in 127 steps, one a block, steps
@@ -37,8 +38,9 @@ Range 0 works the same way, and Tremolo's Depth 0 walks there and back too.
 
 A delay's Time is not ramped here: it already glides, at the rate its Glide
 control sets. A filter corner that jumps steps the output too, more quietly
-than a level does; it comes after the levels, with the node moving its
-coefficients across the same 20 ms.
+than a level does. LadderFilter's node walks its cutoff, in octaves, and its
+other settings across the same 20 ms; the corners that still jump come next,
+the same way.
 
 A switch, or a patch change that rebuilds part of a graph, will crossfade from
 the old graph to the new over the same 20 ms instead of cutting.

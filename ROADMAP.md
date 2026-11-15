@@ -5,8 +5,8 @@ way on every interpreter and board.
 
 ## Next
 
-- Control moves that ramp where they still step: filter corners, an effect
-  built at Mix 0 coming in the first time, then crossfaded patch changes.
+- Control moves that ramp where they still step: the filter corners that
+  still jump, then crossfaded patch changes.
   [The policy](docs/how-it-works/control-smoothing.md).
 
 ## Later
