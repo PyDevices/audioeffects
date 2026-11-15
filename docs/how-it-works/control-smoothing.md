@@ -11,11 +11,10 @@ their delay node does, and so do the Mix of Flanger and Reverb.
 
 A few moves still step. Some filter corners move at once, and so do a switch
 and a patch change that rebuilds part of a graph. LadderFilter's Cutoff,
-Resonance, Drive and Passband Comp walk over the same 20 ms as its Mix. PitchShifter's shifted voice
-starts from an empty line each time Mix leaves 0, so it arrives about 20 ms
-after the move with a step of its own. Until those walk too, send such a jump
-as small steps, one a block: the delays' own tests show Mix moved in 127 steps, one a block, steps
-the output by less than one and a half times the steepest step of the tone
+Resonance, Drive and Passband Comp walk over the same 20 ms as its Mix.
+Until the rest walk too, send such a jump as small steps, one a block: the
+delays' own tests show Mix moved in 127 steps, one a block, steps the output
+by less than one and a half times the steepest step of the tone
 going through it. The rest is on the
 [roadmap](https://github.com/PyDevices/audioeffects/blob/main/ROADMAP.md).
 
@@ -35,6 +34,9 @@ PitchShifter and ShimmerHall build their graph only when Mix first leaves 0,
 and empty it on each return; either way the graph comes in at the source's
 levels and walks to Mix's from there. DeEsser's
 Range 0 works the same way, and Tremolo's Depth 0 walks there and back too.
+PitchShifter's shifted voice starts from an empty line, so it arrives a
+window, about 20 ms, after Mix leaves 0; its input fades in over 20 ms, so
+the voice arrives faded in.
 
 A delay's Time is not ramped here: it already glides, at the rate its Glide
 control sets. A filter corner that jumps steps the output too, more quietly

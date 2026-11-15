@@ -17,6 +17,7 @@ step as before, and `ramp_levels` says nothing.
 | a node's Mix jump does not step | Flanger and Reverb, whose Mix is the node's own `mix`, moved 0 to 127 and 127 to 0 in one call on a 200 Hz tone: the largest step within two blocks of the move is under 1.5 times the tone's own before and after (on a 100 Hz triangle whose step is 100 to 140, it was 4400 and 3400 with the mix landing at once) |
 | Mix leaving 0 the first time | AirSpace, PitchShifter and ShimmerHall built at Mix 0 and played for 12 blocks, then Mix moved to 127 in one call: the largest step within two blocks of the move is under 1.5 times the tone's own (the graph used to come in at once, cutting from the source to the wet alone: 4900 on a triangle whose step is 100) |
 | Mix leaving 0 again | the same three built at Mix 127, moved to 0 and, six blocks later, back to 127: the same bar (the return cut the same way, 4700) |
+| the shifted voice arrives faded in | PitchShifter's shifted voice starts from an empty line, so it arrives a window after Mix leaves 0, the first time or again: the largest step over the next 4000 frames is under 1.5 times the tone's own once it has settled (it arrived at full level, 3000 on a triangle whose step is 83) |
 | a mixer without the ramp | `ramp_levels` on an object that refuses `level_ramp` hands it back untouched |
 
     python -m unittest tests.test_level_ramp
@@ -180,6 +181,34 @@ class LevelRamp(unittest.TestCase):
                 near = max(steps[at - 1:at + 2 * BLOCK])
                 # At Mix 0 the output is the tone itself.
                 own = max(steps[at - 4 * BLOCK:at - 1])
+                self.assertLess(near / own, 1.5)
+
+    def test_the_shifted_voice_arrives_faded_in(self):
+        rate = 48000
+        for again in (False, True):
+            with self.subTest(again=again):
+                effect = audioeffects.create(
+                    "PitchShifter", tone(rate), rate,
+                    mix=1.0 if again else 0.0)
+                index = list(type(effect).MACRO_LABELS).index("Mix")
+                if again:
+                    effect.set_macro(index, 127)
+                    head = pull(effect, 12 * BLOCK)
+                    effect.set_macro(index, 0)
+                    head += pull(effect, 6 * BLOCK)
+                else:
+                    head = pull(effect, 12 * BLOCK)
+                effect.set_macro(index, 127)
+                tail = pull(effect, 16 * BLOCK)
+                effect.deinit()
+                trace = head + tail
+                at = len(head)
+                steps = [abs(trace[i] - trace[i - 1])
+                         for i in range(1, len(trace))]
+                # The shifted voice arrives a window, about 1000 frames,
+                # after the move.
+                near = max(steps[at - 1:at + 4000])
+                own = max(steps[at + 8 * BLOCK:])
                 self.assertLess(near / own, 1.5)
 
 
