@@ -507,5 +507,12 @@
 # once it lands. Nothing else moved beneath the components
 # (`git log 717f91a..122f23a -- src`).
 #
+# Moved to 0ab3d30 the same day, the new head of audiodsp#415, which adds
+# audiobiquad's Q walk: when Q drops, the band mix walks as a share of k and
+# the band memory shrinks with it, so a notch or band-pass walked to a low Q
+# no longer swells past its input. LowPass, BandPass and Notch hear it; a
+# corner move at a fixed Q walks as before. As above, move the pin to the
+# merge commit once it lands.
+#
 # <ref> <commit>   -- ref is what CI installs (git+https://...@<ref>)
-122f23afb97361af08cfe76a07ea51d877cbe9a8 122f23afb97361af08cfe76a07ea51d877cbe9a8
+0ab3d30b06564f1f4e6dbb22b4fd539edf5842ed 0ab3d30b06564f1f4e6dbb22b4fd539edf5842ed
