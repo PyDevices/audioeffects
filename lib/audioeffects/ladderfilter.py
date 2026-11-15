@@ -162,8 +162,10 @@ class LadderFilter(_component.Component):
     passband holds its level at any Resonance. Poles picks the output from
     one to four poles. Oversample runs the loop at twice the rate; it is on
     by default, and the Ladder - lean patch is Wide Open with it off, for
-    slower boards. Mix at 0 is your dry signal. The Effect controls page
-    lists what the knobs span.
+    slower boards. Mix at 0 is your dry signal. A jump of Cutoff,
+    Resonance, Drive, Passband Comp or Mix walks there over 20 ms rather
+    than stepping the output. The Effect controls page lists what the knobs
+    span.
 
     **Response.** At 48 kHz the four-pole output is 12 dB down at the cutoff
     and about 50 dB down two octaves above it, and each pole fewer takes
@@ -263,8 +265,14 @@ class LadderFilter(_component.Component):
         the numbers the dossier's traits are stated in are k, and a class
         that renamed them would make its own gate unreadable.
         """
+        # A move of the cutoff, resonance, drive, passband_comp or mix
+        # walks over 20 ms in the node, as the effects' levels do
+        # (`_component.LEVEL_RAMP_MS`), so a jump does not click. The node's
+        # first block plays the settings as they stand, so a new node or a
+        # reset one has nothing to walk from.
         node = audioladder.Ladder(sample_rate=self._sample_rate,
-                                  channel_count=self._channel_count)
+                                  channel_count=self._channel_count,
+                                  ramp_ms=_component.LEVEL_RAMP_MS)
         node.play(self._source)
         # The node holds no external resource -- its output block is inline
         # in the object (`audioladder/Ladder.h`), so on the two native

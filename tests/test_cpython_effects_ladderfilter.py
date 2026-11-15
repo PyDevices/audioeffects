@@ -224,6 +224,40 @@ class TheClaims(unittest.TestCase):
         self.assertEqual(
             np.abs(wet - np.array(data, float).reshape(-1, 2)).max(), 0)
 
+    def test_a_jump_walks_rather_than_stepping(self):
+        # A 100 Hz triangle, which never jumps itself, and a knob moved in
+        # one call after twelve blocks: the largest step in the 25 ms after
+        # the move stays under 1.5 times the largest the filter makes on
+        # its own, before the move or once it has settled. Resonance stops
+        # short of 4, where the filter would sing over the triangle.
+        frames = 48 * 256
+        at = 12 * 256
+        place = np.arange(frames) % 480
+        tri = np.where(place < 120, place * 50,
+                       np.where(place < 360, 12000 - place * 50,
+                                place * 50 - 24000))
+        data = array("h", np.repeat(tri, 2).astype(np.int16).tobytes())
+        labels = list(LadderFilter.MACRO_LABELS)
+        moves = (("Cutoff", 127, dict(cutoff_hz=200.0, resonance=1.0)),
+                 ("Resonance", 100, dict(cutoff_hz=1000.0, resonance=0.5)),
+                 ("Mix", 0, dict(cutoff_hz=300.0, resonance=1.0)))
+        for label, position, options in moves:
+            with self.subTest(knob=label):
+                effect = LadderFilter.create(
+                    probes.ArraySource(data, rate=RATE, block=256), RATE,
+                    **options)
+                out = []
+                for block in range(frames // 256):
+                    if block * 256 == at:
+                        effect.set_macro(labels.index(label), position)
+                    out.append(np.frombuffer(bytes(audiocore.get_buffer(
+                        effect.output)[1]), np.int16)[0::2])
+                effect.deinit()
+                steps = np.abs(np.diff(np.concatenate(out).astype(int)))
+                near = steps[at - 1:at + RATE // 40].max()
+                own = max(steps[:at - 1].max(), steps[at + RATE // 20:].max())
+                self.assertLess(near, 1.5 * own)
+
     def test_the_response_at_the_cutoff_and_two_octaves_up(self):
         self.assertAlmostEqual(gain_db(1000.0, cutoff_hz=1000.0,
                                        resonance=0.0), -12.0, delta=0.2)
@@ -382,6 +416,9 @@ CLAIMS = (
       "it",)),
     ("Mix at 0 is your dry signal.",
      ("TheClaims.test_mix_zero_is_the_dry_signal",)),
+    ("A jump of Cutoff, Resonance, Drive, Passband Comp or Mix walks there "
+     "over 20 ms rather than stepping the output.",
+     ("TheClaims.test_a_jump_walks_rather_than_stepping",)),
     ("At 48 kHz the four-pole output is 12 dB down at the cutoff and about "
      "50 dB down two octaves above it, and each pole fewer takes about "
      "12 dB off that.",
