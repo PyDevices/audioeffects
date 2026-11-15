@@ -2079,9 +2079,17 @@ def _walk_in_frames(e):
     stage further down the graph may start its own walk late by, as for
     the walk out (`_bypass_walk`)."""
     walk = getattr(e, "_bypass_walk", None)
-    if walk is None:
-        return 0
-    return walk()
+    frames = 0 if walk is None else walk()
+    if (getattr(e, "_come_in", None) is not None
+            and _component.LEVELS_RAMP):
+        # AirSpace, PitchShifter and ShimmerHall wire their graph again
+        # at the source's levels and walk to Mix's (`_come_in`), counted
+        # in whole blocks as `_bypass_walk` counts the walk out.
+        ramp = (_component.level_ramp_frames(e._sample_rate)
+                + _component.BYPASS_MARGIN_FRAMES)
+        margin = _component.BYPASS_MARGIN_FRAMES
+        frames = max(frames, -(-ramp // margin) * margin)
+    return frames
 
 
 def pr(cls, ev, rate, channels, patch, options):
