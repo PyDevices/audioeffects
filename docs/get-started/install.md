@@ -28,9 +28,12 @@ python -c "import audioeffects; print(len(audioeffects.ALL), 'effects')"
 ## On a MicroPython-compatible board
 
 ```python
-import mip
-mip.install("audioeffects", index="https://PyDevices.github.io/mip")
+import omip
+omip.install("audioeffects")
 ```
+
+`omip` comes with OmniPython firmware. On other MicroPython firmware, run
+`mip.install("github:PyDevices/pydevices/lib/omip.py")` once to put it on the board.
 
 The firmware has to carry audiodsp's native modules, because the effects
 build their graphs from them. `mip` copies only the Python.
