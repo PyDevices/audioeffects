@@ -499,5 +499,13 @@
 # Moved to 717f91a the same day, the merge of audiodsp#414 on main. Its source
 # is the same as 9b0a07d (`git diff 9b0a07d 717f91a -- src` is empty).
 #
+# Moved to 122f23a the same day, for audioverb.Tank's mix walk and
+# audiodelays.Flanger's opt-in `mix_ramp` (audiodsp#415), which Flanger sets to
+# 20 ms so a jump of Mix walks rather than stepping. Tank's walk is always on;
+# Flanger's default is 0, which renders what it did. The commit is that pull
+# request's head, not yet on audiodsp's main: move the pin to the merge commit
+# once it lands. Nothing else moved beneath the components
+# (`git log 717f91a..122f23a -- src`).
+#
 # <ref> <commit>   -- ref is what CI installs (git+https://...@<ref>)
-717f91a96aca4c87f7b551b3fbd8d844ba9ff4e9 717f91a96aca4c87f7b551b3fbd8d844ba9ff4e9
+122f23afb97361af08cfe76a07ea51d877cbe9a8 122f23afb97361af08cfe76a07ea51d877cbe9a8
