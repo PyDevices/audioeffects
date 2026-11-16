@@ -347,8 +347,8 @@ both packages from audiodsp, and are recorded in its changelog.
 ### Removed
 
 - The two placeholder effect classes, `ExampleStock` and `ExampleAudiodsp`,
-  which stood in for the two portability tiers before shipped classes
-  covered both. They were never in `ALL` and `create()` never served them.
+  which stood in for the stock and audiodsp variants before shipped
+  classes covered both. They were never in `ALL` and `create()` never served them.
 
 - Instruments say how many notes they sound at once, and a SoundFont pool's count can change while it plays
 - SoundFont voices send their writes together, and keep the arena out of the collected heap
@@ -404,18 +404,18 @@ both packages from audiodsp, and are recorded in its changelog.
   ESP32-S3**, where no three-band patch keeps up (107 % of a block; two
   bands is 71 %). No patch can do this instead: every macro position builds
   the same graph.
-- **`Flanger` (rebuilt, Phase 7):** a thin class on CircuitPython's own
+- **`Flanger` (rebuilt):** a thin class on CircuitPython's own
   `audiodelays.Flanger`, so it now runs on a stock CircuitPython board.
   Eight macros (Rate, Range, Manual, Color, Mix, Polarity, Sync, Division)
   and six patches; `create("Flanger")` serves it from
   `audioeffects/flanger.py`. Both old flangers are gone:
-  `modulation.Flanger` (and `modulation.py` with it) and the parked Phase 3
+  `modulation.Flanger` (and `modulation.py` with it) and the earlier
   rebuild under `rebuilt/`. The old `depth_ms=` and `feedback=` keywords
   give way to the macros; `rate=` and `mix=` keep their names, and Mix 1 is
-  now the default. The long ring and the bucket-brigade sweep of the parked
+  now the default. The long ring and the bucket-brigade sweep of the earlier
   rebuild do not carry: the node stops Color at 0.95 (about 0.4 s to -60 dB
   at 3 ms) and sweeps a triangle in milliseconds.
-- **`ShimmerHall` (rebuilt, Phase 6; adopted 2026-10-13):** a pitch shifter around a hall, in
+- **`ShimmerHall` (rebuilt):** a pitch shifter around a hall, in
   two characters. Bloom sends the shifted copy into the hall once, Bloom
   after you play, on `audiodelays.PitchShift`; Rise puts the shift inside
   an `audioecho.FeedbackDelay` loop (`loop_semitones`), so each pass comes
@@ -430,7 +430,7 @@ both packages from audiodsp, and are recorded in its changelog.
   is -24 dBFS. It is what `audioeffects.ShimmerHall` and `create()` now
   serve. It lives in `lib/audioeffects/rebuilt/shimmerhall.py`, beside the
   old class in `rack.py`, until it is promoted.
-- **`AirSpace` (rebuilt, Phase 6; adopted 2026-10-13):** a tape echo sent
+- **`AirSpace` (rebuilt):** a tape echo sent
   into a chamber, with the dry untouched beside it, in
   `audioeffects/rebuilt/airspace.py`. Eleven macros (Time, Feedback, Glide,
   Drive, Loop Top, Loop Bass, Top Cut, Low Cut, Decay, Damping, Mix) and
@@ -440,7 +440,7 @@ both packages from audiodsp, and are recorded in its changelog.
   the rebuilt `Reverb`, and `reset()` renders exactly as a fresh instance.
   It is what `audioeffects.AirSpace` and `create()` now serve; the old
   `rack.AirSpace` stays beside it until the rebuild is promoted.
-- **`Harmonizer` (rebuilt, Phase 6; adopted 2026-10-13):** three pitch shifters at fixed
+- **`Harmonizer` (rebuilt):** three pitch shifters at fixed
   intervals under the dry, after three Eventide H910s played from one
   keyboard. Each voice is its own `audiodelays.PitchShift` on its own
   splitter tap and lands on the nearest step the shifter can play; a
@@ -449,7 +449,7 @@ both packages from audiodsp, and are recorded in its changelog.
   seven patches including a lean two-voice one, and a `window_ms` option.
   It drops the old class's `intervals=` and `level=` options, and is what
   `audioeffects.Harmonizer` and `create()` now serve.
-- **`PitchShifter` (rebuilt, Phase 6; adopted 2026-10-13):** a fixed-interval splice shifter
+- **`PitchShifter` (rebuilt):** a fixed-interval splice shifter
   in the manner of the first harmonizers, on a Pitch, Fine, Mix, Delay and
   Feedback surface. Pitch moves in whole semitones an octave either way and
   Fine detunes by up to 50 cents; the dry passes untouched up to Mix 1;
@@ -459,7 +459,7 @@ both packages from audiodsp, and are recorded in its changelog.
   construction. The old `semitones=` option is gone: Pitch and Fine
   replace it. It is what `audioeffects.PitchShifter` and `create()` now
   serve.
-- **`StereoWidener` (rebuilt, Phase 6; adopted 2026-10-13):** two characters on a Width, Delay
+- **`StereoWidener` (rebuilt):** two characters on a Width, Delay
   and Character surface. Haas delays the right channel 1 to 40 ms behind the
   left, crossfading the right toward its late copy up to Width 1 and turning
   the left down above it; Mid/Side scales the difference between the
@@ -467,7 +467,7 @@ both packages from audiodsp, and are recorded in its changelog.
   Delay move glides instead of clicking. The old `delay_ms=`/`width=`
   options keep their names with these meanings. It is what
   `audioeffects.StereoWidener` and `create()` now serve.
-- **`Rack` (rebuilt, Phase 6; adopted 2026-10-13):** the serial chain on the contract's base, in
+- **`Rack` (rebuilt):** the serial chain on the contract's base, in
   `rebuilt/rack.py` beside the old class, which stays until the rebuild is
   promoted. It is what `audioeffects.Rack` and `create()` now serve. `chain=` keeps its meaning and also takes a bare effect class. It
   renders exactly the same pedals patched by hand; `latency_samples` and
@@ -479,7 +479,7 @@ both packages from audiodsp, and are recorded in its changelog.
   and a rack's restore now share one private path in the base,
   `_apply_positions`, which the classes that did work once per patch moved
   onto.
-- **`Octaver` (rebuilt, Phase 6; adopted 2026-10-13):** the analog octave-down, after the
+- **`Octaver` (rebuilt):** the analog octave-down, after the
   Boss OC-2. The octave is your own note with every other cycle turned
   over, clocked from a low-passed copy and multiplied into an all-passed
   one, so it keeps your attack and decay and tracks from E2 to A4 at the
@@ -488,7 +488,7 @@ both packages from audiodsp, and are recorded in its changelog.
   class's octave up and its `down=`, `up=`, `down2=` and `up2=` options,
   and is what `audioeffects.Octaver` and `create()` now serve.
 - MultiTapDelay: the docstring says which patches need a P4-class board (patch 4 does, patch 3 may), from the boards' figures at audiodsp v0.6.3
-- **`DigitalDelay` (rebuilt, Phase 5; adopted 2026-09-28):** a clean
+- **`DigitalDelay` (rebuilt):** a clean
   interpolated line with the Boss DD-2's control law on one
   `audioecho.FeedbackDelay`, and what `audioeffects.DigitalDelay` and
   `create()` now serve. Turning Time pitch-bends the repeats at a rate Glide
@@ -512,7 +512,7 @@ both packages from audiodsp, and are recorded in its changelog.
   (audiocomponents#117), and a tail waits for a source that stopped
   (audiodsp#180); `tail_samples` is `None` with Repeat Cut in, as at
   patch 5.
-- **`SlapbackDelay` (rebuilt, Phase 5; adopted 2026-09-28):** the Sun
+- **`SlapbackDelay` (rebuilt):** the Sun
   Studio tape slap on one `audioecho.FeedbackDelay`, and what
   `audioeffects.SlapbackDelay` now serves: one mono repeat at 135 ms, landed
   as a whole frame at every rate, with Saturation, Tone and Wow as the
@@ -531,7 +531,7 @@ both packages from audiodsp, and are recorded in its changelog.
   frame at 44.1 and 22.05 kHz, and Tone's flat top
   at 22.05 kHz. It lives in `lib/audioeffects/rebuilt/slapbackdelay.py`
   until it comes home.
-- **`TapeDelay` (rebuilt, Phase 5; adopted 2026-09-29):** a tape loop
+- **`TapeDelay` (rebuilt):** a tape loop
   on one `audioecho.FeedbackDelay` with two transports as characters: the
   RE-201's motor (`"varispeed"`, the default), where a Time move bends the
   pitch by the ratio of the two times for exactly the new time, and the
@@ -557,7 +557,7 @@ both packages from audiodsp, and are recorded in its changelog.
   at audiodsp v0.6.3 every patch runs in real time at 13.4-14.1 % of a
   block on the P4 and 10.0-12.8 % on the S3, and every digest equals the
   desktop's or a single-precision desktop build's (audiocomponents#75).
-- **`AnalogDelay` (rebuilt, Phase 5; adopted 2026-09-29):** a
+- **`AnalogDelay` (rebuilt):** a
   bucket-brigade delay on one `audioecho.FeedbackDelay`, with the Boss
   DM-2's one 4096-stage line (`"single-line"`, the default) and the Deluxe
   Memory Man's two in series (`"double-line"`) as characters. The Time knob
@@ -583,7 +583,7 @@ both packages from audiodsp, and are recorded in its changelog.
   boards at audiodsp v0.6.3 every patch runs in real time at 7.0-7.5 % of
   a block on the P4 and 14.0-14.5 % on the S3, and every digest equals the
   desktop's or a single-precision desktop build's (audiocomponents#75).
-- **`PingPongDelay` (rebuilt, Phase 5; adopted 2026-09-29):** repeats
+- **`PingPongDelay` (rebuilt):** repeats
   that alternate between the speakers, on one `audioecho.FeedbackDelay`
   whose cross-feed and input pan Spread moves between two plain delays and
   the full bounce, by a stated law. The dry path is each channel's own
@@ -609,7 +609,7 @@ both packages from audiodsp, and are recorded in its changelog.
   finite once Cut is out again), and the Feedback is handed as set (no
   stepping clear of the stall windows; the bound counts one landing lap
   there).
-- **`ConvolutionReverb` (rebuilt, Phase 5; adopted 2026-09-29):** a
+- **`ConvolutionReverb` (rebuilt):** a
   short room on one `audioconvolve.Convolver`, synthesized from Decay,
   Damping, Predelay, Diffusion and one of 64 Room seeds, or loaded from
   your own impulse (int16 frames or a 16-bit WAV at the graph's rate) with
@@ -634,7 +634,7 @@ both packages from audiodsp, and are recorded in its changelog.
   patch runs in real time at 41.6-42.2 % of a block on the P4 and
   71.2-73.1 % on the S3, and every digest equals the desktop's or a
   single-precision desktop build's (audiocomponents#75).
-- **`MultiTapDelay` (rebuilt, Phase 5; adopted 2026-09-29):** the
+- **`MultiTapDelay` (rebuilt):** the
   RE-201's multi-head modes, with the Echorec as a second reference. Heads
   sit on a grid of whole multiples of one base time, exactly, at every
   rate; Pattern is the RE-202's twelve head sets over that grid (mode 12
@@ -675,7 +675,7 @@ both packages from audiodsp, and are recorded in its changelog.
   and patch 4 does not (5.567 ms, 104.4 %), so the docstring says patch 4
   needs a P4-class board and patch 3 may. Every digest equals the
   desktop's or a single-precision desktop build's (audiocomponents#75).
-- **`Reverb` (rebuilt, Phase 5; adopted 2026-09-29):** Dattorro's plate
+- **`Reverb` (rebuilt):** Dattorro's plate
   network on one `audioverb.Tank`, cut four ways as a Character macro: an
   EMT 140 plate that is dense at once and darkens as Decay shortens, and a
   room, a chamber and a hall that build. Decay is T60 at 500 Hz within 12 %
@@ -703,14 +703,13 @@ both packages from audiodsp, and are recorded in its changelog.
 
 - **`_core.py` is gone, and with it the old classes the rebuilds replaced.**
   `delay.py`, `reverb.py`, `pitch.py` and `rack.py` held only the
-  pre-contract classes, which no public name had served since the Phase 5
-  and Phase 6 adoptions; they are deleted. The public classes, `ALL` and
+  pre-contract classes, which no public name had served since the rebuilt classes replaced them; they are deleted. The public classes, `ALL` and
   `create()` are unchanged. `configure()`, `sample_rate()` and
   `channel_count()` stay, but only record a format: every effect takes its
   format from its source, as it already did.
 - **`ShimmerHall` and `AirSpace` keep the classes they were ported
-  against.** With the Phase 5 `TapeDelay` and `Reverb` and the Phase 6
-  `Octaver` adopted, the two old racks (`rack.ShimmerHall` and
+  against.** With the rebuilt `TapeDelay`, `Reverb` and
+  `Octaver` in place, the two old racks (`rack.ShimmerHall` and
   `rack.AirSpace`) name the old `delay.TapeDelay`, `reverb.Reverb` and
   `pitch.Octaver` directly (a `Rack` chain entry may now be a class in
   place of a `NAME`), so they build and sound as before; moving them onto
@@ -940,7 +939,7 @@ version number. The release carries repository tooling and docs only.
   by a live press of the same key, which is why `Sequencer` always schedules
   both.
 
-- **Phase 4 is closed: `Saturation`, `Fuzz` and `Exciter` are adopted and
+- **The drive class rebuilds are done: `Saturation`, `Fuzz` and `Exciter` are adopted and
   home, and `drive.py` is deleted.** The G6 ruling of 2026-09-18
   (vision §7.2) makes the cost gate a real-time ceiling -- at or under 80 %
   of one stereo block on the ESP32-S3 and the ESP32-P4, at the constructor
@@ -983,7 +982,7 @@ version number. The release carries repository tooling and docs only.
   [#74](https://github.com/PyDevices/audiocomponents/issues/74) and
   [#72](https://github.com/PyDevices/audiocomponents/issues/72).
 
-- **Phase 4 promotion.** `Overdrive`, `Distortion`, `Bitcrusher` and
+- **Drive class promotion.** `Overdrive`, `Distortion`, `Bitcrusher` and
   `CabinetSim` come home as one file per effect --
   `audioeffects.overdrive`, `.distortion`, `.bitcrusher`, `.cabinetsim` --
   and out of `rebuilt/`. `rebuilt.ADOPTED` is empty again: it is staging,
@@ -1011,8 +1010,7 @@ version number. The release carries repository tooling and docs only.
   name. Its `Saturation` tests stay; `drive.Saturation` is still what ships.
 
 - **`Exciter` hands back the palette's own 256-frame block, and the
-  `Dynamics` row it was said to owe is not what was wrong** (Phase 4, fifth
-  fix round, 2026-09-18). The board asked for a palette row at this class's
+  `Dynamics` row it was said to owe is not what was wrong**. The board asked for a palette row at this class's
   own transient gains, because the palette builds
   `audiodynamics.Dynamics@transient` with both gains at 0 dB where it
   applies unity. Taken on desktop MicroPython, order-balanced, 8000 blocks a
@@ -1033,7 +1031,7 @@ version number. The release carries repository tooling and docs only.
   (audiocomponents#72).
 
 - **`Fuzz`'s `cascade` character ships at `oversample=2`, and a test holds
-  it** (Phase 4, fifth fix round, 2026-09-18). `create()` defaulted to ×8
+  it**. `create()` defaulted to ×8
   for both characters, and at ×8 the boards measured cascade at **4.782 ms
   on the P4 and 8.580 on the T-Embed S3 — 90 % and 161 % of a 5.333 ms
   block, real-time factor 1.00 and 0.56**: the shipped surface reached a
@@ -1055,7 +1053,7 @@ version number. The release carries repository tooling and docs only.
   (audiocomponents#74).
 
 - **`Saturation` hands back the palette's own 256-frame block, and its
-  budget is re-derived** (Phase 4, fifth fix round, 2026-09-18). The class
+  budget is re-derived**. The class
   built its output `Mixer` at `buffer_size=1024`, and `Mixer._render_size`
   is `buffer_size // 2 // 4 * 4` bytes — so it rendered **128 stereo
   frames** and every node behind it, including a `Splitter` whose own chunk
@@ -1076,7 +1074,7 @@ version number. The release carries repository tooling and docs only.
   256-frame graph is unmeasured (audiocomponents#70).
 
 - **`CabinetSim`'s tail carries a user impulse, and its ceiling is read
-  in combination** (Phase 4, third fix round, 2026-09-18). The class
+  in combination**. The class
   overrode `latency_samples` and not `tail_samples`, so it returned the
   eight-section constant whatever `impulse=` held: an 8 192-tap impulse
   measures **8 447** samples of tail and a 48 000-tap room **48 255**,
@@ -1091,8 +1089,7 @@ version number. The release carries repository tooling and docs only.
   snapped to the render's bin grid and read 41.0156 Hz, worth 1.28 dB on
   a six-pole rolloff.
 
-- **`Exciter` gets a capacitor behind its diode, and an input ceiling**
-  (Phase 4, third fix round, 2026-09-18). The diode is asymmetric on
+- **`Exciter` gets a capacitor behind its diode, and an input ceiling**. The diode is asymmetric on
   purpose and the only high-pass was **upstream** of it, so the rectified
   offset walked out on any in-band tone — −122 to −1601 LSB on the shipped
   patches, **−4310 LSB at Harmonics 1.0 / Mix max / −1 dBFS** — where a
@@ -1107,8 +1104,7 @@ version number. The release carries repository tooling and docs only.
   clause says what the ×4 is worth against ×1 wherever Tune is high
   enough to fold, which is the clause `BaseRate` cannot be healthy under.
 
-- **`Bitcrusher` gates its dither on the input** (Phase 4, third fix
-  round, 2026-09-18). Two rectangular tables loop for ever, so shipped
+- **`Bitcrusher` gates its dither on the input**. Two rectangular tables loop for ever, so shipped
   patch 5 put ±16 counts out into digital silence **to the last frame** —
   8 345 of 16 384 frames nonzero, at every rate. The sum that reaches the
   quantiser goes through a gate 6 dB above the dither's own level now, so
@@ -1123,7 +1119,7 @@ version number. The release carries repository tooling and docs only.
   (60 of 120 at 48 kHz) are in the rows now.
 
 - **`Saturation`'s Output delivers what it says, and its tube table stops
-  inverting** (Phase 4, third fix round, 2026-09-18). The level the node
+  inverting**. The level the node
   gave up at `NODE_CEILING` went onto the wet mixer voice as `level > 1.0`,
   and **a mixer voice clamps at 1.0**: Output +12 delivered **+7.866 dB**,
   and the test that should have caught it multiplied two numbers in Python
@@ -1142,8 +1138,7 @@ version number. The release carries repository tooling and docs only.
   49, and the class states its **insertion loss** — 8.1 / 13.4 / 33.5 dB —
   because Mix 1 is not unity.
 
-- **`Fuzz` charges its output capacitor before the first block** (Phase 4,
-  third fix round, 2026-09-18). S1's third coupling section is behind the
+- **`Fuzz` charges its output capacitor before the first block**. S1's third coupling section is behind the
   shaper and it started cold, so shipped patch 2 - a starved bias, on
   purpose - put **21 971 LSB, −3.5 dBFS**, out of digital silence and took
   0.2 s to bleed. It emits **11 LSB** now, which is the ±1 LSB input
@@ -1160,8 +1155,7 @@ version number. The release carries repository tooling and docs only.
   fixed here, because the one section that removes it disconfirms C1, C3
   and C4.
 
-- **`Distortion`'s Asymmetry is a second table, not a bias** (Phase 4,
-  third fix round, 2026-09-18). `STOCK_ASYMMETRY * macro` was a **3.5 V
+- **`Distortion`'s Asymmetry is a second table, not a bias**. `STOCK_ASYMMETRY * macro` was a **3.5 V
   offset** into a table whose diodes clip at 0.62 V: it parked the
   operating point at 0.97 of full scale, so a silent input came out at
   −6.8 dBFS of DC, the DS-1's output coupling capacitor had to hold it
@@ -1180,8 +1174,7 @@ version number. The release carries repository tooling and docs only.
   −60 dB bar carries its level span** — −22 to −16 dBFS, against −46.5 dB
   at playing level.
 
-- **`Overdrive` has an output capacitor** (Phase 4, third fix round,
-  2026-09-18). A Tube Screamer is DC-coupled inside and AC-coupled at the
+- **`Overdrive` has an output capacitor**. A Tube Screamer is DC-coupled inside and AC-coupled at the
   jack; this class had the first half only, so Symmetry's operating-point
   offset walked out of the shaper and stood on the output for ever -
   **+4461 LSB at shipped patch 6, into digital silence**, at every rate.
@@ -1201,9 +1194,9 @@ version number. The release carries repository tooling and docs only.
   meets it, and [audiodsp#104](https://github.com/PyDevices/audiodsp/issues/104)
   is the node ask 22.05 kHz needs.
 
-- **Phase 4's fix round, 2026-09-17.** Every drive class went back through
+- **Drive class fixes, 2026-09-17.** Every drive class went back through
   its own gate at the new audiodsp floor (`977ef26`) and six of the seven
-  landed. What changed across the round, beyond each class's own entry:
+  landed. What changed across the fixes, beyond each class's own entry:
 
   **Five of seven graphs got smaller, so five budgets came down.** `Fuzz`
   lost four of eight nodes (46 % / 81 % → **40 % / 70 %**, and patch 8
@@ -1216,7 +1209,7 @@ version number. The release carries repository tooling and docs only.
   position, because the boards read the older graph at 41.0 % / **77.5 %**).
   `Bitcrusher`'s **9 % / 20 %** is the first sum that prices its two
   `SpeedChanger` nodes rather than leaving them out. `CabinetSim` is the
-  only Phase 4 class with a board row - **17.1 % / 27.7 %**, measured
+  only drive class with a board row - **17.1 % / 27.7 %**, measured
   2026-09-17 - and the gap to its 15 % / 26 % palette is the palette's:
   the `Biquad` row prices one node fed by the harness, and the eighth
   section of a serial chain costs more than the first.
@@ -1241,18 +1234,18 @@ version number. The release carries repository tooling and docs only.
   at Mix 0 entirely: `Saturation` hands back the borrowed source object
   itself, so the invariant is exact by construction rather than by luck.
 
-- **Phase 4 drive rebuilds, parked under `rebuilt/`:** `Overdrive`,
+- **Drive class rebuilds, kept under `rebuilt/`:** `Overdrive`,
   `Distortion`, `Fuzz`, `Saturation`, `Bitcrusher`, `Exciter`, `CabinetSim`.
   `audioeffects.create()` still serves `drive.py` until the auditor adopts
   them. Catalogue rows name tier, macro count, latency, and the palette
   budget; board cost is unmeasured.
 
-- **`Overdrive` (rebuilt, Phase 4):** Tube Screamer-shaped dry-plus-clip on
+- **`Overdrive` (rebuilt):** Tube Screamer-shaped dry-plus-clip on
   `audioshaper.Waveshaper`, curve from `tools/curves/overdrive_curve.py`.
   Lives in `lib/audioeffects/rebuilt/overdrive.py` until the auditor adopts
   it. Mix 0 is the wire; Drive never is.
 
-  **Second fix round, 2026-09-17: T7's alias floor is restated, and it is
+  **Second round of fixes, 2026-09-17: T7's alias floor is restated, and it is
   read on the wet branch.** The kit's `mute_dry` searches a class's output
   mixer only, and this class sums its dry copy on the *circuit* mixer, one
   stage earlier — a Tube Screamer's tone stack is after the sum. So it
@@ -1288,7 +1281,7 @@ version number. The release carries repository tooling and docs only.
   row and the pack also now carry T1's sawtooth reversal, T2's h4, and
   T3's level law outside its stated pair.
 
-  **First fix round, 2026-09-17.** The oversampling factor is derived from
+  **First round of fixes, 2026-09-17.** The oversampling factor is derived from
   the sample rate instead of being the constant a 48 kHz bench chose. At a
   fixed ×4 the alias floor missed by 10 dB at 22.05 kHz and on three
   shipped patches. The 48 kHz cost is unchanged, which is the rate the
@@ -1369,8 +1362,7 @@ version number. The release carries repository tooling and docs only.
 
 - **`_core.py` is gone, and with it the old classes the rebuilds replaced.**
   `delay.py`, `reverb.py`, `pitch.py` and `rack.py` held only the
-  pre-contract classes, which no public name had served since the Phase 5
-  and Phase 6 adoptions; they are deleted. The public classes, `ALL` and
+  pre-contract classes, which no public name had served since the rebuilt classes replaced them; they are deleted. The public classes, `ALL` and
   `create()` are unchanged. `configure()`, `sample_rate()` and
   `channel_count()` stay, but only record a format: every effect takes its
   format from its source, as it already did.
@@ -1509,43 +1501,42 @@ version number. The release carries repository tooling and docs only.
   silent. All ten stay resident: 21 ms to build, 87 kB of heap at rest on the
   MicroPython sidecar, and only the kit playing is pulled for audio.
 
-- **Phase 3 RingMod come-home.** `RingMod` is served from
+- **`RingMod` comes home.** `RingMod` is served from
   `audioeffects.ringmod`. `modulation.py` keeps `Flanger` only.
   `rebuilt.ADOPTED` stays empty. Demonstrated traits are M1 and M3;
   M4 stays **disconfirmed** (0.0022 dB at Frequency 220; 8.6 dB at
   2 Hz). Class DSP unchanged.
 
-- **Phase 3 promotion.** AutoPan, Chorus, Phaser, Tremolo and Vibrato
+- **Modulation class promotion.** AutoPan, Chorus, Phaser, Tremolo and Vibrato
   come home as one file per effect. `rebuilt.ADOPTED` is empty.
   `modulation.py` still serves parked `Flanger` and `RingMod`.
   `_MixerMod` died with the old Tremolo and AutoPan.
 
-- **Phase 3 gate audit.** Chorus and Phaser through G1–G10 and named
+- **Modulation class gate audit.** Chorus and Phaser through G1–G10 and named
   in `rebuilt.ADOPTED`. Flanger, Tremolo, AutoPan, Vibrato, Rotary,
-  RingMod stay parked (#55, #57–#61). Phase 3's all-eight bar is not
+  RingMod stay parked (#55, #57–#61). The bar of all eight is not
   met.
 
-- **Phase 3 modulation integration.** Eight rebuilds on
-  `effects/p3-integration`: Chorus, Flanger, Phaser, Tremolo, AutoPan,
+- **Modulation integration.** Eight rebuilds: Chorus, Flanger, Phaser, Tremolo, AutoPan,
   Vibrato, Rotary, RingMod. Catalogue rows name tier, macro count,
   latency, measured board cost where the board stage ran (else palette
   budget) and the named lean patches.
 
-- **`Rotary` Phase 3 fix round 3.** T2 Speed-span: Drum Fast / Drum Slow
+- **`Rotary` fixes, third pass.** T2 Speed-span: Drum Fast / Drum Slow
   cannot outrun the paired horn (`_targets` clamps drum ≤ horn). DEFAULT
   32 s windowed horn **0.7944 Hz**; tremolo 3 s windowed **6.7635 Hz**
   (1.40 %); Horn Fast min + Drum Fast max writes **5.000 / 5.000**.
   `HalfHornRotary` at DEFAULT 8 s **0.4000 vs 0.8000**. Clean
   horn≥drum **56 / 56**. §7.2 not invoked. Package still serves
   `modulation.Rotary`.
-- **`Rotary` Phase 3 fix round.** Trait bars at constructor chorale:
+- **`Rotary` fixes.** Trait bars at constructor chorale:
   T2 32 s FFT **0.7974 Hz** (inside ±2.5 % of 0.80); T7 90±10 at
   48 / 44.1 / 22.05 kHz; T6 first-s **1.053 Hz** vs `StepRateRotary`
   **6.394 Hz**; T10 chorale-AM ratio **4.56** vs mute **0**. Those five
   bars are `null_build_red`. `reset()` held LSB 0 on 18 cells. Catalogue
   and docstring name the default's surrenders and the measured
   **43.7 % / 74.7 %** board cost. Package still serves `modulation.Rotary`.
-- **`Rotary` rebuild (Phase 3, parked).** Leslie 122–informed two-rotor
+- **`Rotary` rebuild (parked).** Leslie 122–informed two-rotor
   graph on `FeedbackDelay` + `Biquad` + `Splitter`/`Mixer`. Mix 0 is a
   delayed wire (`latency_samples` follows Horn Radius; 29 samples at
   48 kHz default). Drive is inert. Horn AM does not grow with frequency
@@ -1555,18 +1546,17 @@ version number. The release carries repository tooling and docs only.
 
 - **`_core.py` is gone, and with it the old classes the rebuilds replaced.**
   `delay.py`, `reverb.py`, `pitch.py` and `rack.py` held only the
-  pre-contract classes, which no public name had served since the Phase 5
-  and Phase 6 adoptions; they are deleted. The public classes, `ALL` and
+  pre-contract classes, which no public name had served since the rebuilt classes replaced them; they are deleted. The public classes, `ALL` and
   `create()` are unchanged. `configure()`, `sample_rate()` and
   `channel_count()` stay, but only record a format: every effect takes its
   format from its source, as it already did.
-- **`RingMod` (Phase 3, M4 claim dropped).** M4 is **disconfirmed**,
+- **`RingMod` (M4 claim dropped).** M4 is **disconfirmed**,
   not a shipped claim: the same-kind plant is inert at constructor
   Frequency 220 (**0.0022 dB**) and moves **8.6 dB** only at 2 Hz.
   DSP, defaults, macros and patches unchanged. W1, M2 and M5 stay
   disconfirmed as before. Not adopted; `modulation.RingMod` still
   ships.
-- **Phase 3 gate re-rule (`Tremolo`).** 1024-point board ROW now
+- **Gate re-ruled for `Tremolo`.** 1024-point board ROW now
   measured (P4 marg **0.128** / ctrl 0.346, rt **11.23**, **2.4 %**;
   S3 marg **0.265** / ctrl 0.532, rt **6.69**, **4.9 %**) against
   palette **7 / 9**. `Tremolo` through G1–G10 and named in
@@ -1574,7 +1564,7 @@ version number. The release carries repository tooling and docs only.
   on G3 (M4 plant inert at Frequency 220). L1 remains demonstrated
   with the square-at-44.1 exception.
 
-- **Phase 3 gate re-rule (`AutoPan`, `RingMod`, `Tremolo`).** G6 judged
+- **Gate re-ruled for `AutoPan`, `RingMod` and `Tremolo`.** G6 judged
   on the synthio source-pull bars (AutoPan **6 / 10**, RingMod **7 / 9**).
   `AutoPan` through G1–G10 and named in `rebuilt.ADOPTED`. `RingMod`
   stays parked on G3 (M4 plant `delta_db=0.0022` at Frequency 220).
@@ -1597,7 +1587,7 @@ version number. The release carries repository tooling and docs only.
   plant reads 0.0022 dB at constructor Frequency 220 at 48000 / 44100 /
   22050. `carrier_gain(220, 5)=0.99974`. No same-kind fault goes red at
   the default. The 2-vs-200 bar still holds when Frequency is moved.
-- **`Flanger` Phase 3 fix round.** Color 0.9 feedback is lifted by 0.03
+- **`Flanger` fixes.** Color 0.9 feedback is lifted by 0.03
   so F3's +15 dB four-stop rise holds at 48 / 44.1 / 22.05 kHz on noise.
   Loop `cut_hz` follows Color (20 Hz at 0, 0.4 Hz at 0.99) so Color-max
   audio t60 clears 2 s on 200–440 Hz bursts. F6's t90 readout stays
@@ -1607,7 +1597,7 @@ version number. The release carries repository tooling and docs only.
   the 2 s Color-max ring; a click is not the F8 bar. Budget from the
   +options row (no extra looping `RawSample`). Tests:
   `tests/test_cpython_effects_flanger.py`.
-- **`RingMod` (Phase 3 fix, oscillator).** Carrier is a 256-point
+- **`RingMod` (oscillator).** Carrier is a 256-point
   `synthio.Note` at `frequency=Frequency`, not a looping `RawSample`
   (was 1964 frames at the default, capped at 24000 for M4). Same
   macros and patches. Cheaper implementation of the same effect
@@ -1615,7 +1605,7 @@ version number. The release carries repository tooling and docs only.
   (Multiply + 256-frame extra); the **18 % / 52 %** bar counted the
   1964-frame pull. W1 stays disconfirmed at the constructor default.
   Not adopted; `modulation.RingMod` still ships.
-- **`RingMod` (Phase 3 fix).** Carrier table is hard-capped at 24000
+- **`RingMod` (fix).** Carrier table is hard-capped at 24000
   frames (one cycle at M4's 2 Hz / 48 kHz) so Frequency midi 0 cannot
   bake 480000 frames. W1 is **disconfirmed at the constructor default**
   (not demonstrated at Character 1). Catalogue and docstring use the
@@ -1638,7 +1628,7 @@ version number. The release carries repository tooling and docs only.
   vs the source. A mono source is a wire. MIDI 64 on Centre/Phase snaps
   to exact 0 so patch 0 matches the constructor. `rebuilt.ADOPTED`
   untouched.
-- **`Tremolo` Phase 3 fix round.** Oscillator is a 1024-point `synthio`
+- **`Tremolo` fixes.** Oscillator is a 1024-point `synthio`
   Note, not a `fs/rate` RawSample and not the 256-point table that failed
   L1 on square (−78.967) and Rate 0.73 / 1.46 Hz staircase images. Same-kind
   L4 plant (`RATE_PERIOD_SCALE`) fires at constructor defaults. B5's
@@ -1650,20 +1640,20 @@ version number. The release carries repository tooling and docs only.
   Depth 0 is still a wire. At 22.05 kHz the default's L1 bar is measured
   at the constructor, not assumed. Optical L1/L2 are disconfirmed; O1–O4
   unmeasured at the constructor. Not adopted.
-- **`Phaser` (Phase 3 fix, G6).** Default sweep is `synthio.LFO`'s built-in
+- **`Phaser` (G6).** Default sweep is `synthio.LFO`'s built-in
   triangle, not a 256-frame custom table. The extra `RawSample` addend
   that produced 11/20 was the wrong graph; the frozen bar is AllPass-6 +
   Waveshaper ×1 + glue 0.0 → **9/16**. Patch 8 `Phaser - lean` (Drive 0)
   drops the shaper from the pull. P7 at constructor Drive 0.3 still
   demonstrated (`null_build_red` null rise −33.990, control 42.782).
   Surrender sentence unchanged. `ADOPTED` unchanged.
-- **`RingMod` (Phase 3 fix).** MIDI 64 is the bipolar null (patch 0 no
+- **`RingMod` (fix).** MIDI 64 is the bipolar null (patch 0 no
   longer leaves Balance at 0.007874). W1 is claimed at Character 1
   Shape 1 only; the constructor default is the multiplier. Catalogue and
   docstring use the same surrender sentence. Palette bar is **18 % /
   52 %** (Multiply + extra looping RawSample). Not adopted;
   `modulation.RingMod` still ships.
-- **`Rotary` Phase 3 fix round.** `reset()` plays silence through the
+- **`Rotary` fixes.** `reset()` plays silence through the
   graph before Mixer refetch (held LSB 0 on CPython, MicroPython and
   circuitpython-effects at 48 / 44.1 / 22.05 kHz, stereo and mono).
   `StepRateRotary` is already tremolo at constructor chorale; `MuteBrakeRotary`
@@ -1683,7 +1673,7 @@ version number. The release carries repository tooling and docs only.
   a board prime. A mono source is a wire. MIDI 64 on Centre/Phase snaps
   to exact 0 so patch 0 matches the constructor. `rebuilt.ADOPTED`
   untouched.
-- **`Tremolo` Phase 3 fix round.** Same-kind L4 plant (`RATE_PERIOD_SCALE`)
+- **`Tremolo` fixes.** Same-kind L4 plant (`RATE_PERIOD_SCALE`)
   fires at constructor defaults (ENV 10 Hz vs Rate 5). B5's optical-tracker
   plant ignores Lag so Lag min and Helicopter stay red. In-place period
   tables so unix MicroPython can construct every shipped patch. Budget
@@ -1693,14 +1683,14 @@ version number. The release carries repository tooling and docs only.
   L1's Depth 1. At 22.05 kHz that default sits above −80 dB in L1's
   block-product bands. Optical L1/L2 are disconfirmed; O1–O4 unmeasured
   at the constructor. Not adopted.
-- **`Phaser` (Phase 3 fix).** Parked rebuild (`rebuilt:Phaser`, #56):
+- **`Phaser` (fix).** Parked rebuild (`rebuilt:Phaser`, #56):
   Tier 1 STATE/RESPONSE now run on all three interpreters at 48 / 44.1 /
   22.05 kHz, stereo and mono. P5 and P8 are disconfirmed at the shipped
   Drive 0.3; P7's plant still fires there. Catalogue and docstring use
   the same surrender sentence. Palette budget recomputed with the
   256-frame LFO table (11 % / 20 %); measured 10.7 % / 16.1 % fits.
   `ADOPTED` unchanged.
-- **`Flanger` Phase 3 rebuild**, parked as `lib/audioeffects/rebuilt/flanger.py`.
+- **`Flanger` rebuild**, parked as `lib/audioeffects/rebuilt/flanger.py`.
   One `audioecho.FeedbackDelay` with a hyperbola `wow_shape`; Filter Matrix,
   Mix 0–2, Through Zero off (10 ms at Range max / 48 kHz when on). The old
   class in `modulation.py` is unchanged and is still what `audioeffects.Flanger`
@@ -1717,10 +1707,10 @@ version number. The release carries repository tooling and docs only.
   down at 10 kHz, not ≥10 dB (T3). The constructor Tone 3 kHz still meets
   T3. Same words in the docstring and the catalogue row. Cost at patch 0
   is the measured **8.1 % P4 / 9.8 % S3**.
-- **Phase 2 round-5 gate audit.** All sixteen classes through and in
+- **Gate audit, fifth pass.** All sixteen classes through and in
   `rebuilt.ADOPTED`. `Limiter` clears G3 (`SlowAttack` at Lookahead 0)
   and G9 (3.01 dB surrender in the same words; +2.22 labelled True Peak
-  on / Lookahead 0). Phase 2's class-gate bar is met.
+  on / Lookahead 0). The class-gate bar is met.
 - **`Limiter` L1's plant at Lookahead 0 is `SlowAttack`**, not the catch
   stage. `NoCatchStage` is silent at the default because the shape stage
   already applies its zero-attack brickwall to the current sample; it
@@ -1731,7 +1721,7 @@ version number. The release carries repository tooling and docs only.
   **3.01 dB** (worst-phase f_s/4 into −6 dBFS, those three rates) in the
   L1 row, pack summary, dossier §3/§8, docstring and catalogue; catalogue
   **+2.22 dB TP** is labelled True Peak on / Lookahead 0.
-- **Phase 2 round-4 gate audit.** Fifteen classes through and in
+- **Gate audit, fourth pass.** Fifteen classes through and in
   `rebuilt.ADOPTED`. `Limiter` stays parked (new L1's plant silent at
   Lookahead 0; pack silent on the +3.01 dB TP the sample-peak default
   surrenders).
@@ -1741,7 +1731,7 @@ version number. The release carries repository tooling and docs only.
   writes the reciprocal of the proportional-Q factor, fires on all nine
   bells at 48 / 44.1 / 22.05 kHz, and 244 surface positions cannot restore
   the narrowing. Class unchanged.
-- **Phase 2 round-3 gate audit.** Thirteen classes through and in
+- **Gate audit, third pass.** Thirteen classes through and in
   `rebuilt.ADOPTED`. Three stay parked: `Limiter` (redefinition missing
   the independent pass on re-frozen L1), `GraphicEQ` (T2's fault is
   shipped macro 13), `CombFilter` (TAIL above Feedback 0.5 still a parked
@@ -1768,13 +1758,13 @@ version number. The release carries repository tooling and docs only.
   lift. T2/T5 stay bounded by attack and T4/T6's out-of-band clause by Q.
   The listed-remainder pair is 17 % / 29 % (`Splitter` taps=3 is a palette
   gap); patch 0 measures 14.5 % P4 / 26.0 % S3.
-- **Phase 2 fix-round gate audit.** Five classes through
+- **Gate audit after the fixes.** Five classes through
   (`Expander`, `MultibandCompressor`, `LowPass`, `HighPass`, `Notch`) and
   added to `rebuilt.ADOPTED` beside `NoiseGate`. Seven on the branch stay
   parked (Limiter, Compressor, DeEsser, TransientShaper, ParametricEQ,
   GraphicEQ, BandPass) and the three that never started stay parked as the
   first audit left them.
-- **`Compressor`'s Phase 2 gate cells worked** (the class gate's fixer pass,
+- **`Compressor`'s gate cells worked** (the class gate's fix pass,
   2026-09-07). The class itself changed in one place — its docstring — and
   now says where it is *not* clean: at 10 dB of gain reduction on a 50 Hz
   tone it reads 3.89 % THD with Release at its fastest against a 0.5 % bar,
@@ -1796,7 +1786,7 @@ version number. The release carries repository tooling and docs only.
   **audiodsp#59** (the native builds have no deinitialised guard; pulling a
   released `audiomixer.Mixer` dumps core).
 - **`Limiter`'s true-peak ceiling now needs lookahead, and gets it.** The
-  Phase 2 gate audit parked the class on a broken promise: at a -6 dBFS
+  gate audit parked the class on a broken promise: at a -6 dBFS
   ceiling with True Peak on, `ramp_fs` escaped by **+2.22 dB TP** and
   `dc_step` by +1.12 (audit §4.1, audiocomponents#38). The cause is the
   node's own detector - a 12-tap polyphase window names an inter-sample peak
@@ -1827,15 +1817,15 @@ version number. The release carries repository tooling and docs only.
   had no check and no fault; it now re-measures the two figures the docstring
   names and goes red when either drifts by 0.5 %.
 - **`tools/measure_effect_cost.py` can name a rebuilt class and a patch**:
-  `rebuilt:<Name>` builds the Phase 2 class whether or not it is adopted —
+  `rebuilt:<Name>` builds the rebuilt class whether or not it is adopted —
   `effect:<Name>` goes through the registry and serves the *old* class for
   the fifteen parked ones — and `@<patch>` applies a patch, so a board
   figure can be taken in the state its evidence pack names rather than at
   construction defaults. A class whose construction defaults are a bypass -
-  four of Phase 2's sixteen - otherwise renders the bare probe's own digest,
+  four of the sixteen rebuilt classes - otherwise renders the bare probe's own digest,
   and its board figure checks nothing about its audio.
 - **`Expander`'s gate-audit cells closed, and one bounded rather than
-  claimed** (`effects/p2b-expander`). G3: both planted faults replaced with
+  claimed**. G3: both planted faults replaced with
   ones the macro surface cannot dial — the old depth fault *was* macro 2
   `Depth` at grid position 0, and the old ratio multiplier read the identical
   slope 8.0817 (+1.02 %) at the top of the span — and every row re-measured
@@ -1879,7 +1869,7 @@ version number. The release carries repository tooling and docs only.
   `rebuilt:<Name>`, which resolve through `rebuilt.module_class()`; the cost
   runner also takes `@<patch index>`, because the gate's escape from an
   overrun budget is a patch and it could only measure construction defaults.
-- **`TransientShaper`'s gate-audit fix round** (effects program, Phase 2).
+- **`TransientShaper`'s gate-audit fixes.**
   The class's DSP is unchanged — it is parked for coverage and budget, not for
   a defect at a reachable setting. Its whole Tier 1 block, including the four
   STATE rows that had run on CPython at 48 kHz only, now runs on all three
@@ -1895,8 +1885,7 @@ version number. The release carries repository tooling and docs only.
   doing nothing at all still costs 75 %, against a budget needing 66–68 % off.
   The docstring and the catalogue row carry T1's and T3's bounded claims and
   T4's unmeasured peak-hold clause.
-- **`MultibandCompressor`'s Phase 2 gate audit answered** (branch
-  `effects/p2b-multibandcompressor`). Its M3 depth and evenness clauses were
+- **`MultibandCompressor`'s gate audit answered**. Its M3 depth and evenness clauses were
   measured on a tone window an octave inside each band's corners — 1.3 of the
   mid band's 3.3 octaves — and the auditor widened it to the band's own
   passband and broke them. The class is **not changed**; the claim is bounded
@@ -1936,7 +1925,7 @@ version number. The release carries repository tooling and docs only.
   faults. Three of this class's five rows — flat sum, zero latency,
   byte-stable render — were green on a piece of wire and now carry the clause
   that says the render is not the source's bytes.
-- **`ParametricEQ`'s gate-fix pass** (Phase 2 class gate, audit section 4.2).
+- **`ParametricEQ`'s gate-fix pass** (class gate, audit section 4.2).
   The class's DSP is unchanged; its docstring and its catalogue row now carry
   the bound the audit put on two traits — every section writes int16, so a
   +16 dB bell delivers +16.00 dB at −20 dBFS and +8.37 dB at −6 dBFS while
@@ -1950,10 +1939,9 @@ version number. The release carries repository tooling and docs only.
   the class's macro grid cannot dial. `tools/measure_effect_cost.py` and
   `tools/render_effect.py` take `rebuilt:<Name>` and a patch, and the cost
   runner now **refuses a render whose digest is the bare source's**, which is
-  what four of Phase 2's sixteen board figures were.
+  what four of the sixteen rebuilt classes' board figures were.
 - **`LowPass`'s gate cells closed where they could be, and named where they
-  could not** (effects program, Phase 2 fix round, branch
-  `effects/p2b-lowpass`). The class is **not** changed. Four Tier 1 rows the
+  could not**. The class is **not** changed. Four Tier 1 rows the
   pack carried as `n/a` on the native builds now run there as integers on all
   three interpreters at 48 / 44.1 / 22.05 kHz, stereo and mono, each with a
   planted fault that fires; one row is marked `n/a`
@@ -1972,7 +1960,7 @@ version number. The release carries repository tooling and docs only.
   about. The refutation harness had two defects of its own
   (audiocomponents#52), both fixed.
 
-- **`HighPass`'s gate-audit fixes** (effects program, Phase 2). One number in
+- **`HighPass`'s gate-audit fixes**. One number in
   the class moved: `TAIL_SAMPLES` 305 152 → **632 832**. The first
   declaration was taken from a 200 ms burst, and a high-pass's tail is its
   resonant pole ringing *down*, so the ceiling belongs to the state a
@@ -1994,7 +1982,7 @@ version number. The release carries repository tooling and docs only.
   was green on a wire and is re-stated so a wire fails it. **No `" - lean"`
   patch exists** — `mix` 0 does not stop a biquad's recursion running
   (`audiodsp_filter_f32.c:216-241`), so the class stays parked on G6.
-- **`BandPass`'s gate-audit fix round.** T1's "0 dB peak at every Q" is
+- **`BandPass`'s gate-audit fixes.** T1's "0 dB peak at every Q" is
   **bounded, not fixed**: it holds at every width above f0 100 Hz and at every
   centre up to Q 2, and misses in 11 of 56 measured cells below that, worst
   **-0.50 dB at the Frequency knob's bottom stop against the Width knob's
@@ -2013,7 +2001,7 @@ version number. The release carries repository tooling and docs only.
   leg. `tools/render_effect.py` gains `--rebuilt`, without which it renders
   the *old* class for any rebuild the auditor has parked.
 
-- **Phase 2's sixteen rebuilt classes measured on both boards** (ESP32-P4 on
+- **The sixteen rebuilt classes measured on both boards** (ESP32-P4 on
   COM4, ESP32-S3 on COM49, firmware `v1.28.0-dirty on 2026-09-07`), with
   `tools/measure_effect_cost.py` at construction defaults, 256-frame stereo
   blocks at 48 kHz. Every class renders in real time on both boards
@@ -2024,9 +2012,8 @@ version number. The release carries repository tooling and docs only.
   and the cause is below the class — the integer-path nodes agree host to
   board, every float-path node differs. `rebuilt/ladderfilter.py`'s docstring
   no longer says its cost is unmeasured on either board.
-- **`Compressor` rebuilt from scratch** (effects program, Phase 2), against
-  its dossier's frozen trait table and on the Phase 2
-  construction module. The four characters now differ in detector law,
+- **`Compressor` rebuilt from scratch**, against
+  its dossier's frozen trait table and on the construction module. The four characters now differ in detector law,
   release law, ratio law and side-chain weighting rather than in three time
   constants: `fet` has both time knobs live and faster clockwise with the
   threshold rising with ratio, `optical` — the default — has **no working
@@ -2034,13 +2021,12 @@ version number. The release carries repository tooling and docs only.
   attack, and `varimu`'s slope climbs with level with the six factory time
   constants as patches. Two `audiodynamics.Dynamics` in series carry the
   two-stage release with a memory; the surface is fourteen macros and
-  fourteen patches; latency is zero at every setting. Portability tier
-  **audiodsp**, `REQUIRES = ("audiodynamics", "audioroute")`.
+  fourteen patches; latency is zero at every setting. Requires **audiodsp**, `REQUIRES = ("audiodynamics", "audioroute")`.
 - The kit's CURVE and paired-build fixtures name `character="fet"`
   explicitly: their subject is the textbook single-stage law, and
   `Compressor`'s default character is now the LA-2A.
 - **`audioeffects.Limiter` rebuilt** on `_component.Component`, the first of
-  the effects program's Phase 2 classes. It is two `audiodynamics.Dynamics` in
+  the rebuilt classes. It is two `audiodynamics.Dynamics` in
   series now: a shaping stage carrying the Knee, the Lookahead and a **4x
   polyphase true-peak detector**, and a catch stage that is the reason
   lookahead no longer overshoots — a 1 ms burst into a −12 dBFS ceiling used
@@ -2050,19 +2036,19 @@ version number. The release carries repository tooling and docs only.
   delaying the audio by up to 484 samples while claiming none. The surface
   gains **Gain** (drive into the ceiling) and **Knee**, and its Release
   default moves to 149 ms so the class's own THD bound is met.
-- **`Expander` rebuilt** on the effects program's construction module, as
+- **`Expander` rebuilt** on the construction module, as
   `lib/audioeffects/rebuilt/expander.py`; the old class stands untouched in
-  `dynamics.py` until Phase 6 retires `_core`. It had no macros and no patch
+  `dynamics.py` until `_core` is retired. It had no macros and no patch
   at all; it has nine macros and six patches now — Threshold, Ratio, Depth,
   Attack, Release, Key Low, Key High, Key Listen, Detector — a true-RMS
   detector, a two-ended 12 dB/octave key band, an external key input, and a
   Depth floor that reaches −80 dB where the old class was stuck at the node's
-  −60 dB literal without saying so. Portability tier **audiodsp**
+  −60 dB literal without saying so. Requires **audiodsp**
   (`audiodynamics`); `latency_samples` 0 with no look-ahead option at all.
   The dossier's Hold macro is deliberately absent: `hold_ms` does nothing in
   `DYN_EXPAND` and the reason is measured, not assumed.
 - **`NoiseGate` is rebuilt from scratch** on the construction module, after the
-  Drawmer DS201 (effects program, Phase 2). It gains the eight controls the
+  Drawmer DS201. It gains the eight controls the
   DS201 has and the shipped class had none of: Threshold, Attack, **Hold**,
   Release, **Range**, a two-ended **key band** and **Key Listen**, with six
   named patches. Its closed state is now the Range you set - -15 dB, say,
@@ -2075,7 +2061,7 @@ version number. The release carries repository tooling and docs only.
 - `tools/render_effect.py` takes `--option name=value`, so a render can
   reach a class's construction options - a duck graph and a look-ahead are
   build choices, not knobs.
-- `DeEsser` is rebuilt on the effects program's Phase 1 palette and served
+- `DeEsser` is rebuilt on the effects palette and served
   from `lib/audioeffects/rebuilt/deesser.py`; the old class stands untouched
   beneath it. It is the dbx 902's mechanism now — the sibilant band's level
   compared with the programme's rather than with a threshold knob — so one
@@ -2085,7 +2071,7 @@ version number. The release carries repository tooling and docs only.
   (Frequency, Range, Sensitivity, Mode, Release, Attack, Listen) and six
   patches, where there were none; a broadband and an HF-only mode, where
   there was only broadband; and Range is a real maximum, where `ratio` was
-  not. Portability tier **audiodsp** (`audiobiquad`, `audiodynamics`,
+  not. Requires **audiodsp** (`audiobiquad`, `audiodynamics`,
   `audioroute`), latency zero, and no option that adds any. Three traits the
   palette cannot reach are stated in its docstring rather than hidden: the
   release curves where the 902's is a straight line in dB, Range is an
@@ -2093,18 +2079,17 @@ version number. The release carries repository tooling and docs only.
   reach the 902's ratio.
 ### Added
 
-- `TransientShaper` rebuilt from scratch on the Phase 2 construction module
-  (`lib/audioeffects/rebuilt/transientshaper.py`), the effects programme's
-  first rebuilt class. SPL Transient Designer: Attack ±15 dB and Sustain ±24
+- `TransientShaper` rebuilt from scratch on the construction module
+  (`lib/audioeffects/rebuilt/transientshaper.py`), the first rebuilt class. SPL Transient Designer: Attack ±15 dB and Sustain ±24
   dB acting **at the same time** on one `audiodynamics.Dynamics` node through
-  Phase 1's `transient_dual`, a peak-hold sustain envelope through
+  the palette's `transient_dual`, a peak-hold sustain envelope through
   `slow_hold_ms`, an Output trim, an Attack Speed scaler and a Sustain Hold
   time — five macros and seven patches where the old class had none, and
   latency 0 samples at every setting. Its traits were frozen at Station A and
   the class gate's record lands with it. T6, the adaptive time constants both
   sources assert, is **disconfirmed** and said so in the docstring.
 - **`audioeffects.MultibandCompressor` rebuilt** on `_component.Component`,
-  one of the effects program's Phase 2 classes. The old class had **no macros
+  one of the rebuilt classes. The old class had **no macros
   and one empty patch**: crossovers, thresholds and ratios were
   constructor-only, attack and release were hardcoded, and there was no
   make-up, no output gain and no mix. It has **fourteen macros and five
@@ -2132,20 +2117,19 @@ version number. The release carries repository tooling and docs only.
   **0.73 dB across 30–100 Hz** against a 0.5 dB bar, which is its LR4 skirt
   near its corner plus the RMS detector's 10 ms window, and the class
   docstring carries the arithmetic.
-- `ParametricEQ` is rebuilt from scratch on `_component.Component` for the
-  effects program's Phase 2 (`lib/audioeffects/rebuilt/parametriceq.py`).
+- `ParametricEQ` is rebuilt from scratch on `_component.Component`
+  (`lib/audioeffects/rebuilt/parametriceq.py`).
   It is a Pultec EQP-1A bottom and
   resonant top with three API 550A proportional-Q bells between: sixteen
   macros in the panel's own units, seven patches, `capabilities = ()`, zero
-  latency at every setting and rate. **Its portability tier is `audiodsp`** -
+  latency at every setting and rate. **It requires `audiodsp`** -
   eight `audiobiquad.Biquad` sections, whose float state lets a decaying tail
   reach exact zero where the ported `synthio.Biquad` parks on DC (audiodsp#23).
   The old class stays in `eq.py`, untouched, beneath the registry; its
   old-surface trait test in `tests/test_cpython_effects_dynamics_eq.py` is
   retired in the same commit and replaced by
   `tests/test_cpython_effects_parametriceq.py`.
-- **`audioeffects.GraphicEQ` rebuilt from scratch** on the Phase 2
-  construction module (`lib/audioeffects/rebuilt/graphiceq.py`), after the
+- **`audioeffects.GraphicEQ` rebuilt from scratch** on the construction module (`lib/audioeffects/rebuilt/graphiceq.py`), after the
   MXR M-108 Ten Band. Ten octave bands on the pedal's own centres from
   **31.25 Hz** (not the ISO series), a **shelf** on top rather than a tenth
   bell, and GAIN and VOLUME around the bank — fourteen macros and six named
@@ -2156,7 +2140,7 @@ version number. The release carries repository tooling and docs only.
   an accident. A band at its centre detent is a **wire byte for byte**, and
   patch 0 is byte-identical to the source. Bands above Nyquist **clamp and
   say so** (`clamped`, `built_centres`) instead of vanishing silently.
-- **`GraphicEQ` moves to the `audiodsp` portability tier** (`audiobiquad`).
+- **`GraphicEQ` now requires `audiodsp`** (`audiobiquad`).
   On the ported `synthio.Biquad` it held **+7 LSB** after silence at
   31.25 Hz/+6 dB and +5 LSB with all ten bands engaged, for ever
   (audiodsp#23); on `audiobiquad`'s float sections the same settings reach
@@ -2166,13 +2150,13 @@ version number. The release carries repository tooling and docs only.
 - `GraphicEQ` can now be built with no `gains_db` at all (flat, and flat is a
   wire), so its entry in the test and renderer `EXTRA_ARGUMENTS` tables is
   gone. A short `gains_db` still sets the bottom of the bank, as before.
-- `LowPass` is rebuilt from scratch on `_component.Component` for the effects
-  program's Phase 2 (`lib/audioeffects/rebuilt/lowpass.py`).
+- `LowPass` is rebuilt from scratch on `_component.Component`
+  (`lib/audioeffects/rebuilt/lowpass.py`).
   Where the old class had no macros at all, a frozen `q`, a hidden `mix` and
   a `set_frequency` that raised above Nyquist, this one has five macros -
   Frequency, Resonance, Slope, Mix, Trim - six patches, `capabilities = ()`,
   zero latency at every setting and rate, and a declared `tail_samples`.
-  **Its portability tier is `audiodsp`** - three `audiobiquad.Biquad`
+  **It requires `audiodsp`** - three `audiobiquad.Biquad`
   sections, whose float state lets a decaying tail reach exact zero where the
   ported `synthio.Biquad` parks on 1 to 4 LSB of DC at exactly the corners a
   low-pass is for (audiodsp#23). The old class stays in `eq.py`, untouched,
@@ -2182,15 +2166,14 @@ version number. The release carries repository tooling and docs only.
 - `AirSpace` drives its tone filter's Frequency macro instead of calling
   `LowPass.set_frequency()`, which the rebuilt class does not have: hertz
   reach a component through its macro grid, which is what the contract has.
-- **`audioeffects.HighPass` is rebuilt from scratch** for the effects
-  program's Phase 2, against its dossier, as
+- **`audioeffects.HighPass` is rebuilt from scratch**, against its dossier, as
   `lib/audioeffects/rebuilt/highpass.py` on the `_component` construction
   module. It gains the five-macro surface the old class did not have
   (Frequency 10 Hz - 20 kHz, Resonance Q 0.5 - 16, a 12/24 dB/oct Slope
   switch, Mix and a +/-12 dB Trim), six named patches, a declared
   `tail_samples` of 305 152 measured rather than assumed, and a `frequency`
   that clamps below Nyquist instead of raising.
-- **`HighPass`'s portability tier moves to audiodsp** (`REQUIRES =
+- **`HighPass` now requires audiodsp** (`REQUIRES =
   ("audiobiquad",)`). Its three sections are `audiobiquad.Biquad`, whose
   float state reaches exact zero; the ported `synthio.Biquad` holds up to
   71 LSB of DC at a 10 Hz corner for ever (audiodsp#23), which is the Tier 1
@@ -2205,12 +2188,12 @@ version number. The release carries repository tooling and docs only.
   is retired above 20 kHz - outside the frozen span. Its replacement,
   `tests/test_cpython_effects_highpass.py::CornerTest`, walks the whole span
   at both slopes and at three rates.
-- Phase 2 of the effects program: **`BandPass` rebuilt from scratch** on the
+- **`BandPass` rebuilt from scratch** on the
   component contract (`lib/audioeffects/rebuilt/bandpass.py`). It gains a
   four-macro surface where it had none — Frequency, Width, Slope and Mix —
   six patches, and a `tail_samples` computed from the build rather than left
   `None`, which for a resonator is 301 ms at the Sub Window patch and 3 ms at
-  the default. Its portability tier moves from stock to **audiodsp**
+  the default. It now requires **audiodsp** rather than stock CircuitPython
   (`REQUIRES = ("audiobiquad",)`): on the ported Q15 biquad a low centre
   holds DC for ever (audiodsp#23), and on audiodsp's float-state node every
   setting the surface reaches settles to bit-exact zero. The old class stays
@@ -2218,14 +2201,14 @@ version number. The release carries repository tooling and docs only.
   board leg is not taken and one trait, T4's `|H(f0/100)|` clause, is
   disconfirmed above about 2.5 kHz for a reason that is RBJ's closed form and
   not this class.
-- **`Notch` is rebuilt from scratch** on `_component.Component` for the effects
-  program's Phase 2 (`lib/audioeffects/rebuilt/notch.py`).
+- **`Notch` is rebuilt from scratch** on `_component.Component`
+  (`lib/audioeffects/rebuilt/notch.py`).
   Where the old class had no macros at all, no width knob, a hidden `mix`,
   no declared tail and a `set_frequency` that raised above Nyquist, this one
   has five macros — Frequency, Width, Harmonics, Depth, Trim — six patches,
   `capabilities = ()`, zero latency at every setting and rate, and a
   declared `tail_samples` measured at its own worst corner.
-  **Its portability tier is `audiodsp`** — three `audiobiquad.Biquad`
+  **It requires `audiodsp`** — three `audiobiquad.Biquad`
   sections, whose float state lets a decaying tail reach exact zero where
   the ported `synthio.Biquad` parks on 2 LSB of DC at `Notch(60 Hz, q=8)`
   and 18 at `Notch(20 Hz, q=32)`, which are the settings a notch is most
@@ -2240,7 +2223,7 @@ version number. The release carries repository tooling and docs only.
   The old class stays in `eq.py`, untouched, beneath the registry.
 - `LadderFilter` rebuilt on the component contract, as
   `lib/audioeffects/rebuilt/ladderfilter.py` — one `audioladder.Ladder`, so
-  the class is **audiodsp tier** (`REQUIRES = ("audioladder",)`) and does not
+  the class requires **audiodsp** (`REQUIRES = ("audioladder",)`) and does not
   run on a stock CircuitPython board. It is a ladder now rather than four
   low-passes in a row: the passband droops as `Resonance` rises, it
   self-oscillates at the top of the knob at the cutoff, and `Drive` is the
@@ -2252,8 +2235,8 @@ version number. The release carries repository tooling and docs only.
   rates, nine planted faults all red, 48 renders byte-identical across
   CPython, MicroPython and the patched CircuitPython. **Cost is unmeasured on
   both boards.**
-- `CombFilter` is rebuilt from scratch on `_component.Component` for the
-  effects program's Phase 2 (`lib/audioeffects/rebuilt/combfilter.py`).
+- `CombFilter` is rebuilt from scratch on `_component.Component`
+  (`lib/audioeffects/rebuilt/combfilter.py`).
   **The old class did not tune.** It
   sat on `audiodelays.Echo`, which floors its line at the node's own buffer
   length, so every frequency from 47 to 880 Hz came out as the same 46.88 Hz
@@ -2262,7 +2245,7 @@ version number. The release carries repository tooling and docs only.
   with per-sample interpolation and tunes to 0.002 cents, and adds the
   surface the old class had none of: six macros - Frequency, Feedback, Mix,
   Tone, Trim, Glide - six patches, `capabilities = ()`, and zero latency at
-  every setting and every rate. **Its portability tier is `audiodsp`**
+  every setting and every rate. **It requires `audiodsp`**
   (`audioecho`, `audiobiquad`); there is no honest stock fallback, because
   even a 512-byte buffer floors the comb at 187.5 Hz.
   - Trim is **input** headroom, not make-up, and it runs to -18 dB: a comb's
@@ -2283,7 +2266,7 @@ version number. The release carries repository tooling and docs only.
   macro surface and so no old-surface trait tests to retire, and
   `tests/test_cpython_effects_combfilter.py` is new.
 - **`audioeffects.DynamicEQ` rebuilt** on `_component.Component`, one of the
-  effects program's Phase 2 classes. The old class had **no macros at all**
+  rebuilt classes. The old class had **no macros at all**
   on the processor with the most to expose: frequency, Q, threshold and ratio
   were constructor-only, attack and release were hardcoded at 2 ms and 80 ms,
   and there was no range, no direction and no way to move the band once it was
@@ -2362,12 +2345,11 @@ the first release from this repository is 0.2.0.
 
 - **`_core.py` is gone, and with it the old classes the rebuilds replaced.**
   `delay.py`, `reverb.py`, `pitch.py` and `rack.py` held only the
-  pre-contract classes, which no public name had served since the Phase 5
-  and Phase 6 adoptions; they are deleted. The public classes, `ALL` and
+  pre-contract classes, which no public name had served since the rebuilt classes replaced them; they are deleted. The public classes, `ALL` and
   `create()` are unchanged. `configure()`, `sample_rate()` and
   `channel_count()` stay, but only record a format: every effect takes its
   format from its source, as it already did.
-- Phase 1 of the accuracy program: the ten drum machines — `cr78`, `dmx`,
+- The ten drum machines — `cr78`, `dmx`,
   `drumtraks`, `linndrum`, `simmons_sdsv`, `sp1200`, `tr606`, `tr707`,
   `tr808`, `tr909` — rebuilt as fixed circuits against named references, each
   with a dossier, and blessed at the phase batch listen on 2026-09-02. They
