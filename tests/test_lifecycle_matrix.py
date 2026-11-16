@@ -101,7 +101,7 @@ KNOWN_P6 = {
 KNOWN_P6.update(lifecycle_known.KNOWN_P6)
 
 #: A CircuitPython that returns from a pull on a looped source that ends
-#: empty (built with micropython-pydevices' patches/circuitpython/0008 and
+#: empty (built with omnipython-builds' patches/circuitpython/0008 and
 #: 0009) runs the E8 cells `lifecycle.EMPTY_SOURCE_SKIPS` keeps from stock
 #: CircuitPython. Where its own pitch shifter renders other bytes than ours
 #: (KNOWN_P6's reason), those cells print other render hashes, with the same

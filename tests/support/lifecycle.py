@@ -812,7 +812,7 @@ SKIP = {
 #: The SKIP rows above that are there only because CircuitPython's own Echo,
 #: PitchShift, GranularPitchShift, Flanger and MultiTapDelay never return
 #: from a pull on a looped source that ends empty. A CircuitPython built with
-#: micropython-pydevices' patches/circuitpython/0008 and 0009 returns there,
+#: omnipython-builds' patches/circuitpython/0008 and 0009 returns there,
 #: and the host lifts these rows (`--empty-source-returns`) once it has seen the
 #: binary return from such a pull; stock CircuitPython keeps them.
 #: ShimmerHall keeps its row on every CircuitPython: its E8 cells return
