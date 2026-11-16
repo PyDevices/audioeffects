@@ -1410,7 +1410,7 @@ version number. The release carries repository tooling and docs only.
   false at every one of them, and a `program_change` out of digital silence
   made sound. `Fuzz`'s patch 0, whose name is "Bias centred", banged 329
   LSB; `Saturation`'s patch 4 thumped 9067. The constructor default — the
-  one state whose bipolar macro really was 0 — is where every Tier 1 silence
+  one state whose bipolar macro really was 0 — is where every invariant silence
   row had been read.
 
   The law lives once, in `_component.position_of_midi`, and every crossing
@@ -1453,7 +1453,7 @@ version number. The release carries repository tooling and docs only.
   the centre of its span — 63.5 is not on the 0-127 grid — so a patch that
   means "no bias" leaves a small offset, and the class opens on a DC
   settling prologue out of silence instead of on digital zero. The
-  threshold fires on the prologue. The Tier 1 row added with this fix
+  threshold fires on the prologue. The invariant row added with this fix
   counts the frames a class takes from its source instead, which no
   prologue can fool: `AConstructorPatchCostsTheSourceNothing` in
   `tests/test_audio_component_api.py`, over every class and every shipped
@@ -1684,7 +1684,7 @@ version number. The release carries repository tooling and docs only.
   block-product bands. Optical L1/L2 are disconfirmed; O1–O4 unmeasured
   at the constructor. Not adopted.
 - **`Phaser` (fix).** Parked rebuild (`rebuilt:Phaser`, #56):
-  Tier 1 STATE/RESPONSE now run on all three interpreters at 48 / 44.1 /
+  invariant STATE/RESPONSE now run on all three interpreters at 48 / 44.1 /
   22.05 kHz, stereo and mono. P5 and P8 are disconfirmed at the shipped
   Drive 0.3; P7's plant still fires there. Catalogue and docstring use
   the same surrender sentence. Palette budget recomputed with the
@@ -1746,7 +1746,7 @@ version number. The release carries repository tooling and docs only.
   13.8 % P4 / 27.6 % S3 against the new 15 % / 29 % pair; rt 4.90 / 2.65.
   The historical ITU Loud setting is patch 5 *Loud (True Peak)*, P4 only
   (S3 rt 0.80).
-- **`LadderFilter`'s T4(a) faults now fire**, and its Tier 3 pair is the
+- **`LadderFilter`'s T4(a) faults now fire**, and its cost pair is the
   palette OS2 row (17 % / 28 %), not the instruction-count 8 / 14. Working
   patch 4 measures 16.2 % P4 / 26.7 % S3; lean patch 6 is 8.6 / 14.7. T5
   and T1's stopband slope stay disconfirmed.
@@ -1776,7 +1776,7 @@ version number. The release carries repository tooling and docs only.
   *disconfirmed* with those numbers, M3 moves from *unmeasured* to
   *disconfirmed* (its two program-dependent Vari-Mu patches read 0.99 and
   0.93 against a bar of 3, at trains up to 12 s), and the tally is 6
-  demonstrated / 13 disconfirmed / 2 unmeasured. Tier 1's two open rows are
+  demonstrated / 13 disconfirmed / 2 unmeasured. The invariants' two open rows are
   measured on all three interpreters — allocation flat inside the kit's
   8192-byte bar in all eighteen cells, `deinit()` 5 of 5 owned nodes
   released — and the three planted faults the gate audit sent back are
@@ -1830,7 +1830,7 @@ version number. The release carries repository tooling and docs only.
   `Depth` at grid position 0, and the old ratio multiplier read the identical
   slope 8.0817 (+1.02 %) at the top of the span — and every row re-measured
   over the span it quantifies over rather than at a chosen point. G2: the nine
-  Tier 1 cells that carried `n/a` now run on MicroPython and CircuitPython at
+  invariant cells that carried `n/a` now run on MicroPython and CircuitPython at
   all three rates, stereo and mono, `0 failures` on all three. G6: patch 6
   `Expander - lean` added and measured, and it does **not** close the item —
   the only cost lever the macro surface has is worth 5–8 % where the budget
@@ -1871,7 +1871,7 @@ version number. The release carries repository tooling and docs only.
   overrun budget is a patch and it could only measure construction defaults.
 - **`TransientShaper`'s gate-audit fixes.**
   The class's DSP is unchanged — it is parked for coverage and budget, not for
-  a defect at a reachable setting. Its whole Tier 1 block, including the four
+  a defect at a reachable setting. Its whole invariant block, including the four
   STATE rows that had run on CPython at 48 kHz only, now runs on all three
   interpreters at 48 / 44.1 / 22.05 kHz, stereo and mono, with five planted
   faults riding along (0 failures on each). The board digest it had was the
@@ -1911,17 +1911,17 @@ version number. The release carries repository tooling and docs only.
   only lever, a constructor option at 12 nodes and 48 pulls and 75–79 % of
   the three-band desktop cost, and it is unmeasured on either board. The
   class stays over budget on both.
-- **`MultibandCompressor`'s Tier 1 and digest probes name the rebuilt
+- **`MultibandCompressor`'s invariant and digest probes name the rebuilt
   class.** Both went through `audioeffects.create()`, which since the
   registry's adoption gate serves the *old* `dynamics.py` class for a parked
-  rebuild: the Tier 1 run died on `TypeError: unexpected keyword argument
+  rebuild: the invariant run died on `TypeError: unexpected keyword argument
   'bands'` and the digest run would have hashed the wrong class. Re-run on
   all three interpreters: `0 failing invariants`, and the four probe digests
   unchanged. The same trap in `tools/measure_effect_cost.py` is
   audiocomponents#52.
 - **A gate probe for `MultibandCompressor`** is new: the pattern revision's
-  patch sweep, its macro sweeps, `kit_faults.null_build_red` on all five Tier
-  2 measurements and `kit_faults.fault_reachability` on all five planted
+  patch sweep, its macro sweeps, `kit_faults.null_build_red` on all five trait
+  measurements and `kit_faults.fault_reachability` on all five planted
   faults. Three of this class's five rows — flat sum, zero latency,
   byte-stable render — were green on a piece of wire and now carry the clause
   that says the render is not the source's bytes.
@@ -1941,7 +1941,7 @@ version number. The release carries repository tooling and docs only.
   runner now **refuses a render whose digest is the bare source's**, which is
   what four of the sixteen rebuilt classes' board figures were.
 - **`LowPass`'s gate cells closed where they could be, and named where they
-  could not**. The class is **not** changed. Four Tier 1 rows the
+  could not**. The class is **not** changed. Four invariant rows the
   pack carried as `n/a` on the native builds now run there as integers on all
   three interpreters at 48 / 44.1 / 22.05 kHz, stereo and mono, each with a
   planted fault that fires; one row is marked `n/a`
@@ -1976,7 +1976,7 @@ version number. The release carries repository tooling and docs only.
   price of reading the same gain at both slopes. Nothing about the cut, the
   skirt or the exact zero at DC moves, and the class's rendered bytes are
   unchanged (`chord` at 48 kHz, patch 2: `8712fd99` before and after). Two
-  Tier 1 rows that had never run now do, on all three interpreters at three
+  invariant rows that had never run now do, on all three interpreters at three
   rates and both channel counts: the tail against its declaration, and the
   no-allocation row (`gc.mem_alloc()` on the native builds). T3's Nyquist leg
   was green on a wire and is re-stated so a wire fails it. **No `" - lean"`
@@ -1994,7 +1994,7 @@ version number. The release carries repository tooling and docs only.
   catalogue row, with what it sounds like. Two measurements that could not
   fail were replaced: T1's and T5's readings were both **green on a wire**,
   and T1's planted fault built an `audiobiquad.Biquad` outside the class so
-  its red never passed through `BandPass`. New: the Tier 2 rows measured at
+  its red never passed through `BandPass`. New: the trait rows measured at
   all six shipped patches (T1, T3 and T5 green at every one; seven cells miss
   a T2 or T4 bar and all seven land within 0.005 dB of RBJ's closed form, so
   they are the prototype's), and a working-patch digest anchor for the board
@@ -2176,8 +2176,8 @@ version number. The release carries repository tooling and docs only.
 - **`HighPass` now requires audiodsp** (`REQUIRES =
   ("audiobiquad",)`). Its three sections are `audiobiquad.Biquad`, whose
   float state reaches exact zero; the ported `synthio.Biquad` holds up to
-  71 LSB of DC at a 10 Hz corner for ever (audiodsp#23), which is the Tier 1
-  invariant failing at exactly the corners a low-cut is for. A stock
+  71 LSB of DC at a 10 Hz corner for ever (audiodsp#23), which is an invariant
+  failing at exactly the corners a low-cut is for. A stock
   CircuitPython board can no longer construct this class, where the old one
   ran there and quietly failed that invariant.
 - `tests/test_rebuilt_registry.py` no longer asserts that every one of the 46
@@ -2231,7 +2231,7 @@ version number. The release carries repository tooling and docs only.
   macros where it had none, seven patches where it had one, and
   `latency_samples` 0 at every setting with no latency-adding option.
   Evidence: five traits
-  demonstrated, five Tier 1 invariants green on three interpreters at three
+  demonstrated, five invariants green on three interpreters at three
   rates, nine planted faults all red, 48 renders byte-identical across
   CPython, MicroPython and the patched CircuitPython. **Cost is unmeasured on
   both boards.**
