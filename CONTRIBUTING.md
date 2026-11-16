@@ -4,9 +4,10 @@ audioeffects is a pure-Python package of 45 effects built on
 [audiodsp](https://github.com/PyDevices/audiodsp)'s nodes. A small
 documentation correction, a metadata improvement or a focused test for an
 existing effect is a good first contribution. A new effect follows the
-[runtime API](docs/reference/component-api.md) and declares its
-[metadata](docs/reference/metadata.md) explicitly, rather than relying on how a
-neighbouring module happens to work.
+[provider rules](docs/dev/component-contract.md), which produce the
+[runtime API](docs/reference/component-api.md) and
+[metadata](docs/reference/metadata.md) a host reads, rather than relying on how
+a neighbouring module happens to work.
 
 The package was part of audiocomponents until it moved here. Issue and pull
 request numbers written as `audiocomponents#N` in comments and the changelog
@@ -22,7 +23,7 @@ refer to that archived repository, and they still resolve at
 | [`tools/effect_probes/`](tools/effect_probes/) | The measurement kit's test signals and their manifest. The audio files are generated, never committed. |
 | `tools/` | Rendering and measurement tools besides. |
 | `tests/` | The suites. [`tests/support/KIT.md`](tests/support/KIT.md) describes the measurement kit and [`tests/support/LIFECYCLE.md`](tests/support/LIFECYCLE.md) the lifecycle matrix. |
-| `docs/` | The documentation site. |
+| `docs/` | The documentation site. [`docs/dev/`](docs/dev/) holds the contributor pages the site leaves out: the [provider rules](docs/dev/component-contract.md) and how the measurement kit [sizes a transform](docs/dev/exact-bin-size.md). |
 | `AUDIODSP_PIN` | The exact audiodsp commit every gate runs against. |
 | `VERSION` | The version the next tag carries. |
 | `.github/workflows/` | CI (`tests.yml`, `lint.yml`, `docs.yml`) and the release chain. |

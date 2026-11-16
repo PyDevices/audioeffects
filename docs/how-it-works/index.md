@@ -60,12 +60,11 @@ though patch values are the 0-127 MIDI grid. The declarations are specified in
 
 ## Pages in this section
 
-- [Sound stability](sound-stability.md)
+- [Sound stability](https://github.com/PyDevices/audiodsp/blob/main/docs/how-it-works/sound-stability.md), in audiodsp's documentation: what stays the same between releases
 - [Smoothing control moves](control-smoothing.md)
 
 ```{toctree}
 :hidden:
 
-sound-stability
 control-smoothing
 ```

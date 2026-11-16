@@ -306,7 +306,7 @@ grid point for the 220 Hz default is 215.7.
 An effect rack is one audio component whose internal graph chains or mixes
 multiple effect nodes; `rack.py` above is where this package ships them,
 declaring the same required metadata at class scope like any other effect
-class. See `docs/reference/metadata.md` for the complete rack rule.
+class. See `docs/dev/component-contract.md` for the complete rack rule.
 
 ## A note on chaining after a Mixer
 
