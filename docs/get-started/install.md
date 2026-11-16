@@ -48,7 +48,7 @@ have. Each effect class names the ones it needs in `REQUIRES`, for example
 ## A specific release
 
 The sound of an effect can change between releases
-([Sound stability](../how-it-works/sound-stability.md)). To keep a composition
+([Sound stability](https://github.com/PyDevices/audiodsp/blob/main/docs/how-it-works/sound-stability.md)). To keep a composition
 the way it sounds today, pin the version:
 
 ```bash

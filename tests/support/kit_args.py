@@ -192,7 +192,7 @@ def patch_cell(cls, patch):
                     i, kc.num(got[i]), want[i])
         # Back at patch 0 it reads patch 0's values, not a fresh
         # instance's: a declared default may sit off patch 0's grid
-        # (docs/reference/metadata.md; the kit holds reset-equals-fresh, not
+        # (docs/dev/component-contract.md; the kit holds reset-equals-fresh, not
         # fresh-equals-patch-0, ruled 2026-10-14).
         e.program_change(0)
         back = gets(e)

@@ -117,7 +117,7 @@ hands it:
 - `patch-p<k>`: `program_change(k)` sets `patch_index` and reads back the
   patch's values, and `program_change(0)` reads back patch 0's. Not what a
   fresh instance read: a declared default may sit off patch 0's grid
-  ([metadata.md](../../docs/reference/metadata.md)), so the kit
+  ([component-contract.md](../../docs/dev/component-contract.md#why-patch-values-are-integers)), so the kit
   holds a reset to a fresh instance (`fresh`), not a fresh instance to
   patch 0.
 - `ctor-<option>`: each numeric keyword of `_build` at 0 and NaN (a
@@ -245,7 +245,7 @@ patch 0, from every patch:
   for a node the rebuild released.
 - `boot/<rate>/<ch>`, informational: whether a fresh instance at its
   defaults is patch 0 exactly. Patch values are integers and a declared
-  default may sit off their grid ([metadata.md](../../docs/reference/metadata.md)),
+  default may sit off their grid ([component-contract.md](../../docs/dev/component-contract.md#why-patch-values-are-integers)),
   so a difference prints `na(info: ...)` and is never red.
 
 Each cell compares 2 s from the reset and stops at the first difference.
