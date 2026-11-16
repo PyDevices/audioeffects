@@ -17,7 +17,7 @@ omip.install("audioeffects")
 ```
 
 `omip` comes with OmniPython firmware. On other MicroPython firmware, run
-`mip.install("github:PyDevices/pydevices/lib/omip.py")` once to put it on the board.
+`mip.install("github:PyDevices/omnipython/lib/omip.py")` once to put it on the board.
 
 The first is for a desktop. The second is for a board whose firmware carries
 audiodsp; [Install](docs/get-started/install.md) has the rest.

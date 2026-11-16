@@ -4,21 +4,21 @@
 
 """What does ONE effect, or ONE audiodsp node, cost this board per block?
 
-    mpftp put -d <port> tools/measure_effect_cost.py /measure_effect_cost.py
-    mpftp exec -d <port> 'import measure_effect_cost as m; m.main("node:audiofilters.Filter")'
-    mpftp exec -d <port> 'import measure_effect_cost as m; m.main("effect:Compressor")'
-    mpftp exec -d <port> 'import measure_effect_cost as m; m.main()'   # catalogue
+    mcuctl put -d <port> tools/measure_effect_cost.py /measure_effect_cost.py
+    mcuctl exec -d <port> 'import measure_effect_cost as m; m.main("node:audiofilters.Filter")'
+    mcuctl exec -d <port> 'import measure_effect_cost as m; m.main("effect:Compressor")'
+    mcuctl exec -d <port> 'import measure_effect_cost as m; m.main()'   # catalogue
 
 `audioeffects` must be importable on the board. If the firmware does not
 freeze it in, put the package on the filesystem first:
 
-    mpftp mkdir -d <port> /lib
-    mpftp cp lib/audioeffects :/lib/audioeffects --verify
+    mcuctl mkdir -d <port> /lib
+    mcuctl cp lib/audioeffects :/lib/audioeffects --verify
 
 For a target slow enough that the run outlives `exec`'s quiet timeout, use
 the write-to-file pattern instead - `main()` prints to stdout, so redirect it
 by wrapping the call in a script that writes the lines to a board file and
-`mpftp probe --capture` that file.
+`mcuctl probe --capture` that file.
 
 WHY THIS EXISTS
 ---------------
@@ -143,7 +143,7 @@ MIN_WALL_S = 1.5
 MAX_WALL_S = 12.0
 
 #: Wall seconds one timed segment aims at. Segments exist so the run prints
-#: something every fraction of a second: `mpftp run --follow` gives up on a
+#: something every fraction of a second: `mcuctl run --follow` gives up on a
 #: board that stays quiet for about ten.
 SEGMENT_S = 0.35
 
