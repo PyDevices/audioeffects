@@ -8,6 +8,10 @@ together from PyDevices/audiocomponents, and the history from v0.4.2rc1 back
 covers both packages. Releases up to and including audiodsp's v0.1.1 shipped
 both packages from audiodsp, and are recorded in its changelog.
 
+## v0.5.2 (2026-11-17)
+
+- Install: pip install omnipython-audioeffects, from PyPI (#39)
+
 ## v0.5.2.dev5 (2026-11-17)
 
 - Publishing: pre-releases reach PyPI as well as finals (#37)
