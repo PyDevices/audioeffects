@@ -1,0 +1,76 @@
+# What every test job installs: Python, audiodsp at AUDIODSP_PIN, the test
+# runner, this package editable, and the probe audio.
+name: Set up the tests
+description: Python, audiodsp at the pin, pytest and the package, editable.
+inputs:
+  python:
+    description: The Python version to set up.
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v7
+      with:
+        python-version: ${{ inputs.python }}
+
+    # AUDIODSP_PIN, not the latest release: the gates are only attributable
+    # against a fixed core. A component failure over a moving audiodsp cannot
+    # be told apart from a node that moved beneath it.
+    - name: Resolve the audiodsp pin
+      id: pin
+      shell: bash
+      run: |
+        tag=$(grep -v '^[[:space:]]*#' AUDIODSP_PIN | grep -v '^[[:space:]]*$' \
+              | head -1 | awk '{print $1}')
+        if [[ -z "$tag" ]]; then
+          echo "AUDIODSP_PIN has no pin line" >&2
+          exit 1
+        fi
+        echo "tag=$tag" >> "$GITHUB_OUTPUT"
+        echo "audiodsp pinned at $tag"
+
+    # Building audiodsp's extension from source is the slowest install here,
+    # and its output depends only on the pin, the platform and the Python.
+    # Build the wheel once per combination and keep it.
+    - name: Cache the audiodsp wheel
+      id: audiodsp-wheel
+      uses: actions/cache@v6
+      with:
+        path: .audiodsp-wheel
+        key: audiodsp-wheel-v1-${{ steps.pin.outputs.tag }}-${{ runner.os }}-${{ runner.arch }}-py${{ inputs.python }}
+
+    # The requirement carries no distribution name: audiodsp was renamed
+    # from pydevices-audiodsp to omnipython-audiodsp, and the name pip
+    # checks must be the one the pinned commit declares. Without a name,
+    # pip reads it from that commit's pyproject.toml.
+    - name: Build the audiodsp wheel at the pin
+      if: steps.audiodsp-wheel.outputs.cache-hit != 'true'
+      shell: bash
+      run: >-
+        python -m pip wheel --no-deps --wheel-dir .audiodsp-wheel
+        "git+https://github.com/PyDevices/audiodsp@${{ steps.pin.outputs.tag }}"
+
+    - name: Install audiodsp at the pin
+      shell: bash
+      run: python -m pip install .audiodsp-wheel/*audiodsp-*.whl
+
+    # numpy: the measurement kit reads spectra with it; the package itself
+    # does not need it. pytest and pytest-xdist run the suite; the tests are
+    # plain unittest and need neither.
+    - shell: bash
+      run: python -m pip install numpy pytest pytest-xdist
+
+    # --no-deps is load-bearing: without it a floor raised above the pinned
+    # release re-resolves audiodsp from the index and every measurement is
+    # taken against a core AUDIODSP_PIN does not name -- the failure the pin
+    # exists to prevent, arriving through packaging. Do not drop the flag.
+    # Editable, so the tests exercise lib/ directly rather than a copy, and
+    # so the package's own pyproject.toml is exercised too.
+    - shell: bash
+      run: python -m pip install --no-deps -e lib/audioeffects
+
+    # The probe WAVs are not in git. Generate them here, so a probe that no
+    # longer matches probes.json fails this step by name instead of inside
+    # a test.
+    - shell: bash
+      run: python tools/effect_probes/make_probes.py --ensure

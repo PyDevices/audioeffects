@@ -26,6 +26,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -39,6 +40,7 @@ from tests.test_lifecycle_matrix import (FULL, check_known,  # noqa: E402
                                    parse, red_cells, skipped,
                                    split_lifted_e8)
 from tests.test_lifecycle_matrix import changed_files  # noqa: E402
+from tests.test_lifecycle_matrix import write_times  # noqa: E402
 
 VENDOR = "PyDevices"
 
@@ -194,6 +196,57 @@ def names():
     return [n for n in picked if n in node_matrix.NODES]
 
 
+def _run_node_part(part):
+    """(lines, seconds) for one node's cells at one rate, channel count and
+    patch."""
+    name, rate, ch, patch = part
+    began = time.perf_counter()
+    lines = []
+    lifecycle.run_class(node_matrix.NODES[name], emit=lines.append,
+                        quick=not FULL, rates=(rate,), channels=(ch,),
+                        patches=[patch])
+    return lines, time.perf_counter() - began
+
+
+def run_nodes(picked):
+    """{name: lines}, the CPython matrix for each node.
+
+    No cell depends on another, so each node's rates, channel counts and
+    patches run side by side in processes of their own, as the class
+    matrix's do (run_cpython_all), and their lines are joined in run_class's
+    order. LIFECYCLE_JOBS=1 runs every node in this process, one after
+    another."""
+    jobs = int(os.environ.get("LIFECYCLE_JOBS", "0")) or os.cpu_count() or 1
+    parts = [(name, rate, ch, patch) for name in picked
+             for rate in lifecycle.RATES for ch in lifecycle.CHANNELS
+             for patch in [None] + sorted(node_matrix.NODES[name].PATCHES)]
+    if jobs <= 1 or not picked:
+        out, times = {}, {}
+        for name in picked:
+            began = time.perf_counter()
+            lines = []
+            lifecycle.run_class(node_matrix.NODES[name], emit=lines.append,
+                                quick=not FULL)
+            out[name] = lines
+            times[name] = time.perf_counter() - began
+        write_times(times)
+        return out
+    import concurrent.futures
+    import multiprocessing
+    out = {name: [] for name in picked}
+    times = {name: 0.0 for name in picked}
+    # spawn on every platform, as run_cpython_all does.
+    with concurrent.futures.ProcessPoolExecutor(
+            min(jobs, len(parts)),
+            mp_context=multiprocessing.get_context("spawn")) as pool:
+        for part, (lines, seconds) in zip(
+                parts, pool.map(_run_node_part, parts)):
+            out[part[0]] += lines
+            times[part[0]] += seconds
+    write_times(times)
+    return out
+
+
 def start_native(binary, picked, scratch, extra=()):
     env = dict(os.environ, MICROPYPATH="lib:tests/support",
                GCOV_PREFIX=scratch, PYTHONDONTWRITEBYTECODE="1")
@@ -219,12 +272,7 @@ class TestNodeMatrix(unittest.TestCase):
                 cls.lifted[family] = bool(extra)
                 cls.procs[family] = start_native(binary, cls.names,
                                                  cls.scratch.name, extra)
-        cls.cpython = {}
-        for name in cls.names:
-            lines = []
-            lifecycle.run_class(node_matrix.NODES[name], emit=lines.append,
-                                quick=not FULL)
-            cls.cpython[name] = lines
+        cls.cpython = run_nodes(cls.names)
         cls.native_lines = {}
         for family, proc in cls.procs.items():
             out, err = proc.communicate()

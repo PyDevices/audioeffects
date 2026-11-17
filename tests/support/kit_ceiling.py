@@ -83,6 +83,11 @@ if __name__ == "__main__":
     sys.path.insert(0, "lib")
     sys.path.insert(0, "tests/support")
 
+try:
+    import os
+except ImportError:
+    os = None
+
 import kit_common as kc
 import lifecycle
 
@@ -344,15 +349,40 @@ def measure(cls, rate, channels, which, patch, knobs, options=None):
     return verdict, kc.crc(data)
 
 
+def _cell(args):
+    """(verdict, digest) for one cell; a raise is a red verdict."""
+    cls, rate, ch, which, patch, knobs, options = args
+    try:
+        return measure(cls, rate, ch, which, patch, knobs, options)
+    except Exception as exc:                              # noqa: BLE001
+        return "RED(raised %s: %s)" % (type(exc).__name__, exc), None
+
+
+def _jobs():
+    """KIT_JOBS, the processes `run` may spread its cells over; 1 when it
+    is unset or the interpreter has no environment."""
+    environ = getattr(os, "environ", None)
+    if environ is None:
+        return 1
+    return int(environ.get("KIT_JOBS") or "1")
+
+
 def run(cls, emit=print, quick=False, rates=None, channels=None,
-        materials=MATERIALS, only=None, options=None, name=None):
+        materials=MATERIALS, only=None, options=None, name=None, jobs=None):
     """Every ceiling cell for `cls`; returns the red count. `only` limits
-    the configurations to keys in it ("d", "p0", "m1=127")."""
+    the configurations to keys in it ("d", "p0", "m1=127").
+
+    No cell depends on another, so with `jobs` (or KIT_JOBS) above 1 the
+    cells render side by side in that many processes, and their lines are
+    emitted in the order one process emits them. A class made on the fly
+    (`stated_level_reds`) cannot be sent to another process and always
+    runs in this one."""
     cells = kc.Cells(name or cls.NAME, CHECK, emit)
     if rates is None:
         rates = (48000,) if quick else kc.RATES
     if channels is None:
         channels = (2,) if quick else kc.CHANNELS
+    todo = []
     for rate in rates:
         for ch in channels:
             for which in materials:
@@ -363,13 +393,24 @@ def run(cls, emit=print, quick=False, rates=None, channels=None,
                             which not in PATCH_COMBO_MATERIALS:
                         continue
                     ckey = "%s/%d/%d/%s" % (which, rate, ch, key)
-                    try:
-                        verdict, digest = measure(cls, rate, ch, which,
-                                                  patch, knobs, options)
-                    except Exception as exc:              # noqa: BLE001
-                        verdict, digest = "RED(raised %s: %s)" % (
-                            type(exc).__name__, exc), None
-                    cells.cell(ckey, verdict, digest)
+                    todo.append((ckey, (cls, rate, ch, which, patch, knobs,
+                                        options)))
+    jobs = _jobs() if jobs is None else jobs
+    module = sys.modules.get(getattr(cls, "__module__", ""))
+    if jobs > 1 and len(todo) > 1 and \
+            getattr(module, cls.__name__, None) is cls:
+        import concurrent.futures
+        import multiprocessing
+        # spawn on every platform, as the lifecycle matrix does: a fork of a
+        # process already running threads can deadlock.
+        with concurrent.futures.ProcessPoolExecutor(
+                min(jobs, len(todo)),
+                mp_context=multiprocessing.get_context("spawn")) as pool:
+            results = list(pool.map(_cell, [args for _, args in todo]))
+    else:
+        results = [_cell(args) for _, args in todo]
+    for (ckey, _), (verdict, digest) in zip(todo, results):
+        cells.cell(ckey, verdict, digest)
     return cells.summary()
 
 
