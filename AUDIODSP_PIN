@@ -516,5 +516,12 @@
 # Moved to b1f8dbf the same day, the merge of audiodsp#415 on main. Its source
 # is the same as 0ab3d30 (`git diff 0ab3d30 b1f8dbf -- src` is empty).
 #
+# Moved to v0.6.16.dev5 on 2026-11-17, the pre-release that carries
+# audiodsp#433: on CPython, reading a live node's attributes no longer goes
+# through a Python-level hook, so renders there run about a third faster. It
+# also carries audiopump's C sink (audiodsp#420), WaveFile refusing an audio
+# object as its file (audiodsp#432) and type stubs. None of it changes what a
+# node renders (`git log b1f8dbf..v0.6.16.dev5 -- src`).
+#
 # <ref> <commit>   -- ref is what CI installs (git+https://...@<ref>)
-b1f8dbf207ef43325c33e57c032c6fcc1ec4edcf b1f8dbf207ef43325c33e57c032c6fcc1ec4edcf
+v0.6.16.dev5 96f830e995aa3b1ed92d12ab1987d1fb6fbad97d
