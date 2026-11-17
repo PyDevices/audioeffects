@@ -8,7 +8,7 @@ that supplies the audio nodes and the CircuitPython-compatible `synthio` and
 ## On a desktop
 
 ```bash
-pip install --pre omnipython-audioeffects
+pip install omnipython-audioeffects
 ```
 
 pip pulls in `omnipython-audiodsp` for you. The distribution is
@@ -52,5 +52,5 @@ The sound of an effect can change between releases
 the way it sounds today, pin the version:
 
 ```bash
-pip install --pre omnipython-audioeffects==<version>
+pip install omnipython-audioeffects==<version>
 ```

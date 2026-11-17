@@ -115,7 +115,7 @@ the organization's reusable workflows:
 2. `tag-release.yml` tags the merged `VERSION`.
 3. `publish-release-packages.yml` runs the gates, builds the package from the
    tag, uploads `omnipython-audioeffects` to PyPI from the `pypi` environment,
-   every version, pre-releases included, and requests the `audioeffects` MIP
+   and requests the `audioeffects` MIP
    entry.
 
 The gates depend on the release. A final runs the whole suite at the tag. A
