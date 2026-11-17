@@ -68,9 +68,9 @@ TARGET = 720.0
 #: Cores a hosted Linux runner has; `matrix` plans for it.
 CORES = 4
 
-#: How long the suite takes on each runner, against the Linux runner the
-#: weights were measured on (the same full run on each, 3.13).
-SPEED = {"ubuntu-latest": 1.0, "windows-latest": 0.86, "macos-latest": 0.47}
+#: How long a shard takes on each runner, against the Linux runner the
+#: weights were measured on (shards of the same run, 3.13).
+SPEED = {"ubuntu-latest": 1.0, "windows-latest": 1.35, "macos-latest": 0.9}
 
 MAX_SHARDS = 8
 
@@ -275,17 +275,20 @@ def run(index, count, paths):
 
 
 def refresh(reports):
-    """Write ci_weights.json from the shard reports of one full run on Linux
-    (the artifacts `shard-times-ubuntu-latest-*`). A unit two reports
-    name keeps the larger time."""
-    weights = {"test": {}, "class": {}, "node": {}}
+    """Write ci_weights.json from the shard reports of full runs on Linux
+    (the artifacts `shard-times-ubuntu-latest-*`): each unit's weight is the
+    mean of the times the reports give it, so give it one full run's
+    reports, or several runs' to even out a noisy runner."""
+    seen = {"test": {}, "class": {}, "node": {}}
     for path in reports:
         with open(path) as handle:
             got = json.load(handle)
         for kind, names in got.items():
             for name, seconds in names.items():
-                old = weights[kind].get(name, 0.0)
-                weights[kind][name] = round(max(old, seconds), 1)
+                seen[kind].setdefault(name, []).append(seconds)
+    weights = {kind: {name: round(sum(times) / len(times), 1)
+                      for name, times in names.items()}
+               for kind, names in seen.items()}
     with open(WEIGHTS_FILE, "w") as handle:
         json.dump(weights, handle, indent=1, sort_keys=True)
         handle.write("\n")
