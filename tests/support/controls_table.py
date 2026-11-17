@@ -35,9 +35,11 @@ What each knob does is in the effect's own docstring.
 
 
 def classes():
-    """The effects with knobs, by class name."""
+    """The effects with knobs, by class name. The package loads a class on
+    first use, so its namespace holds only the ones some code has touched:
+    ALL names every one, whatever ran before."""
     out = []
-    for name in sorted(dir(audioeffects)):
+    for name in sorted(set(dir(audioeffects)) | set(audioeffects.ALL)):
         cls = getattr(audioeffects, name)
         if (inspect.isclass(cls) and issubclass(cls, _component.Component)
                 and getattr(cls, "_MACRO_RANGES", None)):
