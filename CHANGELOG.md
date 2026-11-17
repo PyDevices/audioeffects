@@ -8,6 +8,13 @@ together from PyDevices/audiocomponents, and the history from v0.4.2rc1 back
 covers both packages. Releases up to and including audiodsp's v0.1.1 shipped
 both packages from audiodsp, and are recorded in its changelog.
 
+## v0.5.2.dev4 (2026-11-17)
+
+- audioeffects: type stubs, so editors and type checkers see real types (#32)
+- Changelog: test rows are named by what they check, not by tier number (#31)
+- Changelog: entries drop internal phase, round and tier labels (#30)
+- docs: shorter runtime API and metadata pages; one sound-stability page (#29)
+
 ## v0.5.2.dev2 (2026-11-11)
 
 - audioeffects: catalog.json names every effect's patches and macros (#19)
