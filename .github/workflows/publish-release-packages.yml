@@ -19,60 +19,44 @@ permissions:
   contents: write
 
 jobs:
-  gates:
-    # The structural gates tests.yml runs, against the audiodsp pin: a release
-    # must not ship what CI would not pass.
+  # What the release has to be tested on. A final runs the whole suite at
+  # the release commit. A pre-release whose code already passed the full
+  # Tests matrix on main (the run is found by commit SHA and must have
+  # succeeded, and nothing the suite reads may have changed since) runs only
+  # what the release adds: the tests scoped to what changed since the last
+  # release tag, the wheel, the API validation and the library smoke.
+  # Anything tools/gate_plan.py cannot prove runs the whole suite.
+  gate-plan:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      since: ${{ steps.plan.outputs.since }}
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.release-ref || github.ref }}
+          fetch-depth: 0
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-
-      # AUDIODSP_PIN, not the dependency floor in pyproject.toml: the gates
-      # are only attributable against a fixed core.
-      - name: Resolve the audiodsp pin
-        id: pin
-        run: |
-          tag=$(grep -v '^[[:space:]]*#' AUDIODSP_PIN | grep -v '^[[:space:]]*$' \
-                | head -1 | awk '{print $1}')
-          if [[ -z "$tag" ]]; then
-            echo "AUDIODSP_PIN has no pin line" >&2
-            exit 1
-          fi
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "audiodsp pinned at $tag"
-
-      # No distribution name in the requirement: the pinned commit's own
-      # pyproject.toml names it, as in tests.yml.
-      - name: Install audiodsp at the pin
-        run: >-
-          python -m pip install
-          "git+https://github.com/PyDevices/audiodsp@${{ steps.pin.outputs.tag }}"
-
-      # pytest and pytest-xdist run the suite in parallel, as tests.yml does.
-      - run: python -m pip install numpy pytest pytest-xdist
-
-      # --no-deps is load-bearing: without it a floor raised above the pinned
-      # release re-resolves audiodsp from the index and every
-      # measurement is taken against a core AUDIODSP_PIN does not name -- the
-      # failure the pin exists to prevent, arriving through packaging. Do not
-      # drop the flag.
-      - run: python -m pip install --no-deps -e lib/audioeffects
-
-      # The probe WAVs are not in git. Generate them here, so a probe that no
-      # longer matches probes.json fails this step by name instead of inside
-      # a test. The tests would generate them too; this makes it explicit.
-      - run: python tools/effect_probes/make_probes.py --ensure
-
-      - run: python -m pytest tests -n auto --dist loadscope -p no:cacheprovider
+      - name: Decide what the gate runs
+        id: plan
         env:
-          OMP_NUM_THREADS: "1"
-          OPENBLAS_NUM_THREADS: "1"
-      - run: python tools/validate_api.py
-      - run: python tests/parity/effects_library_smoke.py
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/gate_plan.py "${{ inputs.release-ref || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+  # The structural gates tests.yml runs, against the audiodsp pin, cut into
+  # shards that run side by side: a release must not ship what CI would not
+  # pass.
+  gates:
+    needs: gate-plan
+    uses: ./.github/workflows/tests.yml
+    with:
+      ref: ${{ inputs.release-ref || github.ref }}
+      since: ${{ needs.gate-plan.outputs.since }}
 
   credentials:
     runs-on: ubuntu-latest

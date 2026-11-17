@@ -8,7 +8,10 @@
     python tools/gate_plan.py REF [--mode auto|full]   # in a checkout of REF
     python tools/gate_plan.py --selftest
 
-Prints `mode=reuse` or `mode=full` and `why=...` as lines for $GITHUB_OUTPUT.
+Prints `mode=reuse` or `mode=full`, `since=` and `why=...` as lines for
+$GITHUB_OUTPUT. A reuse names in `since` the release tag before this one:
+the gate then runs the tests scoped to what changed since it, besides the
+wheel, the API validation and the library smoke it always runs.
 
 A final release (`vX.Y.Z`) always runs the whole suite, and so does anything
 this script cannot prove. A pre-release (`.devN`, `aN`, `bN`, `rcN`) may rely
@@ -138,6 +141,14 @@ def selftest():
     print("gate_plan selftest ok")
 
 
+def previous_tag(head):
+    """The newest release tag before `head`, or None."""
+    done = subprocess.run(["git", "describe", "--tags", "--abbrev=0",
+                           "--match", "v[0-9]*", head + "^"],
+                          capture_output=True, text=True)
+    return done.stdout.strip() or None
+
+
 def main(argv):
     if argv[1:] == ["--selftest"]:
         selftest()
@@ -150,8 +161,16 @@ def main(argv):
     mode, why = decide(
         ref, mode, commits, push_runs,
         lambda sha: git("diff", "--name-only", sha, head).split())
+    since = ""
+    if mode == "reuse":
+        since = previous_tag(head) or ""
+        if not since:
+            mode, why = "full", "no release tag before %s to scope from" % ref
+        else:
+            why += "; the tests scoped to what changed since %s run" % since
     print("%s: %s" % (mode, why), file=sys.stderr)
     print("mode=" + mode)
+    print("since=" + since)
     print("why=" + why.replace("\n", " "))
     return 0
 

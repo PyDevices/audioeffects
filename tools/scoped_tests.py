@@ -232,7 +232,9 @@ CI_ALWAYS = KIT + ("test_kit",) + CONTRACT + (
 #: Paths every test leans on. A pull request that touches one runs the whole
 #: suite, because no mapping can say which tests it moved.
 CI_SHARED = (
-    ".github/",
+    ".github/workflows/tests.yml",
+    ".github/actions/",
+    "tools/ci_shards.py",
     "tests/support/",
     "tests/conftest.py",
     "tools/effect_measurements",
@@ -249,8 +251,11 @@ _ROSTERS = ("test_metadata_contract", "test_cpython_effects_library")
 #: catalog.json and the tool that writes it, which test_catalogue checks.
 _CATALOG = ("lib/audioeffects/catalog.json", "tools/make_catalog.py")
 
-#: Paths no test reads, besides the ones the workflow already ignores.
-_CI_SILENT = ("docs/", "LICENSE", "VERSION")
+#: Paths no test reads, besides the ones the workflow already ignores: the
+#: other workflows, the shard weights (they move tests between shards, never
+#: change one) and the release gate's rule (the plan job runs its self-test).
+_CI_SILENT = ("docs/", "LICENSE", "VERSION", ".github/",
+              "tools/ci_weights.json", "tools/gate_plan.py")
 
 
 def _changed_since(base):
