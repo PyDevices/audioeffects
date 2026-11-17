@@ -26,6 +26,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import zlib
 
@@ -389,8 +390,22 @@ def run_cpython(name, **only):
 
 
 def _run_cpython_part(part):
+    """(lines, seconds) for one part, the seconds so a CI shard can say what
+    each class cost (LIFECYCLE_TIMES)."""
     name, rate, ch, patch = part
-    return run_cpython(name, rates=(rate,), channels=(ch,), patches=[patch])
+    began = time.perf_counter()
+    lines = run_cpython(name, rates=(rate,), channels=(ch,), patches=[patch])
+    return lines, time.perf_counter() - began
+
+
+def write_times(times):
+    """Append `name seconds` lines to the file LIFECYCLE_TIMES names, if it
+    names one: what each class or node cost, to balance CI shards by."""
+    path = os.environ.get("LIFECYCLE_TIMES")
+    if path:
+        with open(path, "a") as handle:
+            for name, seconds in sorted(times.items()):
+                handle.write("%s %.1f\n" % (name, seconds))
 
 
 def run_cpython_all(names):
@@ -411,13 +426,17 @@ def run_cpython_all(names):
              for rate in lifecycle.RATES for ch in lifecycle.CHANNELS
              for patch in [None] + sorted(effect_class(name).PATCHES)]
     out = {name: [] for name in names}
+    times = {name: 0.0 for name in names}
     # spawn on every platform: a fork of a process already running threads
     # (a test runner's, say) can deadlock.
     with concurrent.futures.ProcessPoolExecutor(
             min(jobs, len(parts)),
             mp_context=multiprocessing.get_context("spawn")) as pool:
-        for part, lines in zip(parts, pool.map(_run_cpython_part, parts)):
+        for part, (lines, seconds) in zip(
+                parts, pool.map(_run_cpython_part, parts)):
             out[part[0]] += lines
+            times[part[0]] += seconds
+    write_times(times)
     return out
 
 
