@@ -58,26 +58,13 @@ jobs:
       ref: ${{ inputs.release-ref || github.ref }}
       since: ${{ needs.gate-plan.outputs.since }}
 
-  credentials:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Confirm inherited TestPyPI credentials
-        env:
-          TESTPYPI_API_TOKEN: ${{ secrets.TESTPYPI_API_TOKEN }}
-        run: |
-          if [[ -z "$TESTPYPI_API_TOKEN" ]]; then
-            echo "TESTPYPI_API_TOKEN is unavailable; ensure the organization secret is visible to PyDevices/audioeffects." >&2
-            exit 1
-          fi
-
   publish:
     needs:
       - gates
-      - credentials
     # publishing-v15 is the publishing tag this repository's chain has used
     # since it was audiocomponents; it carries the caller-side PyPI outputs
     # (pypi-gate, pypi-publish, dist-artifact, version) the pypi job reads.
-    uses: PyDevices/.github/.github/workflows/reusable-publish-release-packages.yml@publishing-v30
+    uses: PyDevices/.github/.github/workflows/reusable-publish-release-packages.yml@publishing-v31
     with:
       build-kind: pure-python
       distribution-name: omnipython-audioeffects
@@ -85,9 +72,9 @@ jobs:
       install-dependencies: true
       working-directory: lib/audioeffects
       # MIP publishes lib/audioeffects from the tag, not the wheel, so the
-      # index entry does not wait on a TestPyPI upload.
+      # index entry does not wait on the PyPI upload.
       mip-profile: audioeffects
-      # Production PyPI too, for final releases. The coordinator only
+      # PyPI, every version, pre-releases included. The coordinator only
       # decides; the upload is the pypi job below.
       pypi-publish: true
       release-ref: ${{ inputs.release-ref }}
@@ -97,8 +84,8 @@ jobs:
     # The upload has to run here, in this file. PyPI matches the Trusted
     # Publisher against the workflow that runs the upload job, and when that
     # job lives in the reusable coordinator, the workflow is
-    # PyDevices/.github's, not this one. The pypi environment is where the
-    # maintainer's approval is required.
+    # PyDevices/.github's, not this one. The pypi environment has no
+    # required reviewer and allows v* tags only.
     needs: publish
     if: >-
       !cancelled() && needs.publish.outputs.pypi-publish == 'true'
@@ -125,7 +112,7 @@ jobs:
       - pypi
     if: >-
       !cancelled() && needs.publish.outputs.pypi-publish == 'true'
-    uses: PyDevices/.github/.github/workflows/reusable-report-pypi-result.yml@publishing-v30
+    uses: PyDevices/.github/.github/workflows/reusable-report-pypi-result.yml@publishing-v31
     with:
       distribution-name: omnipython-audioeffects
       version: ${{ needs.publish.outputs.version }}

@@ -8,7 +8,7 @@ racks), pure Python on audiodsp's audio nodes, the same on MicroPython-compatibl
 boards, CircuitPython-compatible boards and a desktop.
 
 ```bash
-pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ omnipython-audioeffects
+pip install --pre omnipython-audioeffects
 ```
 
 ```python

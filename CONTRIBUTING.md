@@ -46,7 +46,7 @@ python3 -m venv .venv
 
 The commit is the first line of `AUDIODSP_PIN` that is not a comment. The pin
 matters: with a floating core underneath, a failure is unattributable, because
-you cannot tell a rewritten effect from a moved node beneath it. A TestPyPI
+you cannot tell a rewritten effect from a moved node beneath it. A PyPI
 install of `omnipython-audiodsp` is fine for poking around, but it is not what a
 gate result may be reported against.
 
@@ -114,9 +114,9 @@ the organization's reusable workflows:
    `CHANGELOG.md`).
 2. `tag-release.yml` tags the merged `VERSION`.
 3. `publish-release-packages.yml` runs the gates, builds the package from the
-   tag, publishes `omnipython-audioeffects` to TestPyPI, requests the
-   `audioeffects` MIP entry and, for a final release, uploads to PyPI from the
-   `pypi` environment.
+   tag, uploads `omnipython-audioeffects` to PyPI from the `pypi` environment,
+   every version, pre-releases included, and requests the `audioeffects` MIP
+   entry.
 
 The gates depend on the release. A final runs the whole suite at the tag. A
 pre-release whose code already passed the full Tests run on `main` runs the
