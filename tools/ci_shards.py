@@ -60,18 +60,22 @@ POOLED = (
 #: Seconds of one core for a unit `ci_weights.json` does not list yet.
 DEFAULT = {"test": 5.0, "class": 120.0, "node": 60.0}
 
-#: Seconds of test time a shard aims at: with the job's setup, about
-#: 20 minutes from start to finish.
-TARGET = 900.0
+#: Seconds a shard's units add up to, over CORES, at most: measured shards
+#: run about 15% over their sum, and the job's setup adds two minutes, so a
+#: shard at the target takes about 16 minutes from start to finish.
+TARGET = 720.0
 
 #: Cores a hosted Linux runner has; `matrix` plans for it.
 CORES = 4
 
-#: How long a unit takes on each runner, against the Linux runner the
-#: weights were measured on.
-SPEED = {"ubuntu-latest": 1.0, "windows-latest": 1.6, "macos-latest": 0.6}
+#: How long the suite takes on each runner, against the Linux runner the
+#: weights were measured on (the same full run on each, 3.13).
+SPEED = {"ubuntu-latest": 1.0, "windows-latest": 0.86, "macos-latest": 0.47}
 
 MAX_SHARDS = 8
+
+#: The Python the other platforms run.
+OTHER_PYTHON = "3.13"
 
 
 def _env():
@@ -159,13 +163,14 @@ def count_for(found, weights, speed=1.0):
 
 def matrix(pythons, others, paths):
     """The test jobs, as a JSON list for `strategy.matrix.include`: every
-    Python in `pythons` on Linux and the first of them on each runner in
-    `others`, each cut into as many shards as its share of the weights
+    Python in `pythons` on Linux and one of them, OTHER_PYTHON when it is
+    listed, on each runner in `others`, each cut into as many shards as its share of the weights
     needs (or CI_SHARDS each, when it is set)."""
     weights = load_weights()
     found = units(paths)
     runs = [("ubuntu-latest", py) for py in pythons]
-    runs += [(os_, pythons[0]) for os_ in others]
+    other = OTHER_PYTHON if OTHER_PYTHON in pythons else pythons[0]
+    runs += [(os_, other) for os_ in others]
     fixed = int(os.environ.get("CI_SHARDS") or 0)
     jobs = []
     for os_, py in runs:
@@ -270,8 +275,9 @@ def run(index, count, paths):
 
 
 def refresh(reports):
-    """Fold shard reports into ci_weights.json: a unit's new weight is the
-    largest a report gives it, so a slow runner errs towards balance."""
+    """Write ci_weights.json from the shard reports of one full run on Linux
+    (the artifacts `shard-times-ubuntu-latest-*`). A unit two reports
+    name keeps the larger time."""
     weights = {"test": {}, "class": {}, "node": {}}
     for path in reports:
         with open(path) as handle:

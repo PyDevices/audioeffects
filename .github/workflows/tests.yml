@@ -55,7 +55,7 @@ on:
 # behind one another (each gets a group of its own), so every commit on main
 # keeps its own full-matrix record.
 concurrency:
-  group: ${{ github.workflow }}-tests-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  group: ${{ github.workflow }}-tests-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}-${{ inputs.since }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:

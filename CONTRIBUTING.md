@@ -74,6 +74,14 @@ picks the files a change can break:
 
 `--list` prints the choice and runs nothing.
 
+CI cuts a run into shards that run side by side, about 15 minutes each.
+[`tools/ci_shards.py`](tools/ci_shards.py) deals the unittest classes and the
+lifecycle matrices' classes and nodes out by the times in
+[`tools/ci_weights.json`](tools/ci_weights.json). `plan COUNT` shows a split,
+and `run INDEX COUNT` runs one shard on your machine. When the suite's times
+move, refresh the weights from a full run's Linux artifacts with
+`tools/ci_shards.py weights shard-times-*.json`.
+
 A few tests render under a MicroPython or CircuitPython interpreter as well as
 CPython, and skip when they find none. They look for a `bin/micropython` or
 `bin/circuitpython` in a folder above the checkout, or for the paths in
@@ -109,6 +117,12 @@ the organization's reusable workflows:
    tag, publishes `omnipython-audioeffects` to TestPyPI, requests the
    `audioeffects` MIP entry and, for a final release, uploads to PyPI from the
    `pypi` environment.
+
+The gates depend on the release. A final runs the whole suite at the tag. A
+pre-release whose code already passed the full Tests run on `main` runs the
+tests scoped to what changed since the last release tag, the wheel, the API
+validation and the library smoke; [`tools/gate_plan.py`](tools/gate_plan.py)
+decides, and prints the run it relied on.
 
 Moving `AUDIODSP_PIN` is its own change, with the gates re-run, never a side
 effect of other work.
