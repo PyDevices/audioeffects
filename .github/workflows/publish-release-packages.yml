@@ -77,7 +77,7 @@ jobs:
     # publishing-v15 is the publishing tag this repository's chain has used
     # since it was audiocomponents; it carries the caller-side PyPI outputs
     # (pypi-gate, pypi-publish, dist-artifact, version) the pypi job reads.
-    uses: PyDevices/.github/.github/workflows/reusable-publish-release-packages.yml@publishing-v28
+    uses: PyDevices/.github/.github/workflows/reusable-publish-release-packages.yml@publishing-v30
     with:
       build-kind: pure-python
       distribution-name: omnipython-audioeffects
@@ -125,7 +125,7 @@ jobs:
       - pypi
     if: >-
       !cancelled() && needs.publish.outputs.pypi-publish == 'true'
-    uses: PyDevices/.github/.github/workflows/reusable-report-pypi-result.yml@publishing-v28
+    uses: PyDevices/.github/.github/workflows/reusable-report-pypi-result.yml@publishing-v30
     with:
       distribution-name: omnipython-audioeffects
       version: ${{ needs.publish.outputs.version }}
