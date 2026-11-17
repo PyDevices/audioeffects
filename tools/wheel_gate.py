@@ -17,7 +17,7 @@ For lib/audioeffects it:
 
 1. copies the package directory aside, writes the repo's VERSION into it (as
    the release reusable does) and runs `python -m build --wheel`;
-2. fails if any .py file under the source directory, or catalog.json, is
+2. fails if any .py or .pyi file under the source directory, or catalog.json or py.typed, is
    missing from the wheel;
 
 then it makes one clean venv, installs audiodsp (default: the AUDIODSP_PIN
@@ -122,6 +122,10 @@ def build_wheel(package, work):
                 if "__pycache__" not in path.parts}
     # catalog.json is the one data file a DAW or MIDI host reads from the wheel.
     expected.add(package + "/catalog.json")
+    # The type stubs and the marker that tells a type checker to read them.
+    expected.add(package + "/py.typed")
+    expected.update(package + "/" + path.relative_to(staged).as_posix()
+                    for path in staged.rglob("*.pyi"))
     out = work / "dist"
     run(sys.executable, "-m", "build", "--wheel", "--outdir", out, staged,
         check=True, stdout=subprocess.DEVNULL)
