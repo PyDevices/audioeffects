@@ -2,7 +2,7 @@
 
 - Test the code you changed, not the suite: `python tools/scoped_tests.py class:DeEsser` (or `effects`, `contract`, `auto`; `--list` prints the choice and runs nothing). The full run is very long ([CONTRIBUTING.md](CONTRIBUTING.md#run-the-tests)).
 - CI also runs `python tools/validate_api.py`, `python tests/parity/effects_library_smoke.py` and `python -m flake8` (defect checks only, no layout rules).
-- Set up against the audiodsp commit `AUDIODSP_PIN` names, not a TestPyPI release; a gate result against a floating core can't be attributed ([setup](CONTRIBUTING.md#set-up)). Moving the pin is its own change with the gates re-run.
+- Set up against the audiodsp commit `AUDIODSP_PIN` names, not a PyPI release; a gate result against a floating core can't be attributed ([setup](CONTRIBUTING.md#set-up)). Moving the pin is its own change with the gates re-run.
 - In a git worktree, an editable install still imports the main clone's `lib`. Put `PYTHONPATH=$PWD/lib` first, or your edit won't run.
 - Don't edit `VERSION`, tag or dispatch a release; the version is named in the release pull request ([Release](CONTRIBUTING.md#release)). An editable install reports `0.0.0`; that is cosmetic.
 - The measurement probes' audio is generated, never committed: `python tools/effect_probes/make_probes.py --ensure` writes what is missing and checks it against `probes.json`. Regenerating `probes.json` changes the reference, so do it only when a probe is meant to change.
